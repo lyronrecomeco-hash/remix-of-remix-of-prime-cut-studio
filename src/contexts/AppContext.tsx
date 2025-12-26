@@ -35,6 +35,12 @@ export interface BlockedSlot {
   reason?: string;
 }
 
+export interface BarberAvailability {
+  barberId: string;
+  date: string;
+  availableSlots: string[]; // Array of time strings like "09:00", "09:30", etc.
+}
+
 export interface QueueEntry {
   id: string;
   appointmentId: string;
@@ -93,6 +99,11 @@ interface AppState {
   blockedSlots: BlockedSlot[];
   addBlockedSlot: (slot: Omit<BlockedSlot, 'id'>) => void;
   removeBlockedSlot: (id: string) => void;
+  
+  // Barber Availability
+  barberAvailability: BarberAvailability[];
+  setBarberDayAvailability: (barberId: string, date: string, slots: string[]) => void;
+  getBarberDayAvailability: (barberId: string, date: string) => string[] | null;
   
   // Shop Settings
   shopSettings: ShopSettings;
@@ -165,6 +176,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     loadFromStorage('barbershop-blocked-slots', [])
   );
 
+  // Barber Availability
+  const [barberAvailability, setBarberAvailability] = useState<BarberAvailability[]>(() => 
+    loadFromStorage('barbershop-barber-availability', [])
+  );
+
   // Shop Settings
   const [shopSettings, setShopSettings] = useState<ShopSettings>(() => 
     loadFromStorage('barbershop-settings', {
@@ -188,6 +204,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => { saveToStorage('barbershop-max-queue', maxQueueSize); }, [maxQueueSize]);
   useEffect(() => { saveToStorage('barbershop-queue', queue); }, [queue]);
   useEffect(() => { saveToStorage('barbershop-blocked-slots', blockedSlots); }, [blockedSlots]);
+  useEffect(() => { saveToStorage('barbershop-barber-availability', barberAvailability); }, [barberAvailability]);
   useEffect(() => { saveToStorage('barbershop-settings', shopSettings); }, [shopSettings]);
 
   // Theme setter
@@ -361,6 +378,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setBlockedSlots(prev => prev.filter(s => s.id !== id));
   }, []);
 
+  // Barber Availability management
+  const setBarberDayAvailability = useCallback((barberId: string, date: string, slots: string[]) => {
+    setBarberAvailability(prev => {
+      const existing = prev.findIndex(a => a.barberId === barberId && a.date === date);
+      if (existing >= 0) {
+        const updated = [...prev];
+        updated[existing] = { barberId, date, availableSlots: slots };
+        return updated;
+      }
+      return [...prev, { barberId, date, availableSlots: slots }];
+    });
+  }, []);
+
+  const getBarberDayAvailability = useCallback((barberId: string, date: string): string[] | null => {
+    const found = barberAvailability.find(a => a.barberId === barberId && a.date === date);
+    return found ? found.availableSlots : null;
+  }, [barberAvailability]);
+
   // Shop Settings
   const updateShopSettings = useCallback((updates: Partial<ShopSettings>) => {
     setShopSettings(prev => ({ ...prev, ...updates }));
@@ -413,7 +448,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const dateStr = date.toISOString().split('T')[0];
     const dayOfWeek = date.getDay();
     
-    // Get operating hours
+    // Check if barber has custom availability for this day
+    const customAvailability = getBarberDayAvailability(barberId, dateStr);
+    
+    // If barber has custom availability, use only those slots
+    if (customAvailability !== null) {
+      for (const time of customAvailability) {
+        const available = isSlotAvailable(dateStr, time, barberId, serviceDuration);
+        slots.push({ time, available });
+      }
+      return slots;
+    }
+    
+    // Otherwise, use default operating hours
     let startHour = 9;
     let endHour = 20;
     if (dayOfWeek === 6) { // Saturday
@@ -431,7 +478,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     return slots;
-  }, [isSlotAvailable]);
+  }, [isSlotAvailable, getBarberDayAvailability]);
 
   const value: AppState = {
     theme,
@@ -466,6 +513,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     blockedSlots,
     addBlockedSlot,
     removeBlockedSlot,
+    barberAvailability,
+    setBarberDayAvailability,
+    getBarberDayAvailability,
     shopSettings,
     updateShopSettings,
     getAvailableTimeSlots,

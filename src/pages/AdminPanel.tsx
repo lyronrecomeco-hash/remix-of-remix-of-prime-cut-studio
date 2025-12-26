@@ -71,9 +71,13 @@ const AdminPanel = () => {
     updateService,
     deleteService,
     toggleServiceVisibility,
+    barbers,
     blockedSlots,
     addBlockedSlot,
     removeBlockedSlot,
+    barberAvailability,
+    setBarberDayAvailability,
+    getBarberDayAvailability,
     shopSettings,
     updateShopSettings,
     theme,
@@ -111,6 +115,51 @@ const AdminPanel = () => {
   // New image URL
   const [newImageUrl, setNewImageUrl] = useState('');
   const [newImageTitle, setNewImageTitle] = useState('');
+
+  // Barber availability management
+  const [selectedBarberForAvailability, setSelectedBarberForAvailability] = useState(barbers[0]?.id || '');
+  const [availabilityDate, setAvailabilityDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
+
+  // Generate all possible time slots for a day
+  const allPossibleSlots = (() => {
+    const slots: string[] = [];
+    for (let hour = 9; hour < 20; hour++) {
+      for (const minute of [0, 30]) {
+        slots.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+      }
+    }
+    return slots;
+  })();
+
+  // Load barber availability when date or barber changes
+  useEffect(() => {
+    if (selectedBarberForAvailability && availabilityDate) {
+      const existing = getBarberDayAvailability(selectedBarberForAvailability, availabilityDate);
+      setSelectedTimeSlots(existing || []);
+    }
+  }, [selectedBarberForAvailability, availabilityDate, getBarberDayAvailability]);
+
+  const handleToggleTimeSlot = (time: string) => {
+    setSelectedTimeSlots(prev => 
+      prev.includes(time) 
+        ? prev.filter(t => t !== time)
+        : [...prev, time].sort()
+    );
+  };
+
+  const handleSaveAvailability = () => {
+    setBarberDayAvailability(selectedBarberForAvailability, availabilityDate, selectedTimeSlots);
+    notify.success('Disponibilidade salva', `Horários atualizados para ${availabilityDate}`);
+  };
+
+  const handleSelectAllSlots = () => {
+    setSelectedTimeSlots([...allPossibleSlots]);
+  };
+
+  const handleClearAllSlots = () => {
+    setSelectedTimeSlots([]);
+  };
 
   const newFeedbacksCount = getNewFeedbacksCount();
 
@@ -385,6 +434,77 @@ const AdminPanel = () => {
                     <span className="text-primary font-medium">{item.time}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Barber Availability Management */}
+            <div className="glass-card rounded-xl p-6 mb-6">
+              <h3 className="font-semibold mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-primary" />
+                Disponibilidade do Profissional
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Selecione os horários disponíveis para atendimento em cada dia
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="text-sm text-muted-foreground block mb-1">Profissional</label>
+                  <select
+                    value={selectedBarberForAvailability}
+                    onChange={(e) => setSelectedBarberForAvailability(e.target.value)}
+                    className="w-full bg-secondary px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    {barbers.map((barber) => (
+                      <option key={barber.id} value={barber.id}>
+                        {barber.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground block mb-1">Data</label>
+                  <Input
+                    type="date"
+                    value={availabilityDate}
+                    onChange={(e) => setAvailabilityDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 mb-4">
+                <Button variant="outline" size="sm" onClick={handleSelectAllSlots}>
+                  Selecionar Todos
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleClearAllSlots}>
+                  Limpar Todos
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 mb-4">
+                {allPossibleSlots.map((time) => (
+                  <button
+                    key={time}
+                    onClick={() => handleToggleTimeSlot(time)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      selectedTimeSlots.includes(time)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {selectedTimeSlots.length} horário(s) selecionado(s)
+                </p>
+                <Button variant="hero" onClick={handleSaveAvailability}>
+                  <Check className="w-4 h-4" />
+                  Salvar Disponibilidade
+                </Button>
               </div>
             </div>
 

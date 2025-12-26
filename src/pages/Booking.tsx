@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import { usePhoneMask } from '@/hooks/usePhoneMask';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Service, Barber, TimeSlot } from '@/lib/data';
 import Header from '@/components/landing/Header';
 
@@ -30,6 +31,7 @@ const Booking = () => {
   const { services, barbers, addAppointment, getAvailableTimeSlots, addToQueue, queueEnabled, shopSettings } = useApp();
   const { notify } = useNotification();
   const phoneMask = usePhoneMask();
+  const isMobileOrTablet = useIsMobile();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -349,7 +351,9 @@ const Booking = () => {
                           whileTap={{ scale: 0.98 }}
                           onClick={() => {
                             setSelectedService(service);
-                            setTimeout(() => setCurrentStep(2), 150);
+                            if (isMobileOrTablet) {
+                              setTimeout(() => setCurrentStep(2), 150);
+                            }
                           }}
                           className={`glass-card rounded-xl p-4 text-left transition-all hover:border-primary/50 ${
                             selectedService?.id === service.id
@@ -391,7 +395,9 @@ const Booking = () => {
                         onClick={() => {
                           if (barber.available) {
                             setSelectedBarber(barber);
-                            setTimeout(() => setCurrentStep(3), 150);
+                            if (isMobileOrTablet) {
+                              setTimeout(() => setCurrentStep(3), 150);
+                            }
                           }
                         }}
                         disabled={!barber.available}
@@ -474,7 +480,9 @@ const Booking = () => {
                           onClick={() => {
                             if (date && isDateSelectable(date)) {
                               setSelectedDate(date);
-                              setTimeout(() => setCurrentStep(4), 150);
+                              if (isMobileOrTablet) {
+                                setTimeout(() => setCurrentStep(4), 150);
+                              }
                             }
                           }}
                           disabled={!date || !isDateSelectable(date)}
@@ -524,7 +532,9 @@ const Booking = () => {
                           onClick={() => {
                             if (slot.available) {
                               setSelectedTime(slot.time);
-                              setTimeout(() => setCurrentStep(5), 150);
+                              if (isMobileOrTablet) {
+                                setTimeout(() => setCurrentStep(5), 150);
+                              }
                             }
                           }}
                           disabled={!slot.available}
