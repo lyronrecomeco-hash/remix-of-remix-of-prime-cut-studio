@@ -347,7 +347,10 @@ const Booking = () => {
                         <motion.button
                           key={service.id}
                           whileTap={{ scale: 0.98 }}
-                          onClick={() => setSelectedService(service)}
+                          onClick={() => {
+                            setSelectedService(service);
+                            setTimeout(() => setCurrentStep(2), 150);
+                          }}
                           className={`glass-card rounded-xl p-4 text-left transition-all hover:border-primary/50 ${
                             selectedService?.id === service.id
                               ? 'border-primary bg-primary/5'
@@ -385,7 +388,12 @@ const Booking = () => {
                       <motion.button
                         key={barber.id}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => barber.available && setSelectedBarber(barber)}
+                        onClick={() => {
+                          if (barber.available) {
+                            setSelectedBarber(barber);
+                            setTimeout(() => setCurrentStep(3), 150);
+                          }
+                        }}
                         disabled={!barber.available}
                         className={`glass-card rounded-xl p-4 text-left transition-all ${
                           !barber.available
@@ -463,7 +471,12 @@ const Booking = () => {
                         <motion.button
                           key={index}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => date && isDateSelectable(date) && setSelectedDate(date)}
+                          onClick={() => {
+                            if (date && isDateSelectable(date)) {
+                              setSelectedDate(date);
+                              setTimeout(() => setCurrentStep(4), 150);
+                            }
+                          }}
                           disabled={!date || !isDateSelectable(date)}
                           className={`aspect-square rounded-lg flex items-center justify-center text-sm transition-all ${
                             !date
@@ -508,7 +521,12 @@ const Booking = () => {
                               ? 'pill-disabled'
                               : 'pill'
                           }
-                          onClick={() => slot.available && setSelectedTime(slot.time)}
+                          onClick={() => {
+                            if (slot.available) {
+                              setSelectedTime(slot.time);
+                              setTimeout(() => setCurrentStep(5), 150);
+                            }
+                          }}
                           disabled={!slot.available}
                           className="h-12"
                         >
