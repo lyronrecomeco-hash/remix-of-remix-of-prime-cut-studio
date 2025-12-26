@@ -33,9 +33,10 @@ export interface Appointment {
   barber: Barber;
   date: string;
   time: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'inqueue' | 'called' | 'onway' | 'completed' | 'cancelled';
   position?: number;
   createdAt?: string;
+  protocol?: string;
 }
 
 export const services: Service[] = [

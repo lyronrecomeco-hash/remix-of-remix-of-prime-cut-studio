@@ -1,17 +1,45 @@
 {
-  "name": "Barber Studio",
-  "short_name": "Barber",
-  "description": "Barbearia premium com agendamento online",
+  "name": "Genesis Barber Studio",
+  "short_name": "Genesis",
+  "description": "Barbearia premium com agendamento online - Tema Black & Gold",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "theme_color": "#d4a531",
   "orientation": "portrait-primary",
+  "lang": "pt-BR",
+  "categories": ["lifestyle", "business"],
   "icons": [
     {
       "src": "/favicon.ico",
       "sizes": "64x64",
       "type": "image/x-icon"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "shortcuts": [
+    {
+      "name": "Agendar",
+      "short_name": "Agendar",
+      "description": "Fazer novo agendamento",
+      "url": "/agendar",
+      "icons": []
+    },
+    {
+      "name": "Meus Agendamentos",
+      "short_name": "Meus",
+      "description": "Ver meus agendamentos",
+      "url": "/meus-agendamentos",
+      "icons": []
     }
   ]
 }

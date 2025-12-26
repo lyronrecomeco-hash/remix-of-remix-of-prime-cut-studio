@@ -3,27 +3,44 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="https://storage.googleapis.com/gpt-engineer-file-uploads/JBhG7jTQS8ecrAv14aIyVGN3I5n1/uploads/1766769397935-iconegg.png">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0a0a0a" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#d4a531" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Genesis" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
     <meta name="description" content="Barbearia premium com agendamento online. Experiência de corte masculino de alto nível.">
     <title>GenesisDemo</title>
     
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="https://storage.googleapis.com/gpt-engineer-file-uploads/JBhG7jTQS8ecrAv14aIyVGN3I5n1/uploads/1766769397935-iconegg.png">
+    <link rel="apple-touch-startup-image" href="https://storage.googleapis.com/gpt-engineer-file-uploads/JBhG7jTQS8ecrAv14aIyVGN3I5n1/uploads/1766769397935-iconegg.png">
     
-    
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
+    <meta property="og:title" content="GenesisDemo">
+    <meta property="og:description" content="Barbearia premium com agendamento online. Experiência de corte masculino de alto nível.">
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GenesisDemo">
+    <meta name="twitter:description" content="Barbearia premium com agendamento online. Experiência de corte masculino de alto nível.">
     
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
-    <meta property="og:title" content="GenesisDemo">
-  <meta name="twitter:title" content="GenesisDemo">
-  <meta property="og:description" content="Barbearia premium com agendamento online. Experiência de corte masculino de alto nível.">
-  <meta name="twitter:description" content="Barbearia premium com agendamento online. Experiência de corte masculino de alto nível.">
-</head>
+    
+    <!-- Splash screens for iOS -->
+    <style>
+      /* Prevent pull-to-refresh on mobile */
+      html, body {
+        overscroll-behavior-y: contain;
+      }
+    </style>
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

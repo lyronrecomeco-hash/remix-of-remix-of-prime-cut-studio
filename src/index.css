@@ -2,132 +2,91 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Premium Barbershop Design System */
+/* Premium Black & Gold Barbershop Design System */
 
 @layer base {
   :root {
-    /* Dark Luxury Palette */
+    /* Black & Gold Theme - Native and Default */
     --background: 0 0% 4%;
-    --foreground: 0 0% 96%;
+    --foreground: 45 20% 95%;
 
     --card: 0 0% 7%;
-    --card-foreground: 0 0% 96%;
+    --card-foreground: 45 20% 95%;
 
     --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 96%;
+    --popover-foreground: 45 20% 95%;
 
-    /* Emerald accent */
-    --primary: 160 84% 39%;
-    --primary-foreground: 0 0% 100%;
+    /* Gold as primary accent */
+    --primary: 43 74% 49%;
+    --primary-foreground: 0 0% 5%;
 
     --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 96%;
+    --secondary-foreground: 45 20% 95%;
 
     --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 55%;
+    --muted-foreground: 45 10% 55%;
 
-    --accent: 160 84% 39%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 43 74% 49%;
+    --accent-foreground: 0 0% 5%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 160 84% 39%;
-
-    --radius: 0.75rem;
-
-    /* Custom tokens */
-    --gold: 43 74% 49%;
-    --gold-foreground: 0 0% 100%;
-    
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(160 84% 39%) 0%, hsl(160 84% 30%) 100%);
-    --gradient-dark: linear-gradient(180deg, hsl(0 0% 7%) 0%, hsl(0 0% 4%) 100%);
-    --gradient-glow: radial-gradient(ellipse at center, hsl(160 84% 39% / 0.15) 0%, transparent 70%);
-    
-    /* Shadows */
-    --shadow-soft: 0 4px 20px -4px hsl(0 0% 0% / 0.3);
-    --shadow-glow: 0 0 40px hsl(160 84% 39% / 0.2);
-    --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.5);
-
-    /* Sidebar */
-    --sidebar-background: 0 0% 6%;
-    --sidebar-foreground: 0 0% 96%;
-    --sidebar-primary: 160 84% 39%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 0 0% 96%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 160 84% 39%;
-  }
-
-  /* Clean Luxe Palette */
-  .theme-clean {
-    --background: 210 20% 98%;
-    --foreground: 220 20% 10%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 220 20% 10%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
-
-    --primary: 210 20% 30%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 210 15% 93%;
-    --secondary-foreground: 220 20% 10%;
-
-    --muted: 210 15% 93%;
-    --muted-foreground: 220 10% 45%;
-
-    --accent: 210 20% 30%;
-    --accent-foreground: 0 0% 100%;
-
-    --border: 210 15% 88%;
-    --input: 210 15% 88%;
-    --ring: 210 20% 30%;
-
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 20% 10%;
-    --sidebar-primary: 210 20% 30%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 15% 95%;
-    --sidebar-accent-foreground: 220 20% 10%;
-    --sidebar-border: 210 15% 90%;
-  }
-
-  /* Gold Accent Palette */
-  .theme-gold {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 96%;
-
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 96%;
-
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 96%;
-
-    --primary: 43 74% 49%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 96%;
-
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 55%;
-
-    --accent: 43 74% 49%;
-    --accent-foreground: 0 0% 100%;
-
-    --border: 0 0% 18%;
+    --border: 43 30% 18%;
     --input: 0 0% 18%;
     --ring: 43 74% 49%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(43 74% 49%) 0%, hsl(43 74% 40%) 100%);
-    --shadow-glow: 0 0 40px hsl(43 74% 49% / 0.2);
+    --radius: 0.75rem;
+
+    /* Gold tokens */
+    --gold: 43 74% 49%;
+    --gold-light: 43 80% 60%;
+    --gold-dark: 43 70% 35%;
+    --gold-foreground: 0 0% 5%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(43 74% 49%) 0%, hsl(43 70% 35%) 100%);
+    --gradient-gold-shine: linear-gradient(135deg, hsl(43 80% 60%) 0%, hsl(43 74% 49%) 50%, hsl(43 70% 35%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(0 0% 7%) 0%, hsl(0 0% 4%) 100%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(43 74% 49% / 0.15) 0%, transparent 70%);
+    
+    /* Shadows */
+    --shadow-soft: 0 4px 20px -4px hsl(0 0% 0% / 0.5);
+    --shadow-glow: 0 0 40px hsl(43 74% 49% / 0.25);
+    --shadow-gold: 0 4px 30px hsl(43 74% 49% / 0.2);
+    --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.6);
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 45 20% 95%;
+    --sidebar-primary: 43 74% 49%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 45 20% 95%;
+    --sidebar-border: 43 30% 15%;
+    --sidebar-ring: 43 74% 49%;
+  }
+
+  /* Shiny Gold Theme - Configurable */
+  .theme-gold-shine {
+    --primary: 43 85% 55%;
+    --gold: 43 85% 55%;
+    --gold-light: 43 90% 70%;
+    --border: 43 40% 20%;
+    --ring: 43 85% 55%;
+    --gradient-primary: linear-gradient(135deg, hsl(43 90% 70%) 0%, hsl(43 85% 55%) 50%, hsl(43 75% 40%) 100%);
+    --gradient-gold-shine: linear-gradient(135deg, hsl(43 90% 70%) 0%, hsl(43 85% 55%) 30%, hsl(43 80% 50%) 70%, hsl(43 75% 40%) 100%);
+    --shadow-glow: 0 0 50px hsl(43 85% 55% / 0.35);
+    --shadow-gold: 0 4px 40px hsl(43 85% 55% / 0.3);
+  }
+
+  /* High contrast gold */
+  .theme-gold-metallic {
+    --primary: 43 90% 50%;
+    --gold: 43 90% 50%;
+    --gold-light: 45 95% 65%;
+    --gradient-primary: linear-gradient(135deg, hsl(45 95% 65%) 0%, hsl(43 90% 50%) 40%, hsl(40 85% 38%) 100%);
+    --shadow-glow: 0 0 60px hsl(43 90% 50% / 0.4);
   }
 }
 
@@ -145,11 +104,38 @@
     font-family: 'Outfit', system-ui, sans-serif;
     @apply font-semibold tracking-tight;
   }
+
+  /* Gold accent for important text */
+  .text-gold {
+    color: hsl(var(--gold));
+  }
+
+  .text-gold-shine {
+    background: var(--gradient-gold-shine);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Star ratings in gold */
+  .star-gold {
+    color: hsl(var(--gold));
+    filter: drop-shadow(0 0 2px hsl(var(--gold) / 0.5));
+  }
 }
 
 @layer components {
   .glass-card {
     @apply bg-card/80 backdrop-blur-xl border border-border/50;
+    box-shadow: var(--shadow-card);
+  }
+
+  .gold-border {
+    border-color: hsl(var(--gold) / 0.3);
+  }
+
+  .gold-border-strong {
+    border-color: hsl(var(--gold) / 0.6);
   }
 
   .glow-border {
@@ -173,12 +159,46 @@
     background-image: var(--gradient-primary);
   }
 
+  .gold-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
   .section-padding {
     @apply py-20 md:py-32 px-4 md:px-8;
   }
 
   .container-narrow {
     @apply max-w-6xl mx-auto;
+  }
+
+  /* Gold button styling */
+  .btn-gold {
+    background: var(--gradient-primary);
+    color: hsl(var(--gold-foreground));
+    box-shadow: var(--shadow-gold);
+    @apply font-semibold;
+  }
+
+  .btn-gold:hover {
+    filter: brightness(1.1);
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* Gold icon container */
+  .icon-gold {
+    background: hsl(var(--gold) / 0.15);
+    color: hsl(var(--gold));
+  }
+
+  /* Gold card highlight */
+  .card-gold {
+    border-color: hsl(var(--gold) / 0.3);
+    box-shadow: 0 4px 20px hsl(var(--gold) / 0.1);
+  }
+
+  .card-gold:hover {
+    border-color: hsl(var(--gold) / 0.5);
+    box-shadow: var(--shadow-gold);
   }
 }
 
@@ -215,9 +235,33 @@
       transform: translateY(0);
     }
   }
+
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
+    background-size: 200% 100%;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* Gold shine animation */
+  .animate-gold-shine {
+    animation: gold-shine 3s ease-in-out infinite;
+  }
+
+  @keyframes gold-shine {
+    0%, 100% { 
+      filter: brightness(1);
+    }
+    50% { 
+      filter: brightness(1.2);
+    }
+  }
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - Gold accent */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -228,11 +272,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full;
+  background: hsl(var(--gold) / 0.3);
+  @apply rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
+  background: hsl(var(--gold) / 0.5);
 }
 
 /* Mobile app-like experience */
@@ -240,4 +285,46 @@
   .safe-area-inset-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
+}
+
+/* Security - Prevent selection and drag */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.no-drag {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+/* Disable text selection globally for security */
+body {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection only in inputs */
+input, textarea {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Disable image dragging */
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+  pointer-events: none;
+}
+
+/* Mobile bottom navigation */
+.mobile-nav {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }

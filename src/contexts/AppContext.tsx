@@ -40,11 +40,14 @@ export interface QueueEntry {
   appointmentId: string;
   position: number;
   estimatedWait: number;
-  status: 'waiting' | 'called' | 'attended';
+  status: 'waiting' | 'called' | 'onway' | 'attended';
   calledAt?: string;
+  onwayAt?: string;
 }
 
-export type ThemeType = 'dark' | 'light' | 'gold';
+export type ThemeType = 'dark' | 'light' | 'gold' | 'gold-shine' | 'gold-metallic';
+
+export type AppointmentStatus = 'pending' | 'confirmed' | 'inqueue' | 'called' | 'onway' | 'completed' | 'cancelled';
 
 interface AppState {
   // Theme
@@ -81,8 +84,10 @@ interface AppState {
   queue: QueueEntry[];
   addToQueue: (appointmentId: string) => QueueEntry;
   callNextInQueue: () => QueueEntry | null;
+  markClientOnWay: (appointmentId: string) => void;
   updateQueuePosition: (id: string, position: number) => void;
   getQueuePosition: (appointmentId: string) => number | null;
+  getQueueEntry: (appointmentId: string) => QueueEntry | null;
   
   // Blocked Slots
   blockedSlots: BlockedSlot[];
@@ -223,7 +228,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Appointments
   const addAppointment = useCallback((appointment: Omit<Appointment, 'id'>): Appointment => {
-    const newAppointment = { ...appointment, id: generateId() };
+    const protocol = `GEN${Date.now().toString(36).toUpperCase()}`;
+    const newAppointment = { ...appointment, id: generateId(), protocol };
     setAppointments(prev => [...prev, newAppointment as Appointment]);
     return newAppointment as Appointment;
   }, []);
@@ -327,6 +333,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const entry = queue.find(q => q.appointmentId === appointmentId && q.status === 'waiting');
     return entry?.position ?? null;
   }, [queue]);
+
+  const getQueueEntry = useCallback((appointmentId: string): QueueEntry | null => {
+    return queue.find(q => q.appointmentId === appointmentId) ?? null;
+  }, [queue]);
+
+  const markClientOnWay = useCallback((appointmentId: string) => {
+    setQueue(prev => prev.map(q =>
+      q.appointmentId === appointmentId
+        ? { ...q, status: 'onway' as const, onwayAt: new Date().toISOString() }
+        : q
+    ));
+    setAppointments(prev => prev.map(a =>
+      a.id === appointmentId
+        ? { ...a, status: 'onway' as const }
+        : a
+    ));
+  }, []);
 
   // Blocked Slots
   const addBlockedSlot = useCallback((slot: Omit<BlockedSlot, 'id'>) => {
@@ -436,8 +459,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     queue,
     addToQueue,
     callNextInQueue,
+    markClientOnWay,
     updateQueuePosition,
     getQueuePosition,
+    getQueueEntry,
     blockedSlots,
     addBlockedSlot,
     removeBlockedSlot,
