@@ -714,17 +714,17 @@ const AdminPanel = () => {
                   <Palette className="w-5 h-5 text-primary" />
                   Tema Visual
                 </h3>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {[
-                    { id: 'dark', label: 'Dark Luxury', colors: ['bg-black', 'bg-emerald-500'] },
-                    { id: 'light', label: 'Clean Luxe', colors: ['bg-slate-200', 'bg-slate-600'] },
-                    { id: 'gold', label: 'Black & Gold', colors: ['bg-black', 'bg-amber-500'] },
+                    { id: 'gold', label: 'Black & Gold', colors: ['bg-black', 'bg-amber-500'], isNative: true },
+                    { id: 'gold-shine', label: 'Gold Brilhante', colors: ['bg-black', 'bg-yellow-400'] },
+                    { id: 'gold-metallic', label: 'Gold Metálico', colors: ['bg-black', 'bg-amber-300'] },
                   ].map((t) => (
                     <button
                       key={t.id}
                       onClick={() => setTheme(t.id as any)}
                       className={`p-4 rounded-xl border-2 transition-all ${
-                        theme === t.id ? 'border-primary' : 'border-border hover:border-primary/50'
+                        theme === t.id ? 'border-primary gold-glow' : 'border-border hover:border-primary/50'
                       }`}
                     >
                       <div className="flex gap-1 mb-2">
@@ -733,6 +733,9 @@ const AdminPanel = () => {
                         ))}
                       </div>
                       <p className="text-sm font-medium">{t.label}</p>
+                      {(t as any).isNative && (
+                        <span className="text-[10px] text-primary">Nativo</span>
+                      )}
                     </button>
                   ))}
                 </div>

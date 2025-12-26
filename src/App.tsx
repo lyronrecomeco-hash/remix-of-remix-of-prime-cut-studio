@@ -7,6 +7,8 @@ import { AppProvider } from "@/contexts/AppContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { FeedbackProvider } from "@/contexts/FeedbackContext";
 import { GalleryProvider } from "@/contexts/GalleryContext";
+import { useSecurityProtection } from "@/hooks/useSecurityProtection";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import Index from "./pages/Index";
 import Booking from "./pages/Booking";
 import MyAppointments from "./pages/MyAppointments";
@@ -18,23 +20,65 @@ import { useEffect } from "react";
 const queryClient = new QueryClient();
 
 // Register Service Worker for PWA
-const registerServiceWorker = () => {
+const registerServiceWorker = async () => {
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then((registration) => {
-          console.log('Service Worker registered:', registration);
-        })
-        .catch((error) => {
-          console.log('Service Worker registration failed:', error);
-        });
-    });
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/',
+      });
+      console.log('Service Worker registered:', registration.scope);
+      
+      // Check for updates
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('New content available, please refresh.');
+            }
+          });
+        }
+      });
+    } catch (error) {
+      console.log('Service Worker registration failed:', error);
+    }
   }
+};
+
+// Request notification permission
+const requestNotificationPermission = async () => {
+  if ('Notification' in window) {
+    const permission = await Notification.requestPermission();
+    console.log('Notification permission:', permission);
+  }
+};
+
+const AppContent = () => {
+  useSecurityProtection();
+
+  return (
+    <>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/agendar" element={<Booking />} />
+          <Route path="/meus-agendamentos" element={<MyAppointments />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/avaliar" element={<FeedbackPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <MobileBottomNav />
+      </BrowserRouter>
+    </>
+  );
 };
 
 const App = () => {
   useEffect(() => {
     registerServiceWorker();
+    requestNotificationPermission();
   }, []);
 
   return (
@@ -44,18 +88,7 @@ const App = () => {
           <FeedbackProvider>
             <NotificationProvider>
               <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/agendar" element={<Booking />} />
-                    <Route path="/meus-agendamentos" element={<MyAppointments />} />
-                    <Route path="/admin" element={<AdminPanel />} />
-                    <Route path="/avaliar" element={<FeedbackPage />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </BrowserRouter>
+                <AppContent />
               </TooltipProvider>
             </NotificationProvider>
           </FeedbackProvider>

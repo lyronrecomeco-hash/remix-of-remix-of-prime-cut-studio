@@ -1,16 +1,22 @@
-const CACHE_NAME = 'barbershop-v1';
+const CACHE_NAME = 'barbershop-v2';
+const STATIC_CACHE = 'barbershop-static-v2';
+const DYNAMIC_CACHE = 'barbershop-dynamic-v2';
+
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
+  '/agendar',
+  '/meus-agendamentos',
+  '/avaliar',
 ];
 
 // Install event
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('Opened cache');
+        console.log('Caching static assets');
         return cache.addAll(urlsToCache);
       })
   );
@@ -23,7 +29,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
+          if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
             console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
@@ -34,53 +40,131 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - Network first, fallback to cache
+// Fetch event - Network first with cache fallback
 self.addEventListener('fetch', (event) => {
+  // Skip non-GET requests
+  if (event.request.method !== 'GET') return;
+  
+  // Skip external requests
+  if (!event.request.url.startsWith(self.location.origin)) return;
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone the response
-        const responseClone = response.clone();
-        
-        // Cache the fetched response
-        caches.open(CACHE_NAME)
-          .then((cache) => {
-            if (event.request.method === 'GET') {
-              cache.put(event.request, responseClone);
-            }
+        // Clone and cache successful responses
+        if (response.status === 200) {
+          const responseClone = response.clone();
+          caches.open(DYNAMIC_CACHE).then((cache) => {
+            cache.put(event.request, responseClone);
           });
-        
+        }
         return response;
       })
-      .catch(() => {
-        // If network fails, try to get from cache
-        return caches.match(event.request)
-          .then((response) => {
-            if (response) {
-              return response;
-            }
-            // If not in cache and offline, return offline page for navigate requests
-            if (event.request.mode === 'navigate') {
-              return caches.match('/');
-            }
-          });
+      .catch(async () => {
+        // Try cache on network failure
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        
+        // For navigation requests, return index.html
+        if (event.request.mode === 'navigate') {
+          return caches.match('/') || caches.match('/index.html');
+        }
+        
+        return new Response('Offline', { status: 503 });
       })
   );
 });
 
 // Push notification event
 self.addEventListener('push', (event) => {
+  let data = { title: 'Barber Studio', body: 'Atualização disponível!' };
+  
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
   const options = {
-    body: event.data ? event.data.text() : 'Nova atualização disponível!',
+    body: data.body,
     icon: '/favicon.ico',
     badge: '/favicon.ico',
-    vibrate: [100, 50, 100],
+    vibrate: [200, 100, 200],
+    tag: data.tag || 'notification',
+    renotify: true,
+    requireInteraction: data.requireInteraction || false,
     data: {
+      url: data.url || '/',
       dateOfArrival: Date.now(),
-    }
+    },
+    actions: data.actions || [
+      { action: 'open', title: 'Abrir' },
+      { action: 'close', title: 'Fechar' }
+    ]
   };
 
   event.waitUntil(
-    self.registration.showNotification('Barber Studio', options)
+    self.registration.showNotification(data.title, options)
   );
+});
+
+// Notification click event
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  if (event.action === 'close') return;
+  
+  const urlToOpen = event.notification.data?.url || '/';
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Focus existing window if available
+        for (const client of clientList) {
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            client.navigate(urlToOpen);
+            return client.focus();
+          }
+        }
+        // Open new window
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
+  );
+});
+
+// Background sync for queue updates
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'queue-sync') {
+    event.waitUntil(syncQueueData());
+  }
+});
+
+async function syncQueueData() {
+  // Sync queue data when back online
+  console.log('Syncing queue data...');
+}
+
+// Message event for communication with app
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body, tag, url } = event.data;
+    self.registration.showNotification(title, {
+      body,
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      vibrate: [200, 100, 200],
+      tag: tag || 'app-notification',
+      data: { url: url || '/' }
+    });
+  }
 });
