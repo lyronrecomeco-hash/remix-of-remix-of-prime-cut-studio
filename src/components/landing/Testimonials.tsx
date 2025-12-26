@@ -1,12 +1,14 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef } from 'react';
-import { Star, Quote } from 'lucide-react';
-import { testimonials } from '@/lib/data';
+import { Star, Quote, User, UserCircle } from 'lucide-react';
+import { useFeedback } from '@/contexts/FeedbackContext';
 
 const Testimonials = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const { getPublishedFeedbacks } = useFeedback();
+  const publishedFeedbacks = getPublishedFeedbacks();
 
   return (
     <section className="section-padding bg-secondary/30" ref={ref}>
@@ -31,9 +33,9 @@ const Testimonials = () => {
         </motion.div>
 
         <div className="grid md:grid-cols-3 gap-6">
-          {testimonials.map((testimonial, index) => (
+          {publishedFeedbacks.slice(0, 6).map((feedback, index) => (
             <motion.div
-              key={testimonial.id}
+              key={feedback.id}
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: index * 0.1 }}
@@ -41,22 +43,32 @@ const Testimonials = () => {
             >
               <Quote className="absolute top-4 right-4 w-8 h-8 text-primary/20" />
               <div className="flex gap-1 mb-4">
-                {[...Array(testimonial.rating)].map((_, i) => (
+                {[...Array(feedback.rating)].map((_, i) => (
                   <Star key={i} className="w-4 h-4 fill-primary text-primary" />
                 ))}
               </div>
               <p className="text-foreground mb-6 leading-relaxed">
-                "{testimonial.text}"
+                "{feedback.text}"
               </p>
               <div className="flex items-center gap-3">
-                <img
-                  src={testimonial.photo}
-                  alt={testimonial.name}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
-                />
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center overflow-hidden border-2 border-primary/20">
+                  {feedback.avatarUrl ? (
+                    <img
+                      src={feedback.avatarUrl}
+                      alt={feedback.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : feedback.avatarType === 'female' ? (
+                    <UserCircle className="w-6 h-6 text-muted-foreground" />
+                  ) : (
+                    <User className="w-6 h-6 text-muted-foreground" />
+                  )}
+                </div>
                 <div>
-                  <div className="font-semibold">{testimonial.name}</div>
-                  <div className="text-sm text-muted-foreground">Cliente fiel</div>
+                  <div className="font-semibold">
+                    {feedback.isAnonymous ? 'Cliente anônimo' : feedback.name}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Cliente</div>
                 </div>
               </div>
             </motion.div>

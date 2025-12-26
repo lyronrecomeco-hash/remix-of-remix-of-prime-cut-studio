@@ -5,34 +5,64 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "@/contexts/AppContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { FeedbackProvider } from "@/contexts/FeedbackContext";
+import { GalleryProvider } from "@/contexts/GalleryContext";
 import Index from "./pages/Index";
 import Booking from "./pages/Booking";
 import MyAppointments from "./pages/MyAppointments";
 import AdminPanel from "./pages/AdminPanel";
+import FeedbackPage from "./pages/FeedbackPage";
 import NotFound from "./pages/NotFound";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AppProvider>
-      <NotificationProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/agendar" element={<Booking />} />
-              <Route path="/meus-agendamentos" element={<MyAppointments />} />
-              <Route path="/admin" element={<AdminPanel />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </NotificationProvider>
-    </AppProvider>
-  </QueryClientProvider>
-);
+// Register Service Worker
+const registerSW = () => {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('SW registered:', registration);
+        })
+        .catch((error) => {
+          console.log('SW registration failed:', error);
+        });
+    });
+  }
+};
+
+const App = () => {
+  useEffect(() => {
+    registerSW();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppProvider>
+        <FeedbackProvider>
+          <GalleryProvider>
+            <NotificationProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/agendar" element={<Booking />} />
+                    <Route path="/meus-agendamentos" element={<MyAppointments />} />
+                    <Route path="/admin" element={<AdminPanel />} />
+                    <Route path="/avaliar" element={<FeedbackPage />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </BrowserRouter>
+              </TooltipProvider>
+            </NotificationProvider>
+          </GalleryProvider>
+        </FeedbackProvider>
+      </AppProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
