@@ -29,7 +29,7 @@ const Hero = () => {
           transition={{ duration: 0.8, ease: 'easeOut' }}
         >
           <span className="inline-block px-4 py-2 mb-6 text-sm font-medium text-primary bg-primary/10 rounded-full border border-primary/20">
-            Barbearia Premium
+            ✂️ Experiência Premium em Barbearia
           </span>
         </motion.div>
 
@@ -39,9 +39,9 @@ const Hero = () => {
           transition={{ duration: 0.8, delay: 0.1, ease: 'easeOut' }}
           className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight"
         >
-          Experiência em
+          Seu visual merece
           <br />
-          <span className="text-gradient">Cortes Masculinos</span>
+          <span className="text-gradient">atenção aos detalhes</span>
         </motion.h1>
 
         <motion.p
@@ -50,8 +50,8 @@ const Hero = () => {
           transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
           className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
         >
-          Precisão, estilo e atendimento de excelência. 
-          Transforme seu visual com os melhores profissionais.
+          Técnica refinada, ambiente sofisticado e atendimento personalizado. 
+          Aqui, cada corte é uma experiência única feita para você.
         </motion.p>
 
         <motion.div
@@ -63,12 +63,12 @@ const Hero = () => {
           <Button asChild variant="hero" size="xl">
             <Link to="/agendar">
               <Calendar className="w-5 h-5" />
-              Agendar Agora
+              Agendar Horário
             </Link>
           </Button>
           <Button asChild variant="hero-outline" size="xl">
             <a href="#servicos">
-              Ver Serviços
+              Conhecer Serviços
               <ArrowRight className="w-5 h-5" />
             </a>
           </Button>
@@ -82,13 +82,13 @@ const Hero = () => {
           className="mt-20 grid grid-cols-3 gap-8 max-w-lg mx-auto"
         >
           {[
-            { value: '10+', label: 'Anos' },
-            { value: '5k+', label: 'Clientes' },
-            { value: '4.9', label: 'Avaliação' },
+            { value: '10+', label: 'Anos de Tradição' },
+            { value: '5.000+', label: 'Clientes Satisfeitos' },
+            { value: '4.9', label: 'Avaliação Média' },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <div className="text-2xl md:text-3xl font-bold text-foreground">{stat.value}</div>
-              <div className="text-sm text-muted-foreground">{stat.label}</div>
+              <div className="text-xs md:text-sm text-muted-foreground">{stat.label}</div>
             </div>
           ))}
         </motion.div>

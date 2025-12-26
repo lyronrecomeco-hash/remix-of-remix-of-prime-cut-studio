@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { Scissors, Brush, Crown, Zap, Palette, Sparkles } from 'lucide-react';
-import { services } from '@/lib/data';
+import { useApp } from '@/contexts/AppContext';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
@@ -18,6 +18,7 @@ const iconMap: Record<string, any> = {
 const Services = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const { services } = useApp();
 
   return (
     <section id="servicos" className="section-padding bg-secondary/30" ref={ref}>
@@ -32,11 +33,13 @@ const Services = () => {
             Nossos Serviços
           </span>
           <h2 className="text-3xl md:text-5xl font-bold mt-4 mb-6">
-            O que oferecemos
+            Cuidados que fazem
+            <br />
+            <span className="text-gradient">a diferença</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Serviços completos de barbearia com profissionais especializados 
-            e produtos de alta qualidade.
+            Cada serviço é executado com técnica apurada e atenção aos detalhes. 
+            Do clássico ao contemporâneo, sempre com resultado impecável.
           </p>
         </motion.div>
 

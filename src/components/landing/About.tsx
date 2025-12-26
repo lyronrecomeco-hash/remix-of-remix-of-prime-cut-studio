@@ -6,23 +6,23 @@ import { Award, Clock, Heart, Shield } from 'lucide-react';
 const features = [
   {
     icon: Award,
-    title: 'Excelência',
-    description: 'Profissionais certificados com anos de experiência',
+    title: 'Expertise Comprovada',
+    description: 'Profissionais treinados com as técnicas mais atuais do mercado',
   },
   {
     icon: Clock,
-    title: 'Pontualidade',
-    description: 'Respeito ao seu tempo com atendimento agendado',
+    title: 'Respeito ao seu Tempo',
+    description: 'Agendamento inteligente para você ser atendido no horário marcado',
   },
   {
     icon: Heart,
-    title: 'Experiência',
-    description: 'Ambiente sofisticado e acolhedor',
+    title: 'Experiência Única',
+    description: 'Ambiente pensado para seu conforto e relaxamento',
   },
   {
     icon: Shield,
-    title: 'Qualidade',
-    description: 'Produtos premium e equipamentos de ponta',
+    title: 'Qualidade Garantida',
+    description: 'Produtos selecionados e higiene rigorosa em cada atendimento',
   },
 ];
 
@@ -43,13 +43,14 @@ const About = () => {
             Sobre Nós
           </span>
           <h2 className="text-3xl md:text-5xl font-bold mt-4 mb-6">
-            Mais que uma barbearia,
+            Onde tradição encontra
             <br />
-            <span className="text-gradient">uma experiência</span>
+            <span className="text-gradient">excelência moderna</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Há mais de 10 anos transformando o visual masculino com precisão, 
-            estilo e atendimento de excelência. Cada detalhe pensado para você.
+            Construímos nossa reputação cliente por cliente, corte por corte. 
+            Aqui você não é apenas mais um — você é nossa prioridade. 
+            Cada visita é uma oportunidade de superar suas expectativas.
           </p>
         </motion.div>
 

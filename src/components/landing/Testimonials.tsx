@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef } from 'react';
-import { Star } from 'lucide-react';
+import { Star, Quote } from 'lucide-react';
 import { testimonials } from '@/lib/data';
 
 const Testimonials = () => {
@@ -21,8 +21,13 @@ const Testimonials = () => {
             Depoimentos
           </span>
           <h2 className="text-3xl md:text-5xl font-bold mt-4 mb-6">
-            O que dizem nossos clientes
+            Quem conhece,
+            <br />
+            <span className="text-gradient">recomenda</span>
           </h2>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            A opinião de quem já viveu a experiência é a melhor forma de conhecer nosso trabalho.
+          </p>
         </motion.div>
 
         <div className="grid md:grid-cols-3 gap-6">
@@ -32,8 +37,9 @@ const Testimonials = () => {
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: index * 0.1 }}
-              className="glass-card rounded-2xl p-6"
+              className="glass-card rounded-2xl p-6 relative"
             >
+              <Quote className="absolute top-4 right-4 w-8 h-8 text-primary/20" />
               <div className="flex gap-1 mb-4">
                 {[...Array(testimonial.rating)].map((_, i) => (
                   <Star key={i} className="w-4 h-4 fill-primary text-primary" />
@@ -50,7 +56,7 @@ const Testimonials = () => {
                 />
                 <div>
                   <div className="font-semibold">{testimonial.name}</div>
-                  <div className="text-sm text-muted-foreground">Cliente</div>
+                  <div className="text-sm text-muted-foreground">Cliente fiel</div>
                 </div>
               </div>
             </motion.div>
