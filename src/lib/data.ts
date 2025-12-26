@@ -209,6 +209,8 @@ export const mockAppointments: Appointment[] = [
     position: 3,
   },
 ];
+
+export const shopInfo = {
   name: 'Barber Studio',
   tagline: 'Experiência Premium em Barbearia',
   description: 'Há mais de 10 anos transformando o visual masculino com precisão, estilo e atendimento que você merece.',
