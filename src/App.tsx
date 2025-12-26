@@ -17,16 +17,16 @@ import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
-// Register Service Worker
-const registerSW = () => {
+// Register Service Worker for PWA
+const registerServiceWorker = () => {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
         .then((registration) => {
-          console.log('SW registered:', registration);
+          console.log('Service Worker registered:', registration);
         })
         .catch((error) => {
-          console.log('SW registration failed:', error);
+          console.log('Service Worker registration failed:', error);
         });
     });
   }
@@ -34,14 +34,14 @@ const registerSW = () => {
 
 const App = () => {
   useEffect(() => {
-    registerSW();
+    registerServiceWorker();
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <AppProvider>
-        <FeedbackProvider>
-          <GalleryProvider>
+        <GalleryProvider>
+          <FeedbackProvider>
             <NotificationProvider>
               <TooltipProvider>
                 <Toaster />
@@ -58,8 +58,8 @@ const App = () => {
                 </BrowserRouter>
               </TooltipProvider>
             </NotificationProvider>
-          </GalleryProvider>
-        </FeedbackProvider>
+          </FeedbackProvider>
+        </GalleryProvider>
       </AppProvider>
     </QueryClientProvider>
   );
