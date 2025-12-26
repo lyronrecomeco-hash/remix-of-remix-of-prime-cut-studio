@@ -897,7 +897,7 @@ const AdminPanel = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="h-screen bg-background flex overflow-hidden fixed inset-0 lg:relative lg:h-auto lg:overflow-auto">
       {/* Sidebar Desktop */}
       <aside className="hidden lg:flex flex-col w-64 bg-sidebar border-r border-sidebar-border">
         <div className="p-6">
@@ -1004,9 +1004,9 @@ const AdminPanel = () => {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen">
+      <main className="flex-1 flex flex-col h-screen lg:min-h-screen overflow-hidden">
         {/* Top Bar */}
-        <header className="h-16 border-b border-border flex items-center justify-between px-4 lg:px-8">
+        <header className="h-16 border-b border-border flex items-center justify-between px-4 lg:px-8 shrink-0">
           <button
             onClick={() => setIsSidebarOpen(true)}
             className="lg:hidden w-10 h-10 rounded-lg bg-secondary flex items-center justify-center"
@@ -1034,7 +1034,7 @@ const AdminPanel = () => {
         </header>
 
         {/* Content */}
-        <div className="flex-1 p-4 lg:p-8 overflow-auto pb-24 lg:pb-8">
+        <div className="flex-1 p-4 lg:p-8 overflow-y-auto pb-24 lg:pb-8 overscroll-contain">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -1049,7 +1049,7 @@ const AdminPanel = () => {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border lg:hidden safe-area-inset-bottom z-30">
+      <nav className="fixed bottom-0 left-0 right-0 bg-background backdrop-blur-lg border-t border-border lg:hidden z-30" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex items-center justify-around py-2">
           {menuItems.slice(0, 5).map((item) => (
             <button

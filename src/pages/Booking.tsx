@@ -633,7 +633,7 @@ const Booking = () => {
           </AnimatePresence>
 
           {/* Navigation */}
-          <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border p-4 md:relative md:mt-8 md:p-0 md:border-0 md:bg-transparent">
+          <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border p-4 md:relative md:mt-8 md:p-0 md:border-0 md:bg-transparent z-40" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
             <div className="flex gap-3 max-w-2xl mx-auto">
               {currentStep > 1 && (
                 <Button variant="outline" size="lg" onClick={prevStep} className="flex-1">
@@ -641,16 +641,19 @@ const Booking = () => {
                   Voltar
                 </Button>
               )}
-              <Button
-                variant="hero"
-                size="lg"
-                onClick={nextStep}
-                disabled={!canProceed()}
-                className="flex-1"
-              >
-                {currentStep === 5 ? 'Confirmar Agendamento' : 'Continuar'}
-                {currentStep < 5 && <ArrowRight className="w-4 h-4" />}
-              </Button>
+              {/* Only show navigation button on desktop or non-step-5 */}
+              {(!isMobileOrTablet || currentStep !== 5) && (
+                <Button
+                  variant="hero"
+                  size="lg"
+                  onClick={nextStep}
+                  disabled={!canProceed()}
+                  className="flex-1"
+                >
+                  {currentStep === 5 ? 'Confirmar Agendamento' : 'Continuar'}
+                  {currentStep < 5 && <ArrowRight className="w-4 h-4" />}
+                </Button>
+              )}
             </div>
           </div>
         </div>
