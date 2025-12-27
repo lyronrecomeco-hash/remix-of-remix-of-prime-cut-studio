@@ -1,8 +1,22 @@
 import { Scissors, Instagram, Facebook, MessageCircle } from 'lucide-react';
-import { shopInfo } from '@/lib/data';
+import { useApp } from '@/contexts/AppContext';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
+  const { shopSettings } = useApp();
+
+  // Build social links from settings
+  const instagramLink = shopSettings.social?.instagram?.startsWith('http') 
+    ? shopSettings.social.instagram 
+    : shopSettings.social?.instagram 
+      ? `https://instagram.com/${shopSettings.social.instagram.replace('@', '')}` 
+      : '#';
+      
+  const facebookLink = shopSettings.social?.facebook?.startsWith('http')
+    ? shopSettings.social.facebook
+    : shopSettings.social?.facebook
+      ? `https://facebook.com/${shopSettings.social.facebook}`
+      : '#';
 
   return (
     <footer className="bg-card border-t border-border">
@@ -14,10 +28,10 @@ const Footer = () => {
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Scissors className="w-5 h-5 text-primary" />
               </div>
-              <span className="text-xl font-bold">{shopInfo.name}</span>
+              <span className="text-xl font-bold">{shopSettings.name}</span>
             </div>
             <p className="text-muted-foreground text-sm max-w-sm">
-              {shopInfo.tagline}. Atendimento premium com agendamento online 
+              {shopSettings.tagline}. Atendimento premium com agendamento online 
               para sua comodidade.
             </p>
           </div>
@@ -26,9 +40,9 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-4">Horários</h4>
             <div className="text-sm text-muted-foreground space-y-2">
-              <p>Seg - Sex: {shopInfo.hours.weekdays}</p>
-              <p>Sábado: {shopInfo.hours.saturday}</p>
-              <p>Domingo: {shopInfo.hours.sunday}</p>
+              <p>Seg - Sex: {shopSettings.hours.weekdays}</p>
+              <p>Sábado: {shopSettings.hours.saturday}</p>
+              <p>Domingo: {shopSettings.hours.sunday}</p>
             </div>
           </div>
 
@@ -36,14 +50,14 @@ const Footer = () => {
           <div>
             <h4 className="font-semibold mb-4">Contato</h4>
             <div className="text-sm text-muted-foreground space-y-2">
-              <p>{shopInfo.phone}</p>
-              <p className="text-xs">{shopInfo.address}</p>
+              <p>{shopSettings.phone}</p>
+              <p className="text-xs">{shopSettings.address}</p>
             </div>
             
             {/* Social */}
             <div className="flex gap-3 mt-4">
               <a 
-                href={shopInfo.social.instagram}
+                href={instagramLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center hover:bg-primary/20 transition-colors"
@@ -51,7 +65,7 @@ const Footer = () => {
                 <Instagram className="w-4 h-4" />
               </a>
               <a 
-                href={shopInfo.social.facebook}
+                href={facebookLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center hover:bg-primary/20 transition-colors"
@@ -59,7 +73,7 @@ const Footer = () => {
                 <Facebook className="w-4 h-4" />
               </a>
               <a 
-                href={`https://wa.me/${shopInfo.whatsapp}`}
+                href={`https://wa.me/${shopSettings.whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center hover:bg-primary/20 transition-colors"
@@ -71,7 +85,7 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-border mt-12 pt-8 text-center text-sm text-muted-foreground">
-          <p>© {currentYear} {shopInfo.name}. Todos os direitos reservados.</p>
+          <p>© {currentYear} {shopSettings.name}. Todos os direitos reservados.</p>
         </div>
       </div>
     </footer>
