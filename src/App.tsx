@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "@/contexts/AppContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { FeedbackProvider } from "@/contexts/FeedbackContext";
 import { GalleryProvider } from "@/contexts/GalleryContext";
@@ -13,6 +14,7 @@ import Index from "./pages/Index";
 import Booking from "./pages/Booking";
 import MyAppointments from "./pages/MyAppointments";
 import AdminPanel from "./pages/AdminPanel";
+import AdminLogin from "./pages/AdminLogin";
 import FeedbackPage from "./pages/FeedbackPage";
 import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
@@ -70,6 +72,7 @@ const AppContent = () => {
           <Route path="/" element={<Index />} />
           <Route path="/agendar" element={<Booking />} />
           <Route path="/meus-agendamentos" element={<MyAppointments />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/avaliar" element={<FeedbackPage />} />
           <Route path="*" element={<NotFound />} />
@@ -82,17 +85,19 @@ const AppContent = () => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AppProvider>
-      <GalleryProvider>
-        <FeedbackProvider>
-          <NotificationProvider>
-            <TooltipProvider>
-              <AppContent />
-            </TooltipProvider>
-          </NotificationProvider>
-        </FeedbackProvider>
-      </GalleryProvider>
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <GalleryProvider>
+          <FeedbackProvider>
+            <NotificationProvider>
+              <TooltipProvider>
+                <AppContent />
+              </TooltipProvider>
+            </NotificationProvider>
+          </FeedbackProvider>
+        </GalleryProvider>
+      </AppProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
