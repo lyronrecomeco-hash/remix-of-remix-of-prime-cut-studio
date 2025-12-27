@@ -16,6 +16,13 @@ import {
   RotateCcw,
   Check,
   Clock,
+  MessageCircle,
+  Settings,
+  TestTube,
+  HelpCircle,
+  ExternalLink,
+  Power,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +38,15 @@ interface MessageTemplate {
   title: string;
   template: string;
   is_active: boolean;
+  chatpro_enabled?: boolean;
+}
+
+interface ChatProConfig {
+  id: string;
+  api_token: string | null;
+  instance_id: string | null;
+  base_endpoint: string;
+  is_enabled: boolean;
 }
 
 const defaultTemplates: Record<string, string> = {
@@ -100,14 +116,88 @@ export default function SettingsPanel() {
   const [previewTemplate, setPreviewTemplate] = useState<string | null>(null);
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderMinutes, setReminderMinutes] = useState(30);
+  
+  // ChatPro state
+  const [chatproConfig, setChatproConfig] = useState<ChatProConfig | null>(null);
+  const [chatproLoading, setChatproLoading] = useState(false);
+  const [testingChatPro, setTestingChatPro] = useState(false);
+  const [testPhone, setTestPhone] = useState('');
 
   useEffect(() => {
     fetchTemplates();
+    fetchChatProConfig();
   }, []);
 
   const fetchTemplates = async () => {
     const { data } = await supabase.from('message_templates').select('*');
-    if (data) setTemplates(data);
+    if (data) setTemplates(data as MessageTemplate[]);
+  };
+
+  const fetchChatProConfig = async () => {
+    const { data } = await supabase.from('chatpro_config').select('*').limit(1).single();
+    if (data) setChatproConfig(data as ChatProConfig);
+  };
+
+  const updateChatProConfig = async (updates: Partial<ChatProConfig>) => {
+    if (!chatproConfig) return;
+    
+    setChatproLoading(true);
+    const { error } = await supabase
+      .from('chatpro_config')
+      .update(updates)
+      .eq('id', chatproConfig.id);
+    
+    if (error) {
+      notify.error('Erro ao salvar configuração');
+    } else {
+      setChatproConfig({ ...chatproConfig, ...updates });
+      notify.success('Configuração salva');
+    }
+    setChatproLoading(false);
+  };
+
+  const testChatProConnection = async () => {
+    if (!testPhone.trim()) {
+      notify.error('Digite um número para teste');
+      return;
+    }
+
+    setTestingChatPro(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-chatpro', {
+        body: {
+          phone: testPhone,
+          message: `Teste de integração ChatPro - ${shopSettings.name || 'Barbearia'}`,
+        },
+      });
+
+      if (error) {
+        notify.error('Erro ao testar: ' + error.message);
+      } else if (data?.success) {
+        notify.success('Mensagem de teste enviada!');
+      } else {
+        notify.error(data?.error || 'Erro ao enviar mensagem');
+      }
+    } catch (err) {
+      notify.error('Erro ao conectar');
+    }
+    setTestingChatPro(false);
+  };
+
+  const toggleChatProForEvent = async (eventType: string, enabled: boolean) => {
+    const { error } = await supabase
+      .from('message_templates')
+      .update({ chatpro_enabled: enabled })
+      .eq('event_type', eventType);
+    
+    if (error) {
+      notify.error('Erro ao atualizar');
+    } else {
+      setTemplates(prev => prev.map(t => 
+        t.event_type === eventType ? { ...t, chatpro_enabled: enabled } : t
+      ));
+      notify.success(enabled ? 'ChatPro ativado para este evento' : 'ChatPro desativado para este evento');
+    }
   };
 
   const updateTemplate = async (eventType: string, template: string) => {
@@ -303,6 +393,188 @@ export default function SettingsPanel() {
                 value={shopSettings.social?.facebook || ''}
                 onChange={(e) => updateShopSettings({ social: { ...shopSettings.social, facebook: e.target.value } })}
               />
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        {/* Integração ChatPro */}
+        <CollapsibleSection 
+          title="Integração ChatPro (WhatsApp)" 
+          icon={<MessageCircle className="w-5 h-5 text-green-500" />}
+        >
+          <div className="mt-4 space-y-6">
+            {/* Status e Toggle */}
+            <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${chatproConfig?.is_enabled ? 'bg-green-500' : 'bg-muted-foreground'}`} />
+                <div>
+                  <span className="font-medium">Status da Integração</span>
+                  <p className="text-xs text-muted-foreground">
+                    {chatproConfig?.is_enabled ? 'Ativado - Mensagens serão enviadas automaticamente' : 'Desativado'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => updateChatProConfig({ is_enabled: !chatproConfig?.is_enabled })}
+                disabled={chatproLoading || !chatproConfig?.api_token || !chatproConfig?.instance_id}
+                className={`w-12 h-6 rounded-full transition-colors relative ${
+                  chatproConfig?.is_enabled ? 'bg-green-500' : 'bg-secondary'
+                } ${(!chatproConfig?.api_token || !chatproConfig?.instance_id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                  chatproConfig?.is_enabled ? 'left-7' : 'left-1'
+                }`} />
+              </button>
+            </div>
+
+            {/* Credenciais */}
+            <div className="space-y-4">
+              <h4 className="font-medium flex items-center gap-2">
+                <Settings className="w-4 h-4 text-primary" />
+                Configuração da API
+              </h4>
+              
+              <div className="bg-secondary/20 rounded-lg p-3 flex items-start gap-2">
+                <HelpCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-muted-foreground">
+                  <p className="mb-2">Para obter suas credenciais:</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Acesse <a href="https://painel.chatpro.com.br" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">painel.chatpro.com.br</a></li>
+                    <li>Vá em "Instâncias" e selecione sua instância</li>
+                    <li>Copie o "Token" e o "ID da Instância"</li>
+                  </ol>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-muted-foreground block mb-1 flex items-center gap-2">
+                  Token de Autenticação
+                  <span className="text-xs text-muted-foreground">(Authorization)</span>
+                </label>
+                <Input
+                  type="password"
+                  placeholder="Cole o token obtido no painel ChatPro"
+                  value={chatproConfig?.api_token || ''}
+                  onChange={(e) => setChatproConfig(prev => prev ? { ...prev, api_token: e.target.value } : prev)}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-muted-foreground block mb-1 flex items-center gap-2">
+                  ID da Instância
+                  <span className="text-xs text-muted-foreground">(Instance Token)</span>
+                </label>
+                <Input
+                  placeholder="Ex: 123456-abcd-efgh"
+                  value={chatproConfig?.instance_id || ''}
+                  onChange={(e) => setChatproConfig(prev => prev ? { ...prev, instance_id: e.target.value } : prev)}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-muted-foreground block mb-1 flex items-center gap-2">
+                  Endpoint Base
+                  <span className="text-xs text-muted-foreground">(normalmente não precisa alterar)</span>
+                </label>
+                <Input
+                  placeholder="https://v2.chatpro.com.br"
+                  value={chatproConfig?.base_endpoint || 'https://v2.chatpro.com.br'}
+                  onChange={(e) => setChatproConfig(prev => prev ? { ...prev, base_endpoint: e.target.value } : prev)}
+                />
+              </div>
+
+              <Button
+                onClick={() => updateChatProConfig({
+                  api_token: chatproConfig?.api_token,
+                  instance_id: chatproConfig?.instance_id,
+                  base_endpoint: chatproConfig?.base_endpoint,
+                })}
+                disabled={chatproLoading}
+              >
+                {chatproLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Salvar Configuração
+              </Button>
+            </div>
+
+            {/* Teste de Conexão */}
+            <div className="pt-4 border-t border-border">
+              <h4 className="font-medium mb-3 flex items-center gap-2">
+                <TestTube className="w-4 h-4 text-primary" />
+                Testar Conexão
+              </h4>
+              <p className="text-sm text-muted-foreground mb-3">
+                Envie uma mensagem de teste para verificar se a integração está funcionando
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Número para teste (ex: 5511999999999)"
+                  value={testPhone}
+                  onChange={(e) => setTestPhone(e.target.value)}
+                />
+                <Button
+                  onClick={testChatProConnection}
+                  disabled={testingChatPro || !chatproConfig?.is_enabled}
+                  variant="outline"
+                >
+                  {testingChatPro ? <Loader2 className="w-4 h-4 animate-spin" /> : <TestTube className="w-4 h-4" />}
+                </Button>
+              </div>
+              {!chatproConfig?.is_enabled && (
+                <p className="text-xs text-yellow-500 mt-2">
+                  Ative a integração acima para testar
+                </p>
+              )}
+            </div>
+
+            {/* Eventos Habilitados */}
+            <div className="pt-4 border-t border-border">
+              <h4 className="font-medium mb-3 flex items-center gap-2">
+                <Power className="w-4 h-4 text-primary" />
+                Eventos com Envio Automático
+              </h4>
+              <p className="text-sm text-muted-foreground mb-3">
+                Selecione quais eventos devem enviar mensagem automaticamente via ChatPro
+              </p>
+              <div className="space-y-2">
+                {Object.entries(eventLabels).map(([eventType, label]) => {
+                  const template = getTemplateForEvent(eventType);
+                  const isEnabled = template?.chatpro_enabled !== false;
+
+                  return (
+                    <div key={eventType} className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
+                      <div>
+                        <span className="text-sm font-medium">{label}</span>
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {template?.template?.substring(0, 50)}...
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => toggleChatProForEvent(eventType, !isEnabled)}
+                        className={`w-10 h-5 rounded-full transition-colors relative ${
+                          isEnabled ? 'bg-green-500' : 'bg-secondary'
+                        }`}
+                      >
+                        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                          isEnabled ? 'left-5' : 'left-0.5'
+                        }`} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Link para Documentação */}
+            <div className="pt-4 border-t border-border">
+              <a 
+                href="https://chatpro.readme.io/reference/introdu%C3%A7%C3%A3o-%C3%A0s-apis-do-chatpro" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Ver documentação completa da API ChatPro
+              </a>
             </div>
           </div>
         </CollapsibleSection>
