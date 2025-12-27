@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar,
@@ -54,6 +54,8 @@ import NotificationsPanel from '@/components/admin/NotificationsPanel';
 import OverloadAlertModal from '@/components/admin/OverloadAlertModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { DollarSign } from 'lucide-react';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { PullToRefreshIndicator } from '@/components/admin/PullToRefreshIndicator';
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: Calendar },
@@ -108,7 +110,19 @@ const AdminPanel = () => {
     updateShopSettings,
     theme,
     setTheme,
+    refreshData,
   } = useApp();
+
+  // Pull-to-refresh
+  const handleRefresh = useCallback(async () => {
+    await refreshData();
+    notify.success('Dados atualizados!');
+  }, [refreshData, notify]);
+
+  const { containerRef, isRefreshing, pullDistance, progress } = usePullToRefresh({
+    onRefresh: handleRefresh,
+    threshold: 80,
+  });
 
   // Feedback context
   const {
@@ -1358,8 +1372,16 @@ const AdminPanel = () => {
           </div>
         </header>
 
-        {/* Content */}
-        <div className="flex-1 p-4 lg:p-8 overflow-y-auto pb-24 lg:pb-8 overscroll-contain">
+        {/* Content with Pull-to-Refresh */}
+        <div 
+          ref={containerRef}
+          className="flex-1 p-4 lg:p-8 overflow-y-auto pb-8 overscroll-contain relative"
+        >
+          <PullToRefreshIndicator 
+            pullDistance={pullDistance} 
+            isRefreshing={isRefreshing} 
+            progress={progress} 
+          />
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -1372,29 +1394,6 @@ const AdminPanel = () => {
           </AnimatePresence>
         </div>
       </main>
-
-      {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-background backdrop-blur-lg border-t border-border lg:hidden z-30" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="flex items-center justify-around py-2">
-          {menuItems.slice(0, 5).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all relative ${
-                activeTab === item.id ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              <item.icon className="w-5 h-5" />
-              <span className="text-xs">{item.label}</span>
-              {item.id === 'feedbacks' && newFeedbacksCount > 0 && (
-                <span className="absolute -top-1 right-0 w-4 h-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
-                  {newFeedbacksCount}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </nav>
     </div>
   );
 };

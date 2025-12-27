@@ -38,10 +38,26 @@ const registerServiceWorker = async () => {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               console.log('New content available, please refresh.');
+              // Auto-activate new service worker
+              newWorker.postMessage({ type: 'SKIP_WAITING' });
             }
           });
         }
       });
+
+      // Listen for messages from service worker
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'SW_UPDATED') {
+          // Reload the page to get the new version
+          window.location.reload();
+        }
+      });
+
+      // Check for updates every 60 seconds
+      setInterval(() => {
+        registration.update();
+      }, 60000);
+
     } catch (error) {
       console.log('Service Worker registration failed:', error);
     }

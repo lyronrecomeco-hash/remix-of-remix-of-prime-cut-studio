@@ -1,6 +1,6 @@
-const CACHE_NAME = 'barbershop-v2';
-const STATIC_CACHE = 'barbershop-static-v2';
-const DYNAMIC_CACHE = 'barbershop-dynamic-v2';
+const CACHE_NAME = 'barbershop-v3';
+const STATIC_CACHE = 'barbershop-static-v3';
+const DYNAMIC_CACHE = 'barbershop-dynamic-v3';
 
 const urlsToCache = [
   '/',
@@ -20,6 +20,7 @@ self.addEventListener('install', (event) => {
         return cache.addAll(urlsToCache);
       })
   );
+  // Immediately activate new service worker
   self.skipWaiting();
 });
 
@@ -35,9 +36,18 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
+    }).then(() => {
+      // Claim all clients immediately
+      return self.clients.claim();
+    }).then(() => {
+      // Notify all clients about the update
+      return self.clients.matchAll({ type: 'window' }).then(clients => {
+        clients.forEach(client => {
+          client.postMessage({ type: 'SW_UPDATED' });
+        });
+      });
     })
   );
-  self.clients.claim();
 });
 
 // Fetch event - Network first with cache fallback
