@@ -213,6 +213,36 @@ export type Database = {
           },
         ]
       }
+      chatpro_config: {
+        Row: {
+          api_token: string | null
+          base_endpoint: string | null
+          created_at: string
+          id: string
+          instance_id: string | null
+          is_enabled: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          api_token?: string | null
+          base_endpoint?: string | null
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          is_enabled?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          api_token?: string | null
+          base_endpoint?: string | null
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          is_enabled?: boolean | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       login_attempts: {
         Row: {
           attempted_at: string
@@ -242,6 +272,7 @@ export type Database = {
       }
       message_templates: {
         Row: {
+          chatpro_enabled: boolean | null
           created_at: string
           event_type: string
           id: string
@@ -251,6 +282,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          chatpro_enabled?: boolean | null
           created_at?: string
           event_type: string
           id?: string
@@ -260,6 +292,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          chatpro_enabled?: boolean | null
           created_at?: string
           event_type?: string
           id?: string
