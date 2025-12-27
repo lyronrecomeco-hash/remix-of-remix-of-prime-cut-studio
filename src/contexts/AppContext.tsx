@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { triggerWebhook, sendPushNotification } from '@/lib/webhooks';
 
 // Types
 export interface Service {
@@ -491,6 +492,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     setAppointments(prev => [...prev, newAppointment]);
+
+    // Trigger webhook for appointment created
+    triggerWebhook({
+      event_type: 'appointment_created',
+      appointment_id: data.id,
+      client_name: appointment.clientName,
+      client_phone: appointment.clientPhone,
+      service_name: appointment.service.name,
+      barber_name: appointment.barber.name,
+      date: appointment.date,
+      time: appointment.time,
+    });
+
+    // Send push notification to admin
+    sendPushNotification(
+      'Novo Agendamento',
+      `${appointment.clientName} agendou ${appointment.service.name} para ${appointment.date} às ${appointment.time}`,
+      'admin'
+    );
+
     return newAppointment;
   }, []);
 
@@ -513,6 +534,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const completeAppointment = useCallback(async (id: string) => {
+    const apt = appointments.find(a => a.id === id);
     await supabase.from('appointments').update({ status: 'completed' }).eq('id', id);
     await supabase.from('queue').delete().eq('appointment_id', id);
     
@@ -521,10 +543,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const filtered = prev.filter(q => q.appointmentId !== id);
       return filtered.map((q, index) => ({ ...q, position: index + 1 }));
     });
-  }, []);
+
+    // Trigger webhook for appointment completed
+    if (apt) {
+      triggerWebhook({
+        event_type: 'appointment_completed',
+        appointment_id: id,
+        client_name: apt.clientName,
+        client_phone: apt.clientPhone,
+        service_name: apt.service.name,
+        barber_name: apt.barber.name,
+        date: apt.date,
+        time: apt.time,
+      });
+
+      sendPushNotification(
+        'Atendimento Concluído',
+        `Obrigado pela visita! Esperamos vê-lo novamente.`,
+        'client',
+        apt.clientPhone
+      );
+    }
+  }, [appointments]);
 
   // Confirm appointment and auto-add to queue if enabled
   const confirmAppointment = useCallback(async (id: string) => {
+    const apt = appointments.find(a => a.id === id);
     await supabase.from('appointments').update({ status: 'confirmed' }).eq('id', id);
     setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'confirmed' } : a));
     
@@ -558,7 +602,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
       }
     }
-  }, [queueEnabled, queue]);
+
+    // Trigger webhook for appointment confirmed
+    if (apt) {
+      triggerWebhook({
+        event_type: 'appointment_confirmed',
+        appointment_id: id,
+        client_name: apt.clientName,
+        client_phone: apt.clientPhone,
+        service_name: apt.service.name,
+        barber_name: apt.barber.name,
+        date: apt.date,
+        time: apt.time,
+      });
+
+      sendPushNotification(
+        'Agendamento Confirmado',
+        `Seu agendamento para ${apt.date} às ${apt.time} foi confirmado!`,
+        'client',
+        apt.clientPhone
+      );
+    }
+  }, [queueEnabled, queue, appointments]);
 
   const getAppointmentsByDate = useCallback((date: string): Appointment[] => {
     return appointments.filter(a => a.date === date && a.status !== 'cancelled');
@@ -614,6 +679,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const next = queue.find(q => q.status === 'waiting');
     if (next) {
       const now = new Date().toISOString();
+      const apt = appointments.find(a => a.id === next.appointmentId);
       
       supabase.from('queue').update({ 
         status: 'called', 
@@ -648,14 +714,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         });
       }, 100);
 
+      // Trigger webhook for client called
+      if (apt) {
+        triggerWebhook({
+          event_type: 'client_called',
+          appointment_id: next.appointmentId,
+          client_name: apt.clientName,
+          client_phone: apt.clientPhone,
+          service_name: apt.service.name,
+          barber_name: apt.barber.name,
+          date: apt.date,
+          time: apt.time,
+        });
+
+        sendPushNotification(
+          'Chegou sua vez!',
+          `Dirija-se ao salão agora para seu atendimento.`,
+          'client',
+          apt.clientPhone
+        );
+      }
+
       return next;
     }
     return null;
-  }, [queue]);
+  }, [queue, appointments]);
 
   // Call specific client in queue
   const callSpecificClient = useCallback(async (appointmentId: string) => {
     const entry = queue.find(q => q.appointmentId === appointmentId && q.status === 'waiting');
+    const apt = appointments.find(a => a.id === appointmentId);
     if (entry) {
       const now = new Date().toISOString();
       
@@ -664,7 +752,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         called_at: now 
       }).eq('id', entry.id);
 
-      // Update appointment status
       await supabase.from('appointments').update({ status: 'called' }).eq('id', appointmentId);
 
       setQueue(prev => prev.map(q => 
@@ -679,7 +766,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           : a
       ));
 
-      // Reorder remaining queue
       setTimeout(() => {
         setQueue(prev => {
           const waiting = prev.filter(q => q.status === 'waiting');
@@ -690,7 +776,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             estimatedWait: (index + 1) * 25,
           }));
           
-          // Update positions in database
           reordered.forEach(q => {
             supabase.from('queue').update({ position: q.position, estimated_wait: q.estimatedWait }).eq('id', q.id);
           });
@@ -698,8 +783,29 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           return [...others, ...reordered];
         });
       }, 100);
+
+      // Trigger webhook for client called
+      if (apt) {
+        triggerWebhook({
+          event_type: 'client_called',
+          appointment_id: appointmentId,
+          client_name: apt.clientName,
+          client_phone: apt.clientPhone,
+          service_name: apt.service.name,
+          barber_name: apt.barber.name,
+          date: apt.date,
+          time: apt.time,
+        });
+
+        sendPushNotification(
+          'Chegou sua vez!',
+          `Dirija-se ao salão agora para seu atendimento.`,
+          'client',
+          apt.clientPhone
+        );
+      }
     }
-  }, [queue]);
+  }, [queue, appointments]);
 
   const updateQueuePosition = useCallback(async (id: string, position: number) => {
     await supabase.from('queue').update({ position }).eq('id', id);

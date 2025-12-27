@@ -53,8 +53,9 @@ import FinancialDashboard from '@/components/admin/FinancialDashboard';
 import NotificationsPanel from '@/components/admin/NotificationsPanel';
 import OverloadAlertModal from '@/components/admin/OverloadAlertModal';
 import InteractiveBackground from '@/components/admin/InteractiveBackground';
+import IntegrationsPanel from '@/components/admin/IntegrationsPanel';
 import { useAuth } from '@/contexts/AuthContext';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, Webhook } from 'lucide-react';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/admin/PullToRefreshIndicator';
 
@@ -69,6 +70,7 @@ const menuItems = [
   { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare },
   { id: 'usuarios', label: 'Usuários', icon: Lock },
   { id: 'config', label: 'Configurações', icon: Settings },
+  { id: 'integracoes', label: 'Integrações', icon: LinkIcon },
 ];
 
 const AdminPanel = () => {
@@ -1228,6 +1230,9 @@ const AdminPanel = () => {
             />
           </div>
         );
+
+      case 'integracoes':
+        return <IntegrationsPanel />;
 
       default:
         return null;
