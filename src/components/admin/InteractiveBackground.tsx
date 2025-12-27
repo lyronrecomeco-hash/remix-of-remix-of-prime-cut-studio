@@ -1,25 +1,25 @@
 import { memo, useMemo } from 'react';
 
-interface Particle {
+interface Snowflake {
   id: number;
   size: number;
   x: number;
-  y: number;
   duration: number;
   delay: number;
   opacity: number;
+  drift: number;
 }
 
 const InteractiveBackground = memo(() => {
-  const particles = useMemo<Particle[]>(() => {
-    return Array.from({ length: 15 }, (_, i) => ({
+  const snowflakes = useMemo<Snowflake[]>(() => {
+    return Array.from({ length: 40 }, (_, i) => ({
       id: i,
-      size: Math.random() * 80 + 20,
+      size: Math.random() * 6 + 2,
       x: Math.random() * 100,
-      y: Math.random() * 100,
-      duration: Math.random() * 20 + 15,
-      delay: Math.random() * -20,
-      opacity: Math.random() * 0.08 + 0.02,
+      duration: Math.random() * 8 + 6,
+      delay: Math.random() * -10,
+      opacity: Math.random() * 0.6 + 0.2,
+      drift: Math.random() * 30 - 15,
     }));
   }, []);
 
@@ -32,21 +32,22 @@ const InteractiveBackground = memo(() => {
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3" />
       
-      {/* Animated particles */}
-      {particles.map((particle) => (
+      {/* Falling snowflakes */}
+      {snowflakes.map((flake) => (
         <div
-          key={particle.id}
-          className="absolute rounded-full bg-primary/10"
+          key={flake.id}
+          className="absolute rounded-full bg-primary/80"
           style={{
-            width: particle.size,
-            height: particle.size,
-            left: `${particle.x}%`,
-            top: `${particle.y}%`,
-            opacity: particle.opacity,
-            animation: `float-particle ${particle.duration}s ease-in-out infinite`,
-            animationDelay: `${particle.delay}s`,
-            filter: 'blur(1px)',
+            width: flake.size,
+            height: flake.size,
+            left: `${flake.x}%`,
+            top: '-10px',
+            opacity: flake.opacity,
+            animation: `snowfall ${flake.duration}s linear infinite`,
+            animationDelay: `${flake.delay}s`,
+            filter: flake.size > 5 ? 'blur(1px)' : 'none',
             willChange: 'transform',
+            ['--drift' as any]: `${flake.drift}px`,
           }}
         />
       ))}

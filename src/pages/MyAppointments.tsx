@@ -14,7 +14,8 @@ import {
   AlertCircle,
   Users,
   Plus,
-  Trash2
+  Trash2,
+  Navigation
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/contexts/AppContext';
@@ -25,7 +26,7 @@ import { Appointment } from '@/contexts/AppContext';
 import { CardSkeleton } from '@/components/ui/skeleton';
 
 const MyAppointments = () => {
-  const { appointments, cancelAppointment, queue, shopSettings, queueEnabled } = useApp();
+  const { appointments, cancelAppointment, queue, shopSettings, queueEnabled, markClientOnWay } = useApp();
   const { notify } = useNotification();
   const { confirm, ConfirmDialog } = useConfirmDialog();
   const [clientPhone, setClientPhone] = useState<string>('');
@@ -80,6 +81,24 @@ const MyAppointments = () => {
           icon: AlertCircle, 
           color: 'bg-yellow-500/20 text-yellow-400' 
         };
+      case 'inqueue':
+        return { 
+          label: 'Na Fila', 
+          icon: Users, 
+          color: 'bg-blue-500/20 text-blue-400' 
+        };
+      case 'called':
+        return { 
+          label: 'Chamado! Sua vez!', 
+          icon: AlertCircle, 
+          color: 'bg-purple-500/20 text-purple-400' 
+        };
+      case 'onway':
+        return { 
+          label: 'A Caminho', 
+          icon: CheckCircle2, 
+          color: 'bg-cyan-500/20 text-cyan-400' 
+        };
       case 'completed':
         return { 
           label: 'Concluído', 
@@ -132,7 +151,7 @@ const MyAppointments = () => {
   };
 
   const activeAppointments = myAppointments.filter(
-    apt => apt.status === 'confirmed' || apt.status === 'pending'
+    apt => apt.status === 'confirmed' || apt.status === 'pending' || apt.status === 'inqueue' || apt.status === 'called' || apt.status === 'onway'
   );
   const pastAppointments = myAppointments.filter(
     apt => apt.status === 'completed' || apt.status === 'cancelled'
@@ -308,19 +327,37 @@ const MyAppointments = () => {
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between pt-4 border-t border-border">
+                          <div className="flex items-center justify-between pt-4 border-t border-border gap-2 flex-wrap">
                             <span className="text-xl font-bold text-primary">
                               R$ {apt.service.price}
                             </span>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => handleCancelAppointment(apt)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Cancelar
-                            </Button>
+                            <div className="flex gap-2">
+                              {/* Botão A Caminho - aparece quando cliente é chamado */}
+                              {apt.status === 'called' && (
+                                <Button 
+                                  variant="hero"
+                                  size="sm"
+                                  onClick={() => {
+                                    markClientOnWay(apt.id);
+                                    notify.success('Estamos te esperando!', 'Chegue em breve.');
+                                  }}
+                                >
+                                  <Navigation className="w-4 h-4" />
+                                  Estou a Caminho
+                                </Button>
+                              )}
+                              {(apt.status === 'pending' || apt.status === 'confirmed' || apt.status === 'inqueue') && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleCancelAppointment(apt)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                  Cancelar
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </motion.div>
