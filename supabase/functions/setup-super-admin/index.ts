@@ -22,49 +22,38 @@ serve(async (req) => {
       },
     });
 
-    // Get the user making the request
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Não autorizado' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const supabaseClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user: requestingUser }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !requestingUser) {
-      return new Response(
-        JSON.stringify({ error: 'Não autorizado' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Check if requesting user is super_admin
-    const { data: roleData } = await supabaseAdmin
+    // Check if there are any super admins already
+    const { data: existingAdmins, error: checkError } = await supabaseAdmin
       .from('user_roles')
-      .select('role')
-      .eq('user_id', requestingUser.id)
-      .single();
+      .select('id')
+      .eq('role', 'super_admin')
+      .limit(1);
 
-    if (!roleData || roleData.role !== 'super_admin') {
+    if (checkError) {
+      console.error('Error checking existing admins:', checkError);
       return new Response(
-        JSON.stringify({ error: 'Apenas super admins podem criar usuários' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Erro ao verificar admins existentes' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const { email, password, name, role, expiresAt } = await req.json();
-
-    if (!email || !password || !name || !role) {
+    if (existingAdmins && existingAdmins.length > 0) {
       return new Response(
-        JSON.stringify({ error: 'Dados incompletos' }),
+        JSON.stringify({ error: 'Já existe um super admin configurado', exists: true }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { email, password, name } = await req.json();
+
+    if (!email || !password || !name) {
+      return new Response(
+        JSON.stringify({ error: 'Email, senha e nome são obrigatórios' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Creating super admin user:', email);
 
     // Create the auth user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -74,6 +63,7 @@ serve(async (req) => {
     });
 
     if (authError) {
+      console.error('Auth error:', authError);
       return new Response(
         JSON.stringify({ error: authError.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -81,20 +71,22 @@ serve(async (req) => {
     }
 
     const newUserId = authData.user.id;
+    console.log('User created with ID:', newUserId);
 
-    // Create user role
+    // Create user role as super_admin
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
       .insert({
         user_id: newUserId,
-        role: role,
+        role: 'super_admin',
       });
 
     if (roleError) {
+      console.error('Role error:', roleError);
       // Rollback - delete the auth user
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
       return new Response(
-        JSON.stringify({ error: 'Erro ao criar role do usuário' }),
+        JSON.stringify({ error: 'Erro ao criar role do usuário: ' + roleError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -106,26 +98,33 @@ serve(async (req) => {
         user_id: newUserId,
         email,
         name,
-        expires_at: expiresAt || null,
         is_active: true,
       });
 
     if (adminError) {
+      console.error('Admin user error:', adminError);
       // Rollback
       await supabaseAdmin.from('user_roles').delete().eq('user_id', newUserId);
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
       return new Response(
-        JSON.stringify({ error: 'Erro ao criar registro de admin' }),
+        JSON.stringify({ error: 'Erro ao criar registro de admin: ' + adminError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('Super admin created successfully');
+
     return new Response(
-      JSON.stringify({ success: true, userId: newUserId }),
+      JSON.stringify({ 
+        success: true, 
+        userId: newUserId,
+        message: 'Super admin criado com sucesso!'
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
+    console.error('Unexpected error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     return new Response(
       JSON.stringify({ error: errorMessage }),
