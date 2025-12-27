@@ -53,9 +53,9 @@ import FinancialDashboard from '@/components/admin/FinancialDashboard';
 import NotificationsPanel from '@/components/admin/NotificationsPanel';
 import OverloadAlertModal from '@/components/admin/OverloadAlertModal';
 import InteractiveBackground from '@/components/admin/InteractiveBackground';
-import IntegrationsPanel from '@/components/admin/IntegrationsPanel';
+import SettingsPanel from '@/components/admin/SettingsPanel';
 import { useAuth } from '@/contexts/AuthContext';
-import { DollarSign, Webhook } from 'lucide-react';
+import { DollarSign } from 'lucide-react';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/admin/PullToRefreshIndicator';
 
@@ -70,7 +70,6 @@ const menuItems = [
   { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare },
   { id: 'usuarios', label: 'Usuários', icon: Lock },
   { id: 'config', label: 'Configurações', icon: Settings },
-  { id: 'integracoes', label: 'Integrações', icon: LinkIcon },
 ];
 
 const AdminPanel = () => {
@@ -1047,192 +1046,7 @@ const AdminPanel = () => {
         return <UserManagement />;
 
       case 'config':
-        return (
-          <div>
-            <h2 className="text-2xl font-bold mb-6">Configurações</h2>
-            
-            <div className="space-y-4">
-              <div className="glass-card rounded-xl p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Palette className="w-5 h-5 text-primary" />
-                  Tema Visual
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {[
-                    { id: 'gold', label: 'Black & Gold', colors: ['bg-black', 'bg-amber-500'], isNative: true },
-                    { id: 'gold-shine', label: 'Gold Brilhante', colors: ['bg-black', 'bg-yellow-400'] },
-                    { id: 'gold-metallic', label: 'Gold Metálico', colors: ['bg-black', 'bg-amber-300'] },
-                  ].map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => setTheme(t.id as any)}
-                      className={`p-4 rounded-xl border-2 transition-all ${
-                        theme === t.id ? 'border-primary gold-glow' : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <div className="flex gap-1 mb-2">
-                        {t.colors.map((c, i) => (
-                          <div key={i} className={`w-6 h-6 rounded-full ${c}`} />
-                        ))}
-                      </div>
-                      <p className="text-sm font-medium">{t.label}</p>
-                      {(t as any).isNative && (
-                        <span className="text-[10px] text-primary">Nativo</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Overload Alert Settings */}
-              <div className="glass-card rounded-xl p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-yellow-500" />
-                  Alerta de Sobrecarga
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Notifica clientes quando há muitos agendamentos no mesmo dia
-                </p>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm">Ativar alertas de sobrecarga</span>
-                  <button
-                    onClick={() => {
-                      if (!shopSettings.overloadAlertEnabled) {
-                        setShowOverloadModal(true);
-                      } else {
-                        updateShopSettings({ overloadAlertEnabled: false });
-                        notify.info('Alertas de sobrecarga desativados');
-                      }
-                    }}
-                    className={`w-12 h-6 rounded-full transition-colors relative ${
-                      shopSettings.overloadAlertEnabled ? 'bg-primary' : 'bg-secondary'
-                    }`}
-                  >
-                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-                      shopSettings.overloadAlertEnabled ? 'left-7' : 'left-1'
-                    }`} />
-                  </button>
-                </div>
-                {shopSettings.overloadAlertEnabled && (
-                  <div className="space-y-3 pt-4 border-t border-border">
-                    <div>
-                      <label className="text-sm text-muted-foreground block mb-1">Limite diário de agendamentos</label>
-                      <Input
-                        type="number"
-                        value={shopSettings.dailyAppointmentLimit || 20}
-                        onChange={(e) => updateShopSettings({ dailyAppointmentLimit: Number(e.target.value) })}
-                        min={1}
-                        max={100}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Quando atingir este limite, clientes verão um aviso
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Social Media Settings */}
-              <div className="glass-card rounded-xl p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Instagram className="w-5 h-5 text-primary" />
-                  Redes Sociais
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Atualize suas redes sociais que aparecem no rodapé do site
-                </p>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1 flex items-center gap-2">
-                      <Instagram className="w-4 h-4" />
-                      Instagram
-                    </label>
-                    <Input
-                      placeholder="@seuperfil ou URL completa"
-                      value={shopSettings.social?.instagram || ''}
-                      onChange={(e) => updateShopSettings({ social: { ...shopSettings.social, instagram: e.target.value } })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1 flex items-center gap-2">
-                      <Facebook className="w-4 h-4" />
-                      Facebook
-                    </label>
-                    <Input
-                      placeholder="nome.da.pagina ou URL completa"
-                      value={shopSettings.social?.facebook || ''}
-                      onChange={(e) => updateShopSettings({ social: { ...shopSettings.social, facebook: e.target.value } })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="glass-card rounded-xl p-6">
-                <h3 className="font-semibold mb-4">Informações da Barbearia</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Nome</label>
-                    <Input
-                      value={shopSettings.name}
-                      onChange={(e) => updateShopSettings({ name: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Tagline</label>
-                    <Input
-                      value={shopSettings.tagline}
-                      onChange={(e) => updateShopSettings({ tagline: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Telefone</label>
-                    <Input
-                      value={shopSettings.phone}
-                      onChange={(e) => updateShopSettings({ phone: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">WhatsApp (somente números)</label>
-                    <Input
-                      value={shopSettings.whatsapp}
-                      onChange={(e) => updateShopSettings({ whatsapp: e.target.value })}
-                      placeholder="5511999999999"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Endereço</label>
-                    <Input
-                      value={shopSettings.address}
-                      onChange={(e) => updateShopSettings({ address: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Link do Google Maps</label>
-                    <Input
-                      value={shopSettings.mapsLink}
-                      onChange={(e) => updateShopSettings({ mapsLink: e.target.value })}
-                      placeholder="https://maps.google.com/..."
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Overload explanation modal */}
-            <OverloadAlertModal
-              isOpen={showOverloadModal}
-              onClose={() => setShowOverloadModal(false)}
-              type="explanation"
-              onConfirm={() => {
-                updateShopSettings({ overloadAlertEnabled: true });
-                notify.success('Alertas de sobrecarga ativados!');
-              }}
-            />
-          </div>
-        );
-
-      case 'integracoes':
-        return <IntegrationsPanel />;
+        return <SettingsPanel />;
 
       default:
         return null;

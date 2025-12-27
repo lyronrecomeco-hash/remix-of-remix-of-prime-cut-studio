@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.send-real-push]
 verify_jwt = false
+
+[functions.appointments-api]
+verify_jwt = false
