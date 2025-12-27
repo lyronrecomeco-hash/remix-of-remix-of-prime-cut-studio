@@ -1,10 +1,10 @@
 project_id = "wvnszzrvrrueuycrpgyc"
 
 [functions.create-admin-user]
-verify_jwt = true
+verify_jwt = false
 
 [functions.delete-admin-user]
-verify_jwt = true
+verify_jwt = false
 
 [functions.send-push-notification]
 verify_jwt = true
