@@ -1,3 +1,4 @@
+import React, { forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X, Clock, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,8 @@ interface OverloadAlertModalProps {
   onConfirm?: () => void;
 }
 
-const OverloadAlertModal = ({ isOpen, onClose, type, onConfirm }: OverloadAlertModalProps) => {
+const OverloadAlertModal = forwardRef<HTMLDivElement, OverloadAlertModalProps>(
+  ({ isOpen, onClose, type, onConfirm }, ref) => {
   if (!isOpen) return null;
 
   return (
@@ -108,6 +110,8 @@ const OverloadAlertModal = ({ isOpen, onClose, type, onConfirm }: OverloadAlertM
       </motion.div>
     </AnimatePresence>
   );
-};
+});
+
+OverloadAlertModal.displayName = 'OverloadAlertModal';
 
 export default OverloadAlertModal;
