@@ -56,6 +56,11 @@ const requestNotificationPermission = async () => {
 const AppContent = () => {
   useSecurityProtection();
 
+  useEffect(() => {
+    registerServiceWorker();
+    requestNotificationPermission();
+  }, []);
+
   return (
     <>
       <Toaster />
@@ -75,27 +80,20 @@ const AppContent = () => {
   );
 };
 
-const App = () => {
-  useEffect(() => {
-    registerServiceWorker();
-    requestNotificationPermission();
-  }, []);
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AppProvider>
-        <GalleryProvider>
-          <FeedbackProvider>
-            <NotificationProvider>
-              <TooltipProvider>
-                <AppContent />
-              </TooltipProvider>
-            </NotificationProvider>
-          </FeedbackProvider>
-        </GalleryProvider>
-      </AppProvider>
-    </QueryClientProvider>
-  );
-};
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AppProvider>
+      <GalleryProvider>
+        <FeedbackProvider>
+          <NotificationProvider>
+            <TooltipProvider>
+              <AppContent />
+            </TooltipProvider>
+          </NotificationProvider>
+        </FeedbackProvider>
+      </GalleryProvider>
+    </AppProvider>
+  </QueryClientProvider>
+);
 
 export default App;
