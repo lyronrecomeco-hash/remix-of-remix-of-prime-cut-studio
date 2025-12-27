@@ -262,7 +262,8 @@ const AdminPanel = () => {
         
       case 'agenda':
         return (
-          <div>
+          <div className="space-y-6">
+            <div>
               <h2 className="text-2xl font-bold">Agenda de Hoje</h2>
               <div className="text-sm text-muted-foreground">
                 {todayAppointments.length} agendamento(s)
@@ -832,6 +833,9 @@ const AdminPanel = () => {
             </div>
           </div>
         );
+
+      case 'usuarios':
+        return <UserManagement />;
 
       case 'config':
         return (
