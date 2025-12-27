@@ -175,21 +175,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: new Error('Apenas super admins podem criar usuários.') };
     }
 
+    if (!session) {
+      return { error: new Error('Sessão expirada. Faça login novamente.') };
+    }
+
     try {
-      const { data: authData, error: authError } = await supabase.functions.invoke('create-admin-user', {
+      console.log('Creating admin user:', { email, name, role: userRole });
+      
+      const { data, error: invokeError } = await supabase.functions.invoke('create-admin-user', {
         body: { email, password, name, role: userRole, expiresAt },
       });
 
-      if (authError || authData?.error) {
-        return { error: new Error(authData?.error || authError?.message || 'Erro ao criar usuário') };
+      console.log('Function response:', { data, invokeError });
+
+      if (invokeError) {
+        console.error('Function invoke error:', invokeError);
+        return { error: new Error(invokeError.message || 'Erro ao chamar função de criação') };
+      }
+
+      if (data?.error) {
+        console.error('Function returned error:', data.error);
+        return { error: new Error(data.error) };
+      }
+
+      if (!data?.success) {
+        return { error: new Error('Resposta inesperada do servidor') };
       }
 
       await refreshAdminUsers();
       return { error: null };
     } catch (error) {
+      console.error('Create admin user exception:', error);
       return { error: error as Error };
     }
-  }, [isSuperAdmin, refreshAdminUsers]);
+  }, [isSuperAdmin, session, refreshAdminUsers]);
 
   const updateAdminUser = useCallback(async (
     userId: string,
