@@ -121,15 +121,16 @@ const AppointmentCard = ({
 
               {/* Actions */}
               {isActive && (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
                   {appointment.status === 'pending' && (
                     <Button
                       size="sm"
                       variant="hero"
                       onClick={(e) => { e.stopPropagation(); onConfirm(); }}
+                      className="w-full sm:w-auto min-h-[44px] touch-manipulation"
                     >
-                      <Check className="w-4 h-4" />
-                      Aceitar
+                      <Check className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Aceitar</span>
                     </Button>
                   )}
                   
@@ -138,10 +139,10 @@ const AppointmentCard = ({
                       size="sm"
                       variant="outline"
                       onClick={(e) => { e.stopPropagation(); onCallClient(); }}
-                      className="border-primary text-primary hover:bg-primary/10"
+                      className="w-full sm:w-auto min-h-[44px] touch-manipulation border-primary text-primary hover:bg-primary/10"
                     >
-                      <Bell className="w-4 h-4" />
-                      Chamar Cliente
+                      <Bell className="w-4 h-4 shrink-0" />
+                      <span className="truncate">Chamar</span>
                     </Button>
                   )}
 
@@ -150,30 +151,30 @@ const AppointmentCard = ({
                     size="sm"
                     variant="outline"
                     onClick={(e) => { e.stopPropagation(); handlePhoneCall(); }}
-                    className="border-cyan-500 text-cyan-500 hover:bg-cyan-500/10"
+                    className="w-full sm:w-auto min-h-[44px] touch-manipulation border-cyan-500 text-cyan-500 hover:bg-cyan-500/10"
                   >
-                    <PhoneCall className="w-4 h-4" />
-                    Ligar
+                    <PhoneCall className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Ligar</span>
                   </Button>
                   
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={(e) => { e.stopPropagation(); onComplete(); }}
-                    className="border-green-500 text-green-500 hover:bg-green-500/10"
+                    className="w-full sm:w-auto min-h-[44px] touch-manipulation border-green-500 text-green-500 hover:bg-green-500/10"
                   >
-                    <Play className="w-4 h-4" />
-                    Concluir
+                    <Play className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Concluir</span>
                   </Button>
                   
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={(e) => { e.stopPropagation(); onCancel(); }}
-                    className="text-destructive hover:bg-destructive/10"
+                    className="w-full sm:w-auto min-h-[44px] touch-manipulation text-destructive hover:bg-destructive/10 col-span-2 sm:col-span-1"
                   >
-                    <XCircle className="w-4 h-4" />
-                    Recusar
+                    <XCircle className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Recusar</span>
                   </Button>
                 </div>
               )}
