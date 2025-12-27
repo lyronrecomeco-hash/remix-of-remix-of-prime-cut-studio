@@ -1,21 +1,26 @@
-import { Home, Calendar, ClipboardList, User, MessageSquare } from 'lucide-react';
+import { Home, Calendar, ClipboardList, MessageSquare } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-
-const navItems = [
-  { href: '/', icon: Home, label: 'Início' },
-  { href: '/agendar', icon: Calendar, label: 'Agendar' },
-  { href: '/meus-agendamentos', icon: ClipboardList, label: 'Meus' },
-  { href: '/avaliar', icon: MessageSquare, label: 'Avaliar' },
-];
+import { useApp } from '@/contexts/AppContext';
 
 const MobileBottomNav = () => {
   const location = useLocation();
+  const { hasClientAppointments } = useApp();
   
   // Don't show on admin panel
   if (location.pathname.startsWith('/admin')) {
     return null;
   }
+
+  const hasAppointments = hasClientAppointments();
+
+  // Build nav items dynamically based on whether client has appointments
+  const navItems = [
+    { href: '/', icon: Home, label: 'Início', show: true },
+    { href: '/agendar', icon: Calendar, label: 'Agendar', show: true },
+    { href: '/meus-agendamentos', icon: ClipboardList, label: 'Meus', show: hasAppointments },
+    { href: '/avaliar', icon: MessageSquare, label: 'Avaliar', show: hasAppointments },
+  ].filter(item => item.show);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border md:hidden mobile-nav">

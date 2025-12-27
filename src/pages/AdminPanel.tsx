@@ -42,12 +42,15 @@ import { useNotification } from '@/contexts/NotificationContext';
 import Dashboard from '@/components/admin/Dashboard';
 import UserManagement from '@/components/admin/UserManagement';
 import AgendaList from '@/components/admin/AppointmentCard';
+import FinancialDashboard from '@/components/admin/FinancialDashboard';
 import { useAuth } from '@/contexts/AuthContext';
+import { DollarSign } from 'lucide-react';
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: Calendar },
   { id: 'agenda', label: 'Agenda', icon: Calendar },
   { id: 'fila', label: 'Fila de Espera', icon: Users },
+  { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
   { id: 'horarios', label: 'Horários', icon: Clock },
   { id: 'servicos', label: 'Serviços', icon: Scissors },
   { id: 'galeria', label: 'Galeria', icon: Image },
@@ -259,6 +262,9 @@ const AdminPanel = () => {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard onNavigate={setActiveTab} />;
+        
+      case 'financeiro':
+        return <FinancialDashboard />;
         
       case 'agenda':
         return (

@@ -103,7 +103,7 @@ interface AppState {
   updateBarber: (id: string, barber: Partial<Barber>) => void;
   toggleBarberAvailability: (id: string) => void;
   appointments: Appointment[];
-  addAppointment: (appointment: Omit<Appointment, 'id'>) => Appointment;
+  addAppointment: (appointment: Omit<Appointment, 'id'>) => Promise<Appointment>;
   updateAppointment: (id: string, updates: Partial<Appointment>) => void;
   cancelAppointment: (id: string) => void;
   completeAppointment: (id: string) => void;
@@ -115,8 +115,9 @@ interface AppState {
   maxQueueSize: number;
   setMaxQueueSize: (size: number) => void;
   queue: QueueEntry[];
-  addToQueue: (appointmentId: string) => QueueEntry;
+  addToQueue: (appointmentId: string) => Promise<QueueEntry>;
   callNextInQueue: () => QueueEntry | null;
+  callSpecificClient: (appointmentId: string) => void;
   markClientOnWay: (appointmentId: string) => void;
   updateQueuePosition: (id: string, position: number) => void;
   getQueuePosition: (appointmentId: string) => number | null;
@@ -133,6 +134,7 @@ interface AppState {
   isSlotAvailable: (date: string, time: string, barberId: string, duration: number) => boolean;
   isLoading: boolean;
   refreshData: () => Promise<void>;
+  hasClientAppointments: () => boolean;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -456,19 +458,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [barbers]);
 
-  // Appointments
-  const addAppointment = useCallback((appointment: Omit<Appointment, 'id'>): Appointment => {
+  // Appointments - now async to get real ID
+  const addAppointment = useCallback(async (appointment: Omit<Appointment, 'id'>): Promise<Appointment> => {
     const protocol = `GEN${Date.now().toString(36).toUpperCase()}`;
-    const tempId = crypto.randomUUID();
     
-    const newAppointment: Appointment = {
-      ...appointment,
-      id: tempId,
-      protocol,
-    };
-
-    // Insert into database
-    supabase.from('appointments').insert({
+    // Insert into database and wait for real ID
+    const { data, error } = await supabase.from('appointments').insert({
       protocol,
       client_name: appointment.clientName,
       client_phone: appointment.clientPhone,
@@ -477,18 +472,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       date: appointment.date,
       time: appointment.time,
       status: appointment.status,
-    }).select().single().then(({ data }) => {
-      if (data) {
-        setAppointments(prev => prev.map(a => 
-          a.id === tempId ? { ...a, id: data.id } : a
-        ));
-        
-        // Also update the temp ID in queue if exists
-        setQueue(prev => prev.map(q => 
-          q.appointmentId === tempId ? { ...q, appointmentId: data.id } : q
-        ));
-      }
-    });
+    }).select().single();
+    
+    if (error || !data) {
+      throw new Error('Failed to create appointment');
+    }
+
+    const newAppointment: Appointment = {
+      ...appointment,
+      id: data.id,
+      protocol,
+    };
 
     setAppointments(prev => [...prev, newAppointment]);
     return newAppointment;
@@ -523,10 +517,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, []);
 
+  // Confirm appointment and auto-add to queue if enabled
   const confirmAppointment = useCallback(async (id: string) => {
     await supabase.from('appointments').update({ status: 'confirmed' }).eq('id', id);
     setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'confirmed' } : a));
-  }, []);
+    
+    // Auto-add to queue if queue is enabled and not already in queue
+    if (queueEnabled) {
+      const existingEntry = queue.find(q => q.appointmentId === id);
+      if (!existingEntry) {
+        const position = queue.filter(q => q.status === 'waiting').length + 1;
+        const avgServiceTime = 25;
+        
+        const { data } = await supabase.from('queue').insert({
+          appointment_id: id,
+          position,
+          estimated_wait: position * avgServiceTime,
+          status: 'waiting',
+        }).select().single();
+        
+        if (data) {
+          const newEntry: QueueEntry = {
+            id: data.id,
+            appointmentId: id,
+            position,
+            estimatedWait: position * avgServiceTime,
+            status: 'waiting',
+          };
+          setQueue(prev => [...prev, newEntry]);
+          
+          // Update appointment status to inqueue
+          await supabase.from('appointments').update({ status: 'inqueue' }).eq('id', id);
+          setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'inqueue' } : a));
+        }
+      }
+    }
+  }, [queueEnabled, queue]);
 
   const getAppointmentsByDate = useCallback((date: string): Appointment[] => {
     return appointments.filter(a => a.date === date && a.status !== 'cancelled');
@@ -551,31 +577,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await supabase.from('shop_settings').update({ max_queue_size: size }).neq('id', '00000000-0000-0000-0000-000000000000');
   }, []);
 
-  const addToQueue = useCallback((appointmentId: string): QueueEntry => {
+  const addToQueue = useCallback(async (appointmentId: string): Promise<QueueEntry> => {
     const position = queue.filter(q => q.status === 'waiting').length + 1;
     const avgServiceTime = 25;
-    const tempId = crypto.randomUUID();
+
+    const { data, error } = await supabase.from('queue').insert({
+      appointment_id: appointmentId,
+      position,
+      estimated_wait: position * avgServiceTime,
+      status: 'waiting',
+    }).select().single();
     
+    if (error || !data) {
+      throw new Error('Failed to add to queue');
+    }
+
     const newEntry: QueueEntry = {
-      id: tempId,
+      id: data.id,
       appointmentId,
       position,
       estimatedWait: position * avgServiceTime,
       status: 'waiting',
     };
-
-    supabase.from('queue').insert({
-      appointment_id: appointmentId,
-      position,
-      estimated_wait: position * avgServiceTime,
-      status: 'waiting',
-    }).select().single().then(({ data }) => {
-      if (data) {
-        setQueue(prev => prev.map(q => 
-          q.id === tempId ? { ...q, id: data.id } : q
-        ));
-      }
-    });
 
     setQueue(prev => [...prev, newEntry]);
     return newEntry;
@@ -591,10 +614,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         called_at: now 
       }).eq('id', next.id);
 
+      // Update appointment status
+      supabase.from('appointments').update({ status: 'called' }).eq('id', next.appointmentId);
+
       setQueue(prev => prev.map(q => 
         q.id === next.id 
           ? { ...q, status: 'called', calledAt: now } 
           : q
+      ));
+
+      setAppointments(prev => prev.map(a => 
+        a.id === next.appointmentId 
+          ? { ...a, status: 'called' } 
+          : a
       ));
 
       setTimeout(() => {
@@ -613,6 +645,54 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return next;
     }
     return null;
+  }, [queue]);
+
+  // Call specific client in queue
+  const callSpecificClient = useCallback(async (appointmentId: string) => {
+    const entry = queue.find(q => q.appointmentId === appointmentId && q.status === 'waiting');
+    if (entry) {
+      const now = new Date().toISOString();
+      
+      await supabase.from('queue').update({ 
+        status: 'called', 
+        called_at: now 
+      }).eq('id', entry.id);
+
+      // Update appointment status
+      await supabase.from('appointments').update({ status: 'called' }).eq('id', appointmentId);
+
+      setQueue(prev => prev.map(q => 
+        q.id === entry.id 
+          ? { ...q, status: 'called', calledAt: now } 
+          : q
+      ));
+
+      setAppointments(prev => prev.map(a => 
+        a.id === appointmentId 
+          ? { ...a, status: 'called' } 
+          : a
+      ));
+
+      // Reorder remaining queue
+      setTimeout(() => {
+        setQueue(prev => {
+          const waiting = prev.filter(q => q.status === 'waiting');
+          const others = prev.filter(q => q.status !== 'waiting');
+          const reordered = waiting.map((q, index) => ({
+            ...q,
+            position: index + 1,
+            estimatedWait: (index + 1) * 25,
+          }));
+          
+          // Update positions in database
+          reordered.forEach(q => {
+            supabase.from('queue').update({ position: q.position, estimated_wait: q.estimatedWait }).eq('id', q.id);
+          });
+          
+          return [...others, ...reordered];
+        });
+      }, 100);
+    }
   }, [queue]);
 
   const updateQueuePosition = useCallback(async (id: string, position: number) => {
@@ -699,112 +779,115 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [barberAvailability]);
 
   // Shop Settings
-  const updateShopSettings = useCallback(async (updates: Partial<ShopSettings>) => {
-    const dbUpdates: Record<string, unknown> = {};
+  const updateShopSettings = useCallback(async (settings: Partial<ShopSettings>) => {
+    const updates: Record<string, any> = {};
     
-    if (updates.name) dbUpdates.name = updates.name;
-    if (updates.tagline) dbUpdates.tagline = updates.tagline;
-    if (updates.description) dbUpdates.description = updates.description;
-    if (updates.address) dbUpdates.address = updates.address;
-    if (updates.phone) dbUpdates.phone = updates.phone;
-    if (updates.whatsapp) dbUpdates.whatsapp = updates.whatsapp;
-    if (updates.mapsLink) dbUpdates.maps_link = updates.mapsLink;
-    if (updates.logo) dbUpdates.logo = updates.logo;
-    if (updates.hours) {
-      dbUpdates.hours_weekdays = updates.hours.weekdays;
-      dbUpdates.hours_saturday = updates.hours.saturday;
-      dbUpdates.hours_sunday = updates.hours.sunday;
-    }
-    if (updates.lunchBreak) {
-      dbUpdates.lunch_break_start = updates.lunchBreak.start;
-      dbUpdates.lunch_break_end = updates.lunchBreak.end;
-    }
-    if (updates.social) {
-      dbUpdates.instagram = updates.social.instagram;
-      dbUpdates.facebook = updates.social.facebook;
-    }
-
-    await supabase.from('shop_settings').update(dbUpdates).neq('id', '00000000-0000-0000-0000-000000000000');
-    setShopSettings(prev => ({ ...prev, ...updates }));
+    if (settings.name !== undefined) updates.name = settings.name;
+    if (settings.tagline !== undefined) updates.tagline = settings.tagline;
+    if (settings.description !== undefined) updates.description = settings.description;
+    if (settings.address !== undefined) updates.address = settings.address;
+    if (settings.phone !== undefined) updates.phone = settings.phone;
+    if (settings.whatsapp !== undefined) updates.whatsapp = settings.whatsapp;
+    if (settings.mapsLink !== undefined) updates.maps_link = settings.mapsLink;
+    if (settings.logo !== undefined) updates.logo = settings.logo;
+    if (settings.hours?.weekdays !== undefined) updates.hours_weekdays = settings.hours.weekdays;
+    if (settings.hours?.saturday !== undefined) updates.hours_saturday = settings.hours.saturday;
+    if (settings.hours?.sunday !== undefined) updates.hours_sunday = settings.hours.sunday;
+    if (settings.lunchBreak?.start !== undefined) updates.lunch_break_start = settings.lunchBreak.start;
+    if (settings.lunchBreak?.end !== undefined) updates.lunch_break_end = settings.lunchBreak.end;
+    if (settings.social?.instagram !== undefined) updates.instagram = settings.social.instagram;
+    if (settings.social?.facebook !== undefined) updates.facebook = settings.social.facebook;
+    
+    await supabase.from('shop_settings').update(updates).neq('id', '00000000-0000-0000-0000-000000000000');
+    setShopSettings(prev => ({ ...prev, ...settings }));
   }, []);
 
-  // Time slot availability
-  const isSlotAvailable = useCallback((date: string, time: string, barberId: string, duration: number): boolean => {
-    const [hours, minutes] = time.split(':').map(Number);
-    const slotStart = hours * 60 + minutes;
-    const slotEnd = slotStart + duration;
-
-    const [lunchStartH, lunchStartM] = shopSettings.lunchBreak.start.split(':').map(Number);
-    const [lunchEndH, lunchEndM] = shopSettings.lunchBreak.end.split(':').map(Number);
-    const lunchStart = lunchStartH * 60 + lunchStartM;
-    const lunchEnd = lunchEndH * 60 + lunchEndM;
-    
-    if ((slotStart < lunchEnd && slotEnd > lunchStart)) {
-      return false;
-    }
-
-    const blocked = blockedSlots.filter(b => b.date === date && b.barberId === barberId);
-    for (const block of blocked) {
-      const [bStartH, bStartM] = block.startTime.split(':').map(Number);
-      const [bEndH, bEndM] = block.endTime.split(':').map(Number);
-      const blockStart = bStartH * 60 + bStartM;
-      const blockEnd = bEndH * 60 + bEndM;
-      if (slotStart < blockEnd && slotEnd > blockStart) {
-        return false;
-      }
-    }
-
-    const barberAppointments = getAppointmentsByBarber(barberId, date);
-    for (const apt of barberAppointments) {
-      const [aptH, aptM] = apt.time.split(':').map(Number);
-      const aptStart = aptH * 60 + aptM;
-      const aptEnd = aptStart + apt.service.duration;
-      if (slotStart < aptEnd && slotEnd > aptStart) {
-        return false;
-      }
-    }
-
-    return true;
-  }, [blockedSlots, shopSettings, getAppointmentsByBarber]);
-
+  // Time slots calculation
   const getAvailableTimeSlots = useCallback((date: Date, barberId: string, serviceDuration: number): TimeSlot[] => {
-    const slots: TimeSlot[] = [];
     const dateStr = date.toISOString().split('T')[0];
     const dayOfWeek = date.getDay();
     
-    const customAvailability = getBarberDayAvailability(barberId, dateStr);
+    // Get operating hours based on day of week
+    let hours = shopSettings.hours.weekdays;
+    if (dayOfWeek === 6) hours = shopSettings.hours.saturday;
+    if (dayOfWeek === 0) hours = shopSettings.hours.sunday;
     
-    if (customAvailability !== null) {
-      for (const time of customAvailability) {
-        const available = isSlotAvailable(dateStr, time, barberId, serviceDuration);
-        slots.push({ time, available });
-      }
-      return slots;
-    }
-    
-    let startHour = 9;
-    let endHour = 20;
-    if (dayOfWeek === 6) {
-      endHour = 18;
-    } else if (dayOfWeek === 0) {
-      return [];
-    }
+    if (hours === 'Fechado') return [];
 
-    for (let hour = startHour; hour < endHour; hour++) {
+    const [openTime, closeTime] = hours.split(' - ').map(t => t.trim());
+    const lunchStart = shopSettings.lunchBreak.start;
+    const lunchEnd = shopSettings.lunchBreak.end;
+
+    // Generate all possible slots
+    const slots: TimeSlot[] = [];
+    const [openHour, openMin] = openTime.split(':').map(Number);
+    const [closeHour, closeMin] = closeTime.split(':').map(Number);
+
+    for (let hour = openHour; hour < closeHour || (hour === closeHour && 0 < closeMin); hour++) {
       for (const minute of [0, 30]) {
-        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        const available = isSlotAvailable(dateStr, time, barberId, serviceDuration);
-        slots.push({ time, available });
+        if (hour === openHour && minute < openMin) continue;
+        if (hour === closeHour && minute >= closeMin) continue;
+        
+        const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        
+        // Check if slot is during lunch
+        if (timeStr >= lunchStart && timeStr < lunchEnd) continue;
+        
+        // Check if slot is blocked
+        const isBlocked = blockedSlots.some(b => 
+          b.barberId === barberId && 
+          b.date === dateStr && 
+          timeStr >= b.startTime && 
+          timeStr < b.endTime
+        );
+        if (isBlocked) continue;
+        
+        // Check barber custom availability
+        const customAvailability = getBarberDayAvailability(barberId, dateStr);
+        if (customAvailability && customAvailability.length > 0 && !customAvailability.includes(timeStr)) continue;
+        
+        // Check if slot is already booked
+        const isBooked = appointments.some(a => 
+          a.barber.id === barberId && 
+          a.date === dateStr && 
+          a.time === timeStr &&
+          a.status !== 'cancelled'
+        );
+        
+        // Check if current time has passed (for today)
+        const now = new Date();
+        const isToday = dateStr === now.toISOString().split('T')[0];
+        const isPast = isToday && (hour < now.getHours() || (hour === now.getHours() && minute <= now.getMinutes()));
+        
+        slots.push({
+          time: timeStr,
+          available: !isBooked && !isPast,
+        });
       }
     }
 
     return slots;
-  }, [isSlotAvailable, getBarberDayAvailability]);
+  }, [shopSettings, blockedSlots, appointments, getBarberDayAvailability]);
+
+  const isSlotAvailable = useCallback((date: string, time: string, barberId: string, duration: number): boolean => {
+    const dateObj = new Date(date);
+    const slots = getAvailableTimeSlots(dateObj, barberId, duration);
+    const slot = slots.find(s => s.time === time);
+    return slot?.available ?? false;
+  }, [getAvailableTimeSlots]);
+
+  // Check if client has any appointments (for showing/hiding menu items)
+  const hasClientAppointments = useCallback((): boolean => {
+    const savedPhone = localStorage.getItem('barbershop-client-phone');
+    if (!savedPhone) return false;
+    
+    return appointments.some(a => a.clientPhone.replace(/\D/g, '') === savedPhone);
+  }, [appointments]);
 
   const value: AppState = {
     theme,
     setTheme,
-    services: services.filter(s => s.visible !== false),
+    services,
     addService,
     updateService,
     deleteService,
@@ -827,6 +910,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     queue,
     addToQueue,
     callNextInQueue,
+    callSpecificClient,
     markClientOnWay,
     updateQueuePosition,
     getQueuePosition,
@@ -843,6 +927,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     isSlotAvailable,
     isLoading,
     refreshData,
+    hasClientAppointments,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

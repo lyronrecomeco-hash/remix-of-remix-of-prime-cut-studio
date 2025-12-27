@@ -4,6 +4,7 @@ import { Scissors, Menu, X, Calendar, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const navLinks = [
   { href: '#sobre', label: 'Sobre' },
@@ -16,7 +17,8 @@ const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { shopSettings } = useApp();
+  const { shopSettings, hasClientAppointments } = useApp();
+  const { isAdmin, isSuperAdmin } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -27,6 +29,8 @@ const Header = () => {
   }, []);
 
   const isHomePage = location.pathname === '/';
+  const hasAppointments = hasClientAppointments();
+  const showAdminLink = isAdmin || isSuperAdmin;
 
   return (
     <>
@@ -63,17 +67,21 @@ const Header = () => {
 
           {/* CTA */}
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm" className="hidden sm:flex">
-              <Link to="/meus-agendamentos">
-                <ClipboardList className="w-4 h-4" />
-                Meus Agendamentos
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm" className="hidden md:flex">
-              <Link to="/admin">
-                Painel Admin
-              </Link>
-            </Button>
+            {hasAppointments && (
+              <Button asChild variant="ghost" size="sm" className="hidden sm:flex">
+                <Link to="/meus-agendamentos">
+                  <ClipboardList className="w-4 h-4" />
+                  Meus Agendamentos
+                </Link>
+              </Button>
+            )}
+            {showAdminLink && (
+              <Button asChild variant="ghost" size="sm" className="hidden md:flex">
+                <Link to="/admin">
+                  Painel Admin
+                </Link>
+              </Button>
+            )}
             <Button asChild variant="hero" size="sm" className="hidden sm:flex">
               <Link to="/agendar">
                 <Calendar className="w-4 h-4" />
@@ -113,21 +121,25 @@ const Header = () => {
                     {link.label}
                   </a>
                 ))}
-              <Link 
-                to="/meus-agendamentos" 
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center gap-2"
-              >
-                <ClipboardList className="w-5 h-5" />
-                Meus Agendamentos
-              </Link>
-              <Link 
-                to="/admin" 
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-              >
-                Painel Administrativo
-              </Link>
+              {hasAppointments && (
+                <Link 
+                  to="/meus-agendamentos" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-2 flex items-center gap-2"
+                >
+                  <ClipboardList className="w-5 h-5" />
+                  Meus Agendamentos
+                </Link>
+              )}
+              {showAdminLink && (
+                <Link 
+                  to="/admin" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                >
+                  Painel Administrativo
+                </Link>
+              )}
               <Button asChild variant="hero" size="lg" className="mt-2">
                 <Link to="/agendar" onClick={() => setIsMobileMenuOpen(false)}>
                   <Calendar className="w-4 h-4" />

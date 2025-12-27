@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Phone, Clock, User, Scissors, Bell, Check, XCircle, Play } from 'lucide-react';
+import { ChevronDown, Phone, Clock, User, Scissors, Bell, Check, XCircle, Play, PhoneCall } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useApp, Appointment } from '@/contexts/AppContext';
 import { useNotification } from '@/contexts/NotificationContext';
@@ -21,6 +21,7 @@ const AppointmentCard = ({
   onCallClient 
 }: AppointmentCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { queue } = useApp();
 
   const statusConfig = {
     pending: { label: 'Pendente', color: 'bg-yellow-500/20 text-yellow-400' },
@@ -35,6 +36,14 @@ const AppointmentCard = ({
   const status = statusConfig[appointment.status] || statusConfig.pending;
   const isActive = appointment.status !== 'completed' && appointment.status !== 'cancelled';
   const canCall = appointment.status === 'confirmed' || appointment.status === 'inqueue';
+  
+  // Get queue position for this appointment
+  const queueEntry = queue.find(q => q.appointmentId === appointment.id);
+  const queuePosition = queueEntry?.status === 'waiting' ? queueEntry.position : null;
+
+  const handlePhoneCall = () => {
+    window.open(`tel:${appointment.clientPhone}`, '_self');
+  };
 
   return (
     <motion.div
@@ -54,6 +63,9 @@ const AppointmentCard = ({
           <div>
             <h3 className="font-semibold">{appointment.clientName}</h3>
             <p className="text-sm text-muted-foreground">{appointment.service.name}</p>
+            {queuePosition && (
+              <p className="text-xs text-primary font-medium">Posição na fila: {queuePosition}°</p>
+            )}
           </div>
         </div>
         
@@ -132,6 +144,17 @@ const AppointmentCard = ({
                       Chamar Cliente
                     </Button>
                   )}
+
+                  {/* Direct phone call button */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={(e) => { e.stopPropagation(); handlePhoneCall(); }}
+                    className="border-cyan-500 text-cyan-500 hover:bg-cyan-500/10"
+                  >
+                    <PhoneCall className="w-4 h-4" />
+                    Ligar
+                  </Button>
                   
                   <Button
                     size="sm"
@@ -164,7 +187,7 @@ const AppointmentCard = ({
 
 // Exported component for the agenda with all cards
 const AgendaList = () => {
-  const { appointments, confirmAppointment, cancelAppointment, completeAppointment, queue, callNextInQueue } = useApp();
+  const { appointments, confirmAppointment, cancelAppointment, completeAppointment, callSpecificClient } = useApp();
   const { notify } = useNotification();
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -174,7 +197,7 @@ const AgendaList = () => {
 
   const handleConfirm = (id: string, clientName: string) => {
     confirmAppointment(id);
-    notify.success(`Agendamento de ${clientName} confirmado!`);
+    notify.success(`Agendamento de ${clientName} confirmado e adicionado à fila!`);
   };
 
   const handleCancel = (id: string) => {
@@ -188,12 +211,8 @@ const AgendaList = () => {
   };
 
   const handleCallClient = (appointment: Appointment) => {
-    // Find queue entry for this appointment
-    const queueEntry = queue.find(q => q.appointmentId === appointment.id);
-    
-    if (queueEntry) {
-      callNextInQueue();
-    }
+    // Call specific client in queue
+    callSpecificClient(appointment.id);
 
     // Send browser notification
     if ('Notification' in window && Notification.permission === 'granted') {

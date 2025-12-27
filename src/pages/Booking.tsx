@@ -41,6 +41,7 @@ const Booking = () => {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
   const [clientName, setClientName] = useState('');
   const [createdAppointment, setCreatedAppointment] = useState<any>(null);
@@ -68,38 +69,47 @@ const Booking = () => {
     }
   };
 
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     if (!selectedService || !selectedBarber || !selectedDate || !selectedTime) return;
+    if (isLoading) return;
 
+    setIsLoading(true);
     const dateStr = selectedDate.toISOString().split('T')[0];
     
-    // Create the appointment
-    const newAppointment = addAppointment({
-      clientName,
-      clientPhone: phoneMask.value,
-      service: selectedService,
-      barber: selectedBarber,
-      date: dateStr,
-      time: selectedTime,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    });
+    try {
+      // Create the appointment - now async
+      const newAppointment = await addAppointment({
+        clientName,
+        clientPhone: phoneMask.value,
+        service: selectedService,
+        barber: selectedBarber,
+        date: dateStr,
+        time: selectedTime,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      });
 
-    // Save client phone for "My Appointments"
-    localStorage.setItem('barbershop-client-phone', phoneMask.rawValue);
+      // Save client phone for "My Appointments"
+      localStorage.setItem('barbershop-client-phone', phoneMask.rawValue);
 
-    // Add to queue if enabled
-    let position = null;
-    if (queueEnabled) {
-      const queueEntry = addToQueue(newAppointment.id);
-      position = queueEntry.position;
+      // Add to queue if enabled
+      let position = null;
+      if (queueEnabled) {
+        const queueEntry = await addToQueue(newAppointment.id);
+        position = queueEntry.position;
+      }
+
+      setCreatedAppointment(newAppointment);
+      setQueuePosition(position);
+      setIsConfirmed(true);
+
+      notify.booking('Agendamento Confirmado!', `${selectedService.name} dia ${formatDate(selectedDate)} às ${selectedTime}`);
+    } catch (error) {
+      console.error('Error creating appointment:', error);
+      notify.error('Erro ao criar agendamento', 'Por favor, tente novamente.');
+    } finally {
+      setIsLoading(false);
     }
-
-    setCreatedAppointment(newAppointment);
-    setQueuePosition(position);
-    setIsConfirmed(true);
-
-    notify.booking('Agendamento Confirmado!', `${selectedService.name} dia ${formatDate(selectedDate)} às ${selectedTime}`);
   };
 
   const nextStep = () => {
@@ -422,17 +432,15 @@ const Booking = () => {
                             <div className="flex items-center gap-2 mb-1">
                               <h3 className="font-semibold">{barber.name}</h3>
                               {!barber.available && (
-                                <span className="text-xs bg-muted px-2 py-0.5 rounded">Indisponível</span>
+                                <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded">
+                                  Indisponível
+                                </span>
                               )}
                             </div>
-                            <p className="text-sm text-muted-foreground mb-1">
-                              {barber.specialties.join(' • ')}
-                            </p>
-                            <div className="flex items-center gap-1 text-sm">
-                              <span className="text-primary">★ {barber.rating}</span>
-                              {barber.experience && (
-                                <span className="text-muted-foreground">• {barber.experience}</span>
-                              )}
+                            <p className="text-sm text-muted-foreground">{barber.experience}</p>
+                            <div className="flex items-center gap-1 mt-1">
+                              <span className="text-primary">★</span>
+                              <span className="text-sm">{barber.rating}</span>
                             </div>
                           </div>
                         </div>
@@ -446,13 +454,14 @@ const Booking = () => {
               {currentStep === 3 && (
                 <div>
                   <h2 className="text-2xl font-bold mb-2">Escolha a data</h2>
-                  <p className="text-muted-foreground mb-6">Selecione o dia do atendimento</p>
+                  <p className="text-muted-foreground mb-6">Selecione o melhor dia para você</p>
                   
-                  <div className="glass-card rounded-2xl p-4">
+                  <div className="glass-card rounded-xl p-4">
+                    {/* Month Navigation */}
                     <div className="flex items-center justify-between mb-4">
                       <button
-                        onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-                        className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+                        onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1))}
+                        className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center"
                       >
                         <ChevronLeft className="w-5 h-5" />
                       </button>
@@ -460,26 +469,27 @@ const Booking = () => {
                         {currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
                       </h3>
                       <button
-                        onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-                        className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+                        onClick={() => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1))}
+                        className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center"
                       >
                         <ChevronRight className="w-5 h-5" />
                       </button>
                     </div>
-                    
+
+                    {/* Days Header */}
                     <div className="grid grid-cols-7 gap-1 mb-2">
-                      {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => (
+                      {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
                         <div key={day} className="text-center text-xs text-muted-foreground py-2">
                           {day}
                         </div>
                       ))}
                     </div>
-                    
+
+                    {/* Calendar Grid */}
                     <div className="grid grid-cols-7 gap-1">
                       {getDaysInMonth(currentMonth).map((date, index) => (
-                        <motion.button
+                        <button
                           key={index}
-                          whileTap={{ scale: 0.9 }}
                           onClick={() => {
                             if (date && isDateSelectable(date)) {
                               setSelectedDate(date);
@@ -500,10 +510,16 @@ const Booking = () => {
                           }`}
                         >
                           {date?.getDate()}
-                        </motion.button>
+                        </button>
                       ))}
                     </div>
                   </div>
+
+                  {selectedDate && (
+                    <p className="mt-4 text-center text-sm text-muted-foreground capitalize">
+                      Selecionado: {formatDate(selectedDate)}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -511,48 +527,41 @@ const Booking = () => {
               {currentStep === 4 && (
                 <div>
                   <h2 className="text-2xl font-bold mb-2">Escolha o horário</h2>
-                  <p className="text-muted-foreground mb-6 capitalize">
-                    {selectedDate && formatDate(selectedDate)}
+                  <p className="text-muted-foreground mb-6">
+                    Horários disponíveis para {selectedDate && formatDate(selectedDate)}
                   </p>
                   
-                  {timeSlots.length === 0 ? (
-                    <div className="glass-card rounded-2xl p-8 text-center">
-                      <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">Carregando horários disponíveis...</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                      {timeSlots.map((slot) => (
-                        <Button
-                          key={slot.time}
-                          variant={
-                            selectedTime === slot.time
-                              ? 'pill-active'
-                              : !slot.available
-                              ? 'pill-disabled'
-                              : 'pill'
-                          }
-                          onClick={() => {
-                            if (slot.available) {
-                              setSelectedTime(slot.time);
-                              if (isMobileOrTablet) {
-                                setTimeout(() => setCurrentStep(5), 150);
-                              }
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {timeSlots.map((slot) => (
+                      <motion.button
+                        key={slot.time}
+                        whileTap={{ scale: slot.available ? 0.95 : 1 }}
+                        onClick={() => {
+                          if (slot.available) {
+                            setSelectedTime(slot.time);
+                            if (isMobileOrTablet) {
+                              setTimeout(() => setCurrentStep(5), 150);
                             }
-                          }}
-                          disabled={!slot.available}
-                          className="h-12"
-                        >
-                          {slot.time}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
+                          }
+                        }}
+                        disabled={!slot.available}
+                        className={`py-3 rounded-xl text-sm font-medium transition-all ${
+                          !slot.available
+                            ? 'bg-secondary/50 text-muted-foreground/30 cursor-not-allowed'
+                            : selectedTime === slot.time
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary hover:bg-secondary/80'
+                        }`}
+                      >
+                        {slot.time}
+                      </motion.button>
+                    ))}
+                  </div>
 
-                  {timeSlots.filter(s => s.available).length === 0 && timeSlots.length > 0 && (
-                    <p className="text-center text-muted-foreground mt-4">
-                      Não há horários disponíveis neste dia. Escolha outra data.
-                    </p>
+                  {timeSlots.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Nenhum horário disponível para esta data.
+                    </div>
                   )}
                 </div>
               )}
@@ -560,104 +569,95 @@ const Booking = () => {
               {/* Step 5: Confirmation */}
               {currentStep === 5 && (
                 <div>
-                  <h2 className="text-2xl font-bold mb-2">Confirmar agendamento</h2>
-                  <p className="text-muted-foreground mb-6">Revise e confirme seus dados</p>
+                  <h2 className="text-2xl font-bold mb-2">Confirme seu agendamento</h2>
+                  <p className="text-muted-foreground mb-6">Preencha seus dados para finalizar</p>
                   
-                  <div className="glass-card rounded-2xl p-4 mb-6">
+                  {/* Summary */}
+                  <div className="glass-card rounded-xl p-4 mb-6">
+                    <h3 className="font-semibold mb-4">Resumo</h3>
                     <div className="space-y-3">
-                      <div className="flex justify-between py-2 border-b border-border">
+                      <div className="flex justify-between">
                         <span className="text-muted-foreground">Serviço</span>
                         <span className="font-medium">{selectedService?.name}</span>
                       </div>
-                      <div className="flex justify-between py-2 border-b border-border">
+                      <div className="flex justify-between">
                         <span className="text-muted-foreground">Profissional</span>
                         <span className="font-medium">{selectedBarber?.name}</span>
                       </div>
-                      <div className="flex justify-between py-2 border-b border-border">
+                      <div className="flex justify-between">
                         <span className="text-muted-foreground">Data</span>
                         <span className="font-medium capitalize">{selectedDate && formatDate(selectedDate)}</span>
                       </div>
-                      <div className="flex justify-between py-2 border-b border-border">
+                      <div className="flex justify-between">
                         <span className="text-muted-foreground">Horário</span>
                         <span className="font-medium">{selectedTime}</span>
                       </div>
-                      <div className="flex justify-between py-2">
-                        <span className="text-muted-foreground">Valor</span>
-                        <span className="font-bold text-primary text-xl">R$ {selectedService?.price}</span>
+                      <div className="flex justify-between pt-2 border-t border-border">
+                        <span className="text-muted-foreground">Total</span>
+                        <span className="font-bold text-primary text-lg">R$ {selectedService?.price}</span>
                       </div>
                     </div>
                   </div>
 
+                  {/* Client Info */}
                   <div className="space-y-4">
                     <div>
-                      <label className="text-sm text-muted-foreground mb-2 block">Seu nome *</label>
+                      <label className="text-sm text-muted-foreground block mb-2">Seu nome</label>
                       <input
                         type="text"
                         value={clientName}
                         onChange={(e) => setClientName(e.target.value)}
                         placeholder="Digite seu nome completo"
-                        className="w-full h-12 px-4 rounded-xl bg-secondary border border-border focus:border-primary focus:outline-none transition-colors"
+                        className="w-full px-4 py-3 rounded-xl bg-secondary border border-border focus:border-primary focus:outline-none transition-colors"
                       />
-                      {clientName.length > 0 && clientName.length < 3 && (
-                        <p className="text-xs text-destructive mt-1">Nome deve ter pelo menos 3 caracteres</p>
-                      )}
                     </div>
                     <div>
-                      <label className="text-sm text-muted-foreground mb-2 block">WhatsApp *</label>
+                      <label className="text-sm text-muted-foreground block mb-2">Seu telefone</label>
                       <input
                         type="tel"
                         value={phoneMask.value}
                         onChange={phoneMask.onChange}
-                        placeholder="(11) 99999-0000"
-                        className="w-full h-12 px-4 rounded-xl bg-secondary border border-border focus:border-primary focus:outline-none transition-colors"
+                        placeholder="(00) 00000-0000"
+                        className="w-full px-4 py-3 rounded-xl bg-secondary border border-border focus:border-primary focus:outline-none transition-colors"
                       />
-                      {phoneMask.value.length > 0 && !phoneMask.isValid && (
-                        <p className="text-xs text-destructive mt-1">Digite um número válido</p>
-                      )}
                     </div>
-
-                    {/* Mobile confirm button */}
-                    {isMobileOrTablet && (
-                      <Button
-                        variant="hero"
-                        size="lg"
-                        onClick={handleConfirmBooking}
-                        disabled={!canProceed()}
-                        className="w-full mt-4"
-                      >
-                        <Check className="w-4 h-4 mr-2" />
-                        Confirmar Agendamento
-                      </Button>
-                    )}
                   </div>
                 </div>
               )}
             </motion.div>
           </AnimatePresence>
 
-          {/* Navigation */}
-          <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border p-4 md:relative md:mt-8 md:p-0 md:border-0 md:bg-transparent z-40" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
-            <div className="flex gap-3 max-w-2xl mx-auto">
-              {currentStep > 1 && (
-                <Button variant="outline" size="lg" onClick={prevStep} className="flex-1">
-                  <ArrowLeft className="w-4 h-4" />
-                  Voltar
-                </Button>
+          {/* Navigation Buttons */}
+          <div className="mt-8 flex items-center justify-between">
+            <Button
+              variant="outline"
+              onClick={prevStep}
+              disabled={currentStep === 1}
+              className={currentStep === 1 ? 'invisible' : ''}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar
+            </Button>
+
+            <Button
+              variant="hero"
+              onClick={nextStep}
+              disabled={!canProceed() || isLoading}
+            >
+              {isLoading ? (
+                'Aguarde...'
+              ) : currentStep === 5 ? (
+                <>
+                  Confirmar Agendamento
+                  <Check className="w-4 h-4 ml-2" />
+                </>
+              ) : (
+                <>
+                  Próximo
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </>
               )}
-              {/* Only show navigation button on desktop or non-step-5 */}
-              {(!isMobileOrTablet || currentStep !== 5) && (
-                <Button
-                  variant="hero"
-                  size="lg"
-                  onClick={nextStep}
-                  disabled={!canProceed()}
-                  className="flex-1"
-                >
-                  {currentStep === 5 ? 'Confirmar Agendamento' : 'Continuar'}
-                  {currentStep < 5 && <ArrowRight className="w-4 h-4" />}
-                </Button>
-              )}
-            </div>
+            </Button>
           </div>
         </div>
       </div>
