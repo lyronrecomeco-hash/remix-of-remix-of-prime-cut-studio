@@ -257,11 +257,11 @@ export default function SettingsPanel() {
   const apiBaseUrl = `https://wvnszzrvrrueuycrpgyc.supabase.co/functions/v1/appointments-api`;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-180px)]">
+    <div className="flex flex-col h-full min-h-0">
       <h2 className="text-2xl font-bold mb-4">Configurações</h2>
       
       {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-2 space-y-4">
         {/* Grid layout for sections - 2 columns */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Tema Visual */}

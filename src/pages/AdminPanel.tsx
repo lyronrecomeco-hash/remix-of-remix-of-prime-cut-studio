@@ -323,7 +323,7 @@ const AdminPanel = () => {
         ).length;
 
         return (
-          <div className="flex flex-col h-[calc(100vh-180px)]">
+          <div className="flex flex-col h-full min-h-0">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <h2 className="text-2xl font-bold">Agenda</h2>
@@ -1289,9 +1289,9 @@ const AdminPanel = () => {
         {/* Content with Pull-to-Refresh */}
         <div 
           ref={containerRef}
-          className="flex-1 p-3 sm:p-4 lg:p-8 overflow-y-auto pb-safe admin-scroll-container relative z-10"
+          className="flex-1 min-h-0 p-3 sm:p-4 lg:p-8 overflow-y-auto admin-scroll-container relative z-10"
           style={{ 
-            paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
             WebkitOverflowScrolling: 'touch'
           }}
         >
