@@ -284,14 +284,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }));
       }
 
-      // Fetch queue
+      // Fetch queue (com status do agendamento para blindagem)
       const { data: queueData } = await supabase
         .from('queue')
-        .select('*')
+        .select(`
+          id,
+          appointment_id,
+          position,
+          estimated_wait,
+          status,
+          called_at,
+          onway_at,
+          appointments:appointment_id ( status )
+        `)
         .order('position');
-      
+
       if (queueData) {
-        setQueue(queueData.map(q => ({
+        // Se houver qualquer resíduo na fila de agendamento já concluído/cancelado,
+        // remove automaticamente para não “voltar” após reload.
+        const staleAppointmentIds = queueData
+          .filter((q: any) => ['completed', 'cancelled'].includes(q?.appointments?.status))
+          .map((q: any) => q.appointment_id);
+
+        if (staleAppointmentIds.length > 0) {
+          await supabase.from('queue').delete().in('appointment_id', staleAppointmentIds);
+        }
+
+        const filteredQueue = queueData.filter((q: any) => !['completed', 'cancelled'].includes(q?.appointments?.status));
+
+        setQueue(filteredQueue.map((q: any) => ({
           id: q.id,
           appointmentId: q.appointment_id,
           position: q.position,
@@ -558,9 +579,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const completeAppointment = useCallback(async (id: string) => {
     const apt = appointments.find(a => a.id === id);
-    await supabase.from('appointments').update({ status: 'completed' }).eq('id', id);
-    await supabase.from('queue').delete().eq('appointment_id', id);
-    
+
+    const { error: updateError } = await supabase
+      .from('appointments')
+      .update({ status: 'completed' })
+      .eq('id', id);
+
+    // Mesmo que o usuário recarregue, o banco agora também limpa a fila via trigger.
+    const { error: queueDeleteError } = await supabase
+      .from('queue')
+      .delete()
+      .eq('appointment_id', id);
+
+    if (updateError || queueDeleteError) {
+      console.error('Failed to complete appointment:', { updateError, queueDeleteError, id });
+      throw new Error('Falha ao concluir o atendimento.');
+    }
+
     setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'completed' } : a));
     setQueue(prev => {
       const filtered = prev.filter(q => q.appointmentId !== id);

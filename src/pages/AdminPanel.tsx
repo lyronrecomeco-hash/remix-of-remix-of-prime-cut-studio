@@ -540,9 +540,13 @@ const AdminPanel = () => {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => {
-                                    completeAppointment(apt.id);
-                                    notify.success('Atendimento concluído!');
+                                  onClick={async () => {
+                                    try {
+                                      await completeAppointment(apt.id);
+                                      notify.success('Atendimento concluído!');
+                                    } catch (e) {
+                                      notify.error('Erro ao concluir', 'Tente novamente.');
+                                    }
                                   }}
                                   className="border-green-500 text-green-500 hover:bg-green-500/10"
                                 >
