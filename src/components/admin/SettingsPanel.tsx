@@ -257,11 +257,13 @@ export default function SettingsPanel() {
   const apiBaseUrl = `https://wvnszzrvrrueuycrpgyc.supabase.co/functions/v1/appointments-api`;
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">Configurações</h2>
+    <div className="flex flex-col h-[calc(100vh-180px)]">
+      <h2 className="text-2xl font-bold mb-4">Configurações</h2>
       
-      {/* Grid layout for sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Scrollable content area */}
+      <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+        {/* Grid layout for sections - 2 columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Tema Visual */}
         <CollapsibleSection 
           title="Tema Visual" 
@@ -400,10 +402,10 @@ export default function SettingsPanel() {
             </div>
           </div>
         </CollapsibleSection>
-      </div>
+        </div>
 
-      {/* Full-width sections for larger content */}
-      <div className="mt-4 space-y-4">
+        {/* Full-width sections for larger content */}
+        <div className="space-y-4">
         {/* Integração ChatPro */}
         <CollapsibleSection 
           title="Integração ChatPro (WhatsApp)" 
@@ -768,6 +770,7 @@ export default function SettingsPanel() {
             </div>
           </div>
         </CollapsibleSection>
+        </div>
       </div>
 
       <OverloadAlertModal

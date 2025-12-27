@@ -299,8 +299,8 @@ const AdminPanel = () => {
         return <FinancialDashboard />;
         
       case 'agenda':
-        // Pagination state
-        const ITEMS_PER_PAGE = 10;
+        // Pagination - 5 items per page to fit sidebar height
+        const ITEMS_PER_PAGE = 5;
         
         // Filter appointments
         const allFilteredAppointments = appointments
@@ -313,12 +313,9 @@ const AdminPanel = () => {
         
         // Calculate pagination
         const totalPages = Math.ceil(allFilteredAppointments.length / ITEMS_PER_PAGE);
-        const currentPageIndex = Math.min(agendaPage, totalPages - 1);
+        const currentPageIndex = Math.min(agendaPage, Math.max(0, totalPages - 1));
         const startIndex = currentPageIndex * ITEMS_PER_PAGE;
         const filteredAppointments = allFilteredAppointments.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-        
-        // Get unique dates with appointments for navigation
-        const datesWithAppointments = [...new Set(appointments.map(a => a.date))].sort();
         
         // Count for daily limit check
         const dateAppointmentCount = appointments.filter(a => 
@@ -326,7 +323,7 @@ const AdminPanel = () => {
         ).length;
 
         return (
-          <div className="space-y-6">
+          <div className="flex flex-col h-[calc(100vh-180px)]">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <h2 className="text-2xl font-bold">Agenda</h2>
@@ -418,13 +415,13 @@ const AdminPanel = () => {
             </div>
 
             {filteredAppointments.length === 0 ? (
-              <div className="glass-card rounded-xl p-8 text-center">
-                <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <div className="glass-card rounded-xl p-8 text-center flex-1 flex flex-col items-center justify-center">
+                <Calendar className="w-12 h-12 text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
               </div>
             ) : (
               <>
-                <div className="space-y-3">
+                <div className="space-y-3 flex-1 overflow-y-auto">
                   {filteredAppointments.map((apt) => {
                     const queueEntry = queue.find(q => q.appointmentId === apt.id);
                     const statusConfig: Record<string, { label: string; color: string }> = {
@@ -572,9 +569,12 @@ const AdminPanel = () => {
                   })}
                 </div>
                 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 mt-6">
+                {/* Pagination - always visible at bottom */}
+                <div className="flex items-center justify-between pt-4 border-t border-border mt-auto">
+                  <span className="text-sm text-muted-foreground">
+                    Página {currentPageIndex + 1} de {Math.max(1, totalPages)}
+                  </span>
+                  <div className="flex items-center gap-1">
                     <Button
                       variant="outline"
                       size="sm"
@@ -584,17 +584,27 @@ const AdminPanel = () => {
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
                     
-                    {Array.from({ length: totalPages }, (_, i) => (
-                      <Button
-                        key={i}
-                        variant={agendaPage === i ? "hero" : "outline"}
-                        size="sm"
-                        onClick={() => setAgendaPage(i)}
-                        className="min-w-[40px]"
-                      >
-                        {i + 1}
-                      </Button>
-                    ))}
+                    {Array.from({ length: Math.max(1, totalPages) }, (_, i) => {
+                      // Show max 5 page buttons
+                      if (totalPages <= 5 || i < 2 || i >= totalPages - 2 || Math.abs(i - currentPageIndex) <= 1) {
+                        return (
+                          <Button
+                            key={i}
+                            variant={currentPageIndex === i ? "hero" : "outline"}
+                            size="sm"
+                            onClick={() => setAgendaPage(i)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {i + 1}
+                          </Button>
+                        );
+                      } else if (i === 2 && currentPageIndex > 3) {
+                        return <span key={i} className="px-1 text-muted-foreground">...</span>;
+                      } else if (i === totalPages - 3 && currentPageIndex < totalPages - 4) {
+                        return <span key={i} className="px-1 text-muted-foreground">...</span>;
+                      }
+                      return null;
+                    })}
                     
                     <Button
                       variant="outline"
@@ -605,7 +615,7 @@ const AdminPanel = () => {
                       <ChevronRight className="w-4 h-4" />
                     </Button>
                   </div>
-                )}
+                </div>
               </>
             )}
           </div>
