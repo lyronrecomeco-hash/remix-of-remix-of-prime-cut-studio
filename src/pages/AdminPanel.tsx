@@ -39,20 +39,28 @@ import { useFeedback, Feedback } from '@/contexts/FeedbackContext';
 import { useGallery } from '@/contexts/GalleryContext';
 import { useNotification } from '@/contexts/NotificationContext';
 
+import Dashboard from '@/components/admin/Dashboard';
+import UserManagement from '@/components/admin/UserManagement';
+import AgendaList from '@/components/admin/AppointmentCard';
+import { useAuth } from '@/contexts/AuthContext';
+
 const menuItems = [
+  { id: 'dashboard', label: 'Dashboard', icon: Calendar },
   { id: 'agenda', label: 'Agenda', icon: Calendar },
   { id: 'fila', label: 'Fila de Espera', icon: Users },
   { id: 'horarios', label: 'Horários', icon: Clock },
   { id: 'servicos', label: 'Serviços', icon: Scissors },
   { id: 'galeria', label: 'Galeria', icon: Image },
   { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare },
+  { id: 'usuarios', label: 'Usuários', icon: Lock },
   { id: 'config', label: 'Configurações', icon: Settings },
 ];
 
 const AdminPanel = () => {
-  const [activeTab, setActiveTab] = useState('agenda');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { notify } = useNotification();
+  const { signOut, user, isSuperAdmin } = useAuth();
   
   // App context
   const {
@@ -249,10 +257,12 @@ const AdminPanel = () => {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'dashboard':
+        return <Dashboard onNavigate={setActiveTab} />;
+        
       case 'agenda':
         return (
           <div>
-            <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Agenda de Hoje</h2>
               <div className="text-sm text-muted-foreground">
                 {todayAppointments.length} agendamento(s)
@@ -935,13 +945,13 @@ const AdminPanel = () => {
         </nav>
 
         <div className="p-4 border-t border-sidebar-border">
-          <Link
-            to="/"
-            className="flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-foreground transition-colors"
+          <button
+            onClick={() => signOut()}
+            className="flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-foreground transition-colors w-full"
           >
             <LogOut className="w-5 h-5" />
-            Voltar ao Site
-          </Link>
+            Sair
+          </button>
         </div>
       </aside>
 

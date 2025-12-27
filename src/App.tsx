@@ -10,6 +10,7 @@ import { FeedbackProvider } from "@/contexts/FeedbackContext";
 import { GalleryProvider } from "@/contexts/GalleryContext";
 import { useSecurityProtection } from "@/hooks/useSecurityProtection";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Booking from "./pages/Booking";
 import MyAppointments from "./pages/MyAppointments";
@@ -73,7 +74,11 @@ const AppContent = () => {
           <Route path="/agendar" element={<Booking />} />
           <Route path="/meus-agendamentos" element={<MyAppointments />} />
           <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <AdminPanel />
+            </ProtectedRoute>
+          } />
           <Route path="/avaliar" element={<FeedbackPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
