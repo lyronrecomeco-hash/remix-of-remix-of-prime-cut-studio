@@ -358,3 +358,21 @@ img {
   backface-visibility: hidden;
   perspective: 1000px;
 }
+
+/* Snowfall animation for admin background */
+@keyframes snowfall {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) translateX(var(--drift, 0px));
+    opacity: 0;
+  }
+}

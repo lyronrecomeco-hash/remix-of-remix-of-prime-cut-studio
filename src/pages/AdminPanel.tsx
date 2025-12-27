@@ -488,18 +488,23 @@ const AdminPanel = () => {
                                 </Button>
                               )}
 
-                              {canMarkOnWay && (
+                              {/* Botão para remover da fila manualmente */}
+                              {(apt.status === 'inqueue' || apt.status === 'called' || apt.status === 'onway') && (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => {
-                                    markClientOnWay(apt.id);
-                                    notify.info(`${apt.clientName} está a caminho!`);
+                                  onClick={async () => {
+                                    // Remove from queue and reset status
+                                    const { supabase } = await import('@/integrations/supabase/client');
+                                    await supabase.from('queue').delete().eq('appointment_id', apt.id);
+                                    await supabase.from('appointments').update({ status: 'confirmed' }).eq('id', apt.id);
+                                    refreshData();
+                                    notify.info(`${apt.clientName} removido da fila.`);
                                   }}
-                                  className="border-cyan-500 text-cyan-500 hover:bg-cyan-500/10"
+                                  className="border-destructive text-destructive hover:bg-destructive/10"
                                 >
-                                  <Navigation className="w-4 h-4" />
-                                  A Caminho
+                                  <X className="w-4 h-4" />
+                                  Remover Fila
                                 </Button>
                               )}
 
