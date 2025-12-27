@@ -52,6 +52,7 @@ import UserManagement from '@/components/admin/UserManagement';
 import FinancialDashboard from '@/components/admin/FinancialDashboard';
 import NotificationsPanel from '@/components/admin/NotificationsPanel';
 import OverloadAlertModal from '@/components/admin/OverloadAlertModal';
+import InteractiveBackground from '@/components/admin/InteractiveBackground';
 import { useAuth } from '@/contexts/AuthContext';
 import { DollarSign } from 'lucide-react';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
@@ -1229,9 +1230,11 @@ const AdminPanel = () => {
   };
 
   return (
-    <div className="h-screen bg-background flex overflow-hidden fixed inset-0 lg:relative lg:h-auto lg:overflow-auto">
+    <div className="min-h-screen min-h-[100dvh] bg-background flex overflow-hidden relative">
+      {/* Interactive Background */}
+      <InteractiveBackground />
       {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex flex-col w-64 bg-sidebar border-r border-sidebar-border">
+      <aside className="hidden lg:flex flex-col w-64 bg-sidebar/95 backdrop-blur-sm border-r border-sidebar-border relative z-10 h-screen sticky top-0">
         <div className="p-6">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -1244,12 +1247,12 @@ const AdminPanel = () => {
           </div>
         </div>
 
-        <nav className="flex-1 px-4">
+        <nav className="flex-1 px-4 overflow-y-auto admin-scroll-container">
           {menuItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all relative ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all relative touch-manipulation ${
                 activeTab === item.id
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
@@ -1269,7 +1272,7 @@ const AdminPanel = () => {
         <div className="p-4 border-t border-sidebar-border">
           <button
             onClick={() => signOut()}
-            className="flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-foreground transition-colors w-full"
+            className="flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-foreground transition-colors w-full touch-manipulation"
           >
             <LogOut className="w-5 h-5" />
             Sair
@@ -1292,21 +1295,25 @@ const AdminPanel = () => {
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
-              className="fixed left-0 top-0 bottom-0 w-64 bg-sidebar border-r border-sidebar-border z-50 lg:hidden"
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed left-0 top-0 bottom-0 w-[280px] max-w-[85vw] bg-sidebar/95 backdrop-blur-md border-r border-sidebar-border z-50 lg:hidden flex flex-col"
             >
-              <div className="p-6 flex items-center justify-between">
+              <div className="p-4 sm:p-6 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Scissors className="w-5 h-5 text-primary" />
                   </div>
                   <span className="font-bold">Admin</span>
                 </div>
-                <button onClick={() => setIsSidebarOpen(false)}>
+                <button 
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="w-10 h-10 min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation"
+                >
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
-              <nav className="px-4">
+              <nav className="flex-1 px-3 sm:px-4 overflow-y-auto admin-scroll-container">
                 {menuItems.map((item) => (
                   <button
                     key={item.id}
@@ -1314,14 +1321,14 @@ const AdminPanel = () => {
                       setActiveTab(item.id);
                       setIsSidebarOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all relative ${
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl mb-1 transition-all relative touch-manipulation min-h-[48px] ${
                       activeTab === item.id
                         ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent/50 active:bg-sidebar-accent/70'
                     }`}
                   >
-                    <item.icon className="w-5 h-5" />
-                    {item.label}
+                    <item.icon className="w-5 h-5 shrink-0" />
+                    <span className="truncate">{item.label}</span>
                     {item.id === 'feedbacks' && newFeedbacksCount > 0 && (
                       <span className="absolute right-4 px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
                         {newFeedbacksCount}
@@ -1330,18 +1337,28 @@ const AdminPanel = () => {
                   </button>
                 ))}
               </nav>
+
+              <div className="p-3 sm:p-4 border-t border-sidebar-border shrink-0 safe-area-inset-bottom">
+                <button
+                  onClick={() => signOut()}
+                  className="flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-foreground transition-colors w-full touch-manipulation min-h-[48px]"
+                >
+                  <LogOut className="w-5 h-5" />
+                  Sair
+                </button>
+              </div>
             </motion.aside>
           </>
         )}
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-screen lg:min-h-screen overflow-hidden">
+      <main className="flex-1 flex flex-col min-h-screen min-h-[100dvh] overflow-hidden relative z-10">
         {/* Top Bar */}
-        <header className="h-16 border-b border-border flex items-center justify-between px-4 lg:px-8 shrink-0">
+        <header className="h-14 sm:h-16 border-b border-border bg-background/80 backdrop-blur-sm flex items-center justify-between px-3 sm:px-4 lg:px-8 shrink-0 sticky top-0 z-20">
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="lg:hidden w-10 h-10 rounded-lg bg-secondary flex items-center justify-center"
+            className="lg:hidden w-10 h-10 min-w-[44px] min-h-[44px] rounded-lg bg-secondary flex items-center justify-center touch-manipulation"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -1351,11 +1368,16 @@ const AdminPanel = () => {
             <p className="text-sm text-muted-foreground">Gerencie sua barbearia</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Mobile title */}
+          <div className="lg:hidden flex-1 text-center">
+            <h2 className="font-semibold text-sm">{menuItems.find(m => m.id === activeTab)?.label || 'Admin'}</h2>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="relative">
               <button 
                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center relative hover:bg-secondary/80 transition-colors"
+                className="w-10 h-10 min-w-[44px] min-h-[44px] rounded-lg bg-secondary flex items-center justify-center relative hover:bg-secondary/80 transition-colors touch-manipulation"
               >
                 <Bell className="w-5 h-5" />
                 {(newFeedbacksCount > 0 || appointments.filter(a => a.status === 'pending' && a.date === new Date().toISOString().split('T')[0]).length > 0) && (
@@ -1375,7 +1397,11 @@ const AdminPanel = () => {
         {/* Content with Pull-to-Refresh */}
         <div 
           ref={containerRef}
-          className="flex-1 p-4 lg:p-8 overflow-y-auto pb-8 overscroll-contain relative"
+          className="flex-1 p-3 sm:p-4 lg:p-8 overflow-y-auto pb-safe admin-scroll-container relative z-10"
+          style={{ 
+            paddingBottom: 'max(2rem, env(safe-area-inset-bottom))',
+            WebkitOverflowScrolling: 'touch'
+          }}
         >
           <PullToRefreshIndicator 
             pullDistance={pullDistance} 
@@ -1388,6 +1414,7 @@ const AdminPanel = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
+              className="gpu-accelerated"
             >
               {renderContent()}
             </motion.div>

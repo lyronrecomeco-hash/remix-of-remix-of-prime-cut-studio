@@ -328,3 +328,33 @@ img {
 .mobile-nav {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
+
+/* Interactive background particles animation */
+@keyframes float-particle {
+  0%, 100% {
+    transform: translateY(0) translateX(0) scale(1);
+  }
+  25% {
+    transform: translateY(-20px) translateX(10px) scale(1.05);
+  }
+  50% {
+    transform: translateY(-10px) translateX(-15px) scale(0.95);
+  }
+  75% {
+    transform: translateY(-25px) translateX(5px) scale(1.02);
+  }
+}
+
+/* Admin panel scroll optimization */
+.admin-scroll-container {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+}
+
+/* GPU acceleration for smooth animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
