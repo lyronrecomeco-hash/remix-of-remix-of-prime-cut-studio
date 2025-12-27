@@ -19,9 +19,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
 
-    console.log('Supabase URL exists:', !!supabaseUrl);
-    console.log('Service key exists:', !!supabaseServiceKey);
-    console.log('Anon key exists:', !!supabaseAnonKey);
+    console.log('Environment check - URL:', !!supabaseUrl, 'Service:', !!supabaseServiceKey, 'Anon:', !!supabaseAnonKey);
 
     if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
       console.error('Missing environment variables');
@@ -38,30 +36,30 @@ serve(async (req) => {
       },
     });
 
-    // Get the user making the request
+    // Get authorization from header
     const authHeader = req.headers.get('Authorization');
-    console.log('Auth header exists:', !!authHeader);
+    console.log('Auth header present:', !!authHeader);
 
     if (!authHeader) {
-      console.error('No authorization header');
       return new Response(
-        JSON.stringify({ error: 'Não autorizado - Token não fornecido' }),
+        JSON.stringify({ error: 'Token de autorização não fornecido' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Extract the token
+    const token = authHeader.replace('Bearer ', '');
+    console.log('Token extracted, length:', token.length);
 
-    const { data: { user: requestingUser }, error: userError } = await supabaseClient.auth.getUser();
-    console.log('Requesting user ID:', requestingUser?.id);
-    console.log('User error:', userError?.message);
+    // Verify the user with the admin client
+    const { data: { user: requestingUser }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
+    console.log('User verification result:', requestingUser?.id, userError?.message);
 
     if (userError || !requestingUser) {
-      console.error('User authentication failed:', userError);
+      console.error('User verification failed:', userError);
       return new Response(
-        JSON.stringify({ error: 'Não autorizado - Usuário não autenticado' }),
+        JSON.stringify({ error: 'Token inválido ou expirado' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -73,11 +71,9 @@ serve(async (req) => {
       .eq('user_id', requestingUser.id)
       .maybeSingle();
 
-    console.log('Role data:', roleData);
-    console.log('Role error:', roleError?.message);
+    console.log('Role check:', roleData, roleError?.message);
 
     if (roleError) {
-      console.error('Role check error:', roleError);
       return new Response(
         JSON.stringify({ error: 'Erro ao verificar permissões' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -85,50 +81,36 @@ serve(async (req) => {
     }
 
     if (!roleData || roleData.role !== 'super_admin') {
-      console.error('User is not super_admin. Role:', roleData?.role);
+      console.error('Not super_admin. Role:', roleData?.role);
       return new Response(
         JSON.stringify({ error: 'Apenas super admins podem criar usuários' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('User is super_admin, proceeding with creation');
+    console.log('Authorization passed, parsing body...');
 
     // Parse request body
-    let body;
-    try {
-      body = await req.json();
-      console.log('Request body parsed:', { email: body.email, name: body.name, role: body.role });
-    } catch (e) {
-      console.error('Failed to parse request body:', e);
-      return new Response(
-        JSON.stringify({ error: 'Dados da requisição inválidos' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const { email, password, name, role, expiresAt } = body;
+    const { email, password, name, role, expiresAt } = await req.json();
+    console.log('Request data:', { email, name, role, hasPassword: !!password });
 
     if (!email || !password || !name || !role) {
-      console.error('Missing required fields:', { email: !!email, password: !!password, name: !!name, role: !!role });
       return new Response(
-        JSON.stringify({ error: 'Dados incompletos. Email, senha, nome e função são obrigatórios.' }),
+        JSON.stringify({ error: 'Dados incompletos' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Validate role
-    const validRoles = ['super_admin', 'admin', 'barber'];
-    if (!validRoles.includes(role)) {
-      console.error('Invalid role:', role);
+    if (!['super_admin', 'admin', 'barber'].includes(role)) {
       return new Response(
-        JSON.stringify({ error: 'Função inválida. Use: admin ou barber' }),
+        JSON.stringify({ error: 'Função inválida' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Create the auth user
-    console.log('Creating auth user with email:', email);
+    console.log('Creating auth user...');
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -136,10 +118,10 @@ serve(async (req) => {
     });
 
     if (authError) {
-      console.error('Auth user creation error:', authError);
+      console.error('Auth creation error:', authError);
       let errorMessage = authError.message;
       if (errorMessage.includes('already registered')) {
-        errorMessage = 'Este email já está registrado no sistema';
+        errorMessage = 'Este email já está cadastrado';
       }
       return new Response(
         JSON.stringify({ error: errorMessage }),
@@ -148,31 +130,23 @@ serve(async (req) => {
     }
 
     const newUserId = authData.user.id;
-    console.log('Auth user created with ID:', newUserId);
+    console.log('Auth user created:', newUserId);
 
     // Create user role
-    console.log('Creating user role:', role);
     const { error: roleInsertError } = await supabaseAdmin
       .from('user_roles')
-      .insert({
-        user_id: newUserId,
-        role: role,
-      });
+      .insert({ user_id: newUserId, role });
 
     if (roleInsertError) {
-      console.error('Role creation error:', roleInsertError);
-      // Rollback - delete the auth user
+      console.error('Role insert error:', roleInsertError);
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
       return new Response(
-        JSON.stringify({ error: 'Erro ao criar role do usuário: ' + roleInsertError.message }),
+        JSON.stringify({ error: 'Erro ao definir função do usuário' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('User role created successfully');
-
     // Create admin user record
-    console.log('Creating admin user record');
     const { error: adminError } = await supabaseAdmin
       .from('admin_users')
       .insert({
@@ -184,30 +158,25 @@ serve(async (req) => {
       });
 
     if (adminError) {
-      console.error('Admin user creation error:', adminError);
-      // Rollback
+      console.error('Admin record error:', adminError);
       await supabaseAdmin.from('user_roles').delete().eq('user_id', newUserId);
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
       return new Response(
-        JSON.stringify({ error: 'Erro ao criar registro de admin: ' + adminError.message }),
+        JSON.stringify({ error: 'Erro ao criar registro de administrador' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     console.log('=== USER CREATED SUCCESSFULLY ===');
-    console.log('User ID:', newUserId);
-
     return new Response(
       JSON.stringify({ success: true, userId: newUserId }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('=== UNEXPECTED ERROR ===');
-    console.error(error);
-    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    console.error('Unexpected error:', error);
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Erro desconhecido' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
