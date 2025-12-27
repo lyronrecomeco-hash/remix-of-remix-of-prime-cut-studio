@@ -160,7 +160,7 @@ const AppointmentCard = ({
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={(e) => { e.stopPropagation(); onComplete(); }}
+                    onClick={async (e) => { e.stopPropagation(); await onComplete(); }}
                     className="w-full sm:w-auto min-h-[44px] touch-manipulation border-green-500 text-green-500 hover:bg-green-500/10"
                   >
                     <Play className="w-4 h-4 shrink-0" />
@@ -206,9 +206,13 @@ const AgendaList = () => {
     notify.info('Agendamento cancelado');
   };
 
-  const handleComplete = (id: string) => {
-    completeAppointment(id);
-    notify.success('Atendimento concluído!');
+  const handleComplete = async (id: string) => {
+    try {
+      await completeAppointment(id);
+      notify.success('Atendimento concluído!');
+    } catch (e) {
+      notify.error('Erro ao concluir', 'Tente novamente.');
+    }
   };
 
   const handleCallClient = (appointment: Appointment) => {
