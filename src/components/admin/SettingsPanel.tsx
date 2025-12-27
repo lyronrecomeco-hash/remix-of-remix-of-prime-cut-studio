@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef } from 'react';
 import { 
   Palette, 
   AlertTriangle, 
@@ -83,11 +83,12 @@ interface SectionProps {
   defaultOpen?: boolean;
 }
 
-function CollapsibleSection({ title, icon, children, defaultOpen = false }: SectionProps) {
+const CollapsibleSection = forwardRef<HTMLDivElement, SectionProps>(
+  ({ title, icon, children, defaultOpen = false }, ref) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   
   return (
-    <div className="glass-card rounded-xl overflow-hidden">
+    <div ref={ref} className="glass-card rounded-xl overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between p-4 hover:bg-secondary/30 transition-colors"
@@ -105,7 +106,9 @@ function CollapsibleSection({ title, icon, children, defaultOpen = false }: Sect
       )}
     </div>
   );
-}
+});
+
+CollapsibleSection.displayName = 'CollapsibleSection';
 
 export default function SettingsPanel() {
   const { notify } = useNotification();
@@ -257,7 +260,8 @@ export default function SettingsPanel() {
     <div>
       <h2 className="text-2xl font-bold mb-6">Configurações</h2>
       
-      <div className="space-y-4">
+      {/* Grid layout for sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Tema Visual */}
         <CollapsibleSection 
           title="Tema Visual" 
@@ -396,13 +400,16 @@ export default function SettingsPanel() {
             </div>
           </div>
         </CollapsibleSection>
+      </div>
 
+      {/* Full-width sections for larger content */}
+      <div className="mt-4 space-y-4">
         {/* Integração ChatPro */}
         <CollapsibleSection 
           title="Integração ChatPro (WhatsApp)" 
           icon={<MessageCircle className="w-5 h-5 text-green-500" />}
         >
-          <div className="mt-4 space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+          <div className="mt-4 space-y-6">
             {/* Status e Toggle */}
             <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
               <div className="flex items-center gap-3">
@@ -584,7 +591,7 @@ export default function SettingsPanel() {
           title="Integrações e API" 
           icon={<Webhook className="w-5 h-5 text-primary" />}
         >
-          <div className="mt-4 space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+          <div className="mt-4 space-y-6">
             {/* API Endpoints */}
             <div>
               <h4 className="font-medium mb-3 flex items-center gap-2">

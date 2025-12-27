@@ -79,6 +79,7 @@ const AdminPanel = () => {
   const [showOverloadModal, setShowOverloadModal] = useState(false);
   const [agendaDateFilter, setAgendaDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [agendaStatusFilter, setAgendaStatusFilter] = useState<string>('all');
+  const [agendaPage, setAgendaPage] = useState(0);
   const { notify } = useNotification();
   const { signOut, user, isSuperAdmin } = useAuth();
   
@@ -298,14 +299,23 @@ const AdminPanel = () => {
         return <FinancialDashboard />;
         
       case 'agenda':
+        // Pagination state
+        const ITEMS_PER_PAGE = 10;
+        
         // Filter appointments
-        const filteredAppointments = appointments
+        const allFilteredAppointments = appointments
           .filter(a => {
             if (a.date !== agendaDateFilter) return false;
             if (agendaStatusFilter !== 'all' && a.status !== agendaStatusFilter) return false;
             return true;
           })
           .sort((a, b) => a.time.localeCompare(b.time));
+        
+        // Calculate pagination
+        const totalPages = Math.ceil(allFilteredAppointments.length / ITEMS_PER_PAGE);
+        const currentPageIndex = Math.min(agendaPage, totalPages - 1);
+        const startIndex = currentPageIndex * ITEMS_PER_PAGE;
+        const filteredAppointments = allFilteredAppointments.slice(startIndex, startIndex + ITEMS_PER_PAGE);
         
         // Get unique dates with appointments for navigation
         const datesWithAppointments = [...new Set(appointments.map(a => a.date))].sort();
@@ -321,7 +331,7 @@ const AdminPanel = () => {
               <div>
                 <h2 className="text-2xl font-bold">Agenda</h2>
                 <div className="text-sm text-muted-foreground">
-                  {filteredAppointments.length} agendamento(s) em {new Date(agendaDateFilter + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
+                  {allFilteredAppointments.length} agendamento(s) em {new Date(agendaDateFilter + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
                 </div>
               </div>
               
@@ -349,6 +359,7 @@ const AdminPanel = () => {
                       const d = new Date(agendaDateFilter);
                       d.setDate(d.getDate() - 1);
                       setAgendaDateFilter(d.toISOString().split('T')[0]);
+                      setAgendaPage(0);
                     }}
                     className="p-2 hover:bg-secondary rounded-lg"
                   >
@@ -357,7 +368,10 @@ const AdminPanel = () => {
                   <Input
                     type="date"
                     value={agendaDateFilter}
-                    onChange={(e) => setAgendaDateFilter(e.target.value)}
+                    onChange={(e) => {
+                      setAgendaDateFilter(e.target.value);
+                      setAgendaPage(0);
+                    }}
                     className="w-auto"
                   />
                   <button 
@@ -365,6 +379,7 @@ const AdminPanel = () => {
                       const d = new Date(agendaDateFilter);
                       d.setDate(d.getDate() + 1);
                       setAgendaDateFilter(d.toISOString().split('T')[0]);
+                      setAgendaPage(0);
                     }}
                     className="p-2 hover:bg-secondary rounded-lg"
                   >
@@ -373,7 +388,10 @@ const AdminPanel = () => {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => setAgendaDateFilter(new Date().toISOString().split('T')[0])}
+                    onClick={() => {
+                      setAgendaDateFilter(new Date().toISOString().split('T')[0]);
+                      setAgendaPage(0);
+                    }}
                   >
                     Hoje
                   </Button>
@@ -381,7 +399,10 @@ const AdminPanel = () => {
 
                 <select
                   value={agendaStatusFilter}
-                  onChange={(e) => setAgendaStatusFilter(e.target.value)}
+                  onChange={(e) => {
+                    setAgendaStatusFilter(e.target.value);
+                    setAgendaPage(0);
+                  }}
                   className="bg-secondary px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="all">Todos os status</option>
@@ -402,153 +423,190 @@ const AdminPanel = () => {
                 <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {filteredAppointments.map((apt) => {
-                  const queueEntry = queue.find(q => q.appointmentId === apt.id);
-                  const statusConfig: Record<string, { label: string; color: string }> = {
-                    pending: { label: 'Pendente', color: 'bg-yellow-500/20 text-yellow-400' },
-                    confirmed: { label: 'Confirmado', color: 'bg-primary/20 text-primary' },
-                    inqueue: { label: 'Na Fila', color: 'bg-blue-500/20 text-blue-400' },
-                    called: { label: 'Chamado', color: 'bg-purple-500/20 text-purple-400' },
-                    onway: { label: 'A Caminho', color: 'bg-cyan-500/20 text-cyan-400' },
-                    completed: { label: 'Concluído', color: 'bg-green-500/20 text-green-400' },
-                    cancelled: { label: 'Cancelado', color: 'bg-destructive/20 text-destructive' },
-                  };
-                  const status = statusConfig[apt.status] || statusConfig.pending;
-                  const isActive = apt.status !== 'completed' && apt.status !== 'cancelled';
-                  const canCall = apt.status === 'confirmed' || apt.status === 'inqueue';
-                  const canMarkOnWay = apt.status === 'called';
+              <>
+                <div className="space-y-3">
+                  {filteredAppointments.map((apt) => {
+                    const queueEntry = queue.find(q => q.appointmentId === apt.id);
+                    const statusConfig: Record<string, { label: string; color: string }> = {
+                      pending: { label: 'Pendente', color: 'bg-yellow-500/20 text-yellow-400' },
+                      confirmed: { label: 'Confirmado', color: 'bg-primary/20 text-primary' },
+                      inqueue: { label: 'Na Fila', color: 'bg-blue-500/20 text-blue-400' },
+                      called: { label: 'Chamado', color: 'bg-purple-500/20 text-purple-400' },
+                      onway: { label: 'A Caminho', color: 'bg-cyan-500/20 text-cyan-400' },
+                      completed: { label: 'Concluído', color: 'bg-green-500/20 text-green-400' },
+                      cancelled: { label: 'Cancelado', color: 'bg-destructive/20 text-destructive' },
+                    };
+                    const status = statusConfig[apt.status] || statusConfig.pending;
+                    const isActive = apt.status !== 'completed' && apt.status !== 'cancelled';
+                    const canCall = apt.status === 'confirmed' || apt.status === 'inqueue';
+                    const canMarkOnWay = apt.status === 'called';
 
-                  return (
-                    <motion.div
-                      key={apt.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="glass-card rounded-xl p-4"
-                    >
-                      <div className="flex items-start justify-between gap-4 flex-wrap">
-                        <div className="flex items-center gap-4">
-                          <div className="text-center min-w-[60px]">
-                            <div className="text-2xl font-bold text-primary">{apt.time}</div>
-                            <div className="text-xs text-muted-foreground">{apt.service?.duration} min</div>
-                          </div>
-                          <div>
-                            <h3 className="font-semibold">{apt.clientName}</h3>
-                            <p className="text-sm text-muted-foreground">{apt.service?.name} - {apt.barber?.name}</p>
-                            <p className="text-xs text-muted-foreground">{apt.clientPhone}</p>
-                            {queueEntry?.status === 'waiting' && (
-                              <p className="text-xs text-primary font-medium mt-1">Posição na fila: {queueEntry.position}°</p>
-                            )}
-                            {apt.protocol && (
-                              <p className="text-xs text-muted-foreground mt-1">Protocolo: {apt.protocol}</p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-col items-end gap-2">
-                          <span className={`text-xs px-2 py-1 rounded-full ${status.color}`}>
-                            {status.label}
-                          </span>
-                          
-                          {isActive && (
-                            <div className="flex flex-wrap gap-1 justify-end">
-                              {apt.status === 'pending' && (
-                                <Button
-                                  size="sm"
-                                  variant="hero"
-                                  onClick={() => {
-                                    confirmAppointment(apt.id);
-                                    notify.success(`${apt.clientName} confirmado e adicionado à fila!`);
-                                  }}
-                                >
-                                  <Check className="w-4 h-4" />
-                                  Aceitar
-                                </Button>
-                              )}
-                              
-                              {canCall && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    callSpecificClient(apt.id);
-                                    // Trigger push notification
-                                    if ('Notification' in window && Notification.permission === 'granted') {
-                                      new Notification('🔔 Chamando Cliente', {
-                                        body: `${apt.clientName}, sua vez chegou!`,
-                                        icon: '/favicon.ico',
-                                        tag: `call-${apt.id}`,
-                                      });
-                                    }
-                                    notify.queue(`${apt.clientName} foi chamado!`);
-                                  }}
-                                  className="border-primary text-primary hover:bg-primary/10"
-                                >
-                                  <Bell className="w-4 h-4" />
-                                  Chamar
-                                </Button>
-                              )}
-
-                              {/* Botão para remover da fila manualmente */}
-                              {(apt.status === 'inqueue' || apt.status === 'called' || apt.status === 'onway') && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={async () => {
-                                    // Remove from queue and reset status
-                                    const { supabase } = await import('@/integrations/supabase/client');
-                                    await supabase.from('queue').delete().eq('appointment_id', apt.id);
-                                    await supabase.from('appointments').update({ status: 'confirmed' }).eq('id', apt.id);
-                                    refreshData();
-                                    notify.info(`${apt.clientName} removido da fila.`);
-                                  }}
-                                  className="border-destructive text-destructive hover:bg-destructive/10"
-                                >
-                                  <X className="w-4 h-4" />
-                                  Remover Fila
-                                </Button>
-                              )}
-
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => window.open(`tel:${apt.clientPhone}`, '_self')}
-                                className="border-green-500 text-green-500 hover:bg-green-500/10"
-                              >
-                                <Phone className="w-4 h-4" />
-                              </Button>
-                              
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  completeAppointment(apt.id);
-                                  notify.success('Atendimento concluído!');
-                                }}
-                                className="border-green-500 text-green-500 hover:bg-green-500/10"
-                              >
-                                <Play className="w-4 h-4" />
-                              </Button>
-                              
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  cancelAppointment(apt.id);
-                                  notify.info('Agendamento cancelado');
-                                }}
-                                className="text-destructive hover:bg-destructive/10"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </Button>
+                    return (
+                      <motion.div
+                        key={apt.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="glass-card rounded-xl p-4"
+                      >
+                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                          <div className="flex items-center gap-4">
+                            <div className="text-center min-w-[60px]">
+                              <div className="text-2xl font-bold text-primary">{apt.time}</div>
+                              <div className="text-xs text-muted-foreground">{apt.service?.duration} min</div>
                             </div>
-                          )}
+                            <div>
+                              <h3 className="font-semibold">{apt.clientName}</h3>
+                              <p className="text-sm text-muted-foreground">{apt.service?.name} - {apt.barber?.name}</p>
+                              <p className="text-xs text-muted-foreground">{apt.clientPhone}</p>
+                              {queueEntry?.status === 'waiting' && (
+                                <p className="text-xs text-primary font-medium mt-1">Posição na fila: {queueEntry.position}°</p>
+                              )}
+                              {apt.protocol && (
+                                <p className="text-xs text-muted-foreground mt-1">Protocolo: {apt.protocol}</p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col items-end gap-2">
+                            <span className={`text-xs px-2 py-1 rounded-full ${status.color}`}>
+                              {status.label}
+                            </span>
+                            
+                            {isActive && (
+                              <div className="flex flex-wrap gap-1 justify-end">
+                                {apt.status === 'pending' && (
+                                  <Button
+                                    size="sm"
+                                    variant="hero"
+                                    onClick={() => {
+                                      confirmAppointment(apt.id);
+                                      notify.success(`${apt.clientName} confirmado e adicionado à fila!`);
+                                    }}
+                                  >
+                                    <Check className="w-4 h-4" />
+                                    Aceitar
+                                  </Button>
+                                )}
+                                
+                                {canCall && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      callSpecificClient(apt.id);
+                                      // Trigger push notification
+                                      if ('Notification' in window && Notification.permission === 'granted') {
+                                        new Notification('🔔 Chamando Cliente', {
+                                          body: `${apt.clientName}, sua vez chegou!`,
+                                          icon: '/favicon.ico',
+                                          tag: `call-${apt.id}`,
+                                        });
+                                      }
+                                      notify.queue(`${apt.clientName} foi chamado!`);
+                                    }}
+                                    className="border-primary text-primary hover:bg-primary/10"
+                                  >
+                                    <Bell className="w-4 h-4" />
+                                    Chamar
+                                  </Button>
+                                )}
+
+                                {/* Botão para remover da fila manualmente */}
+                                {(apt.status === 'inqueue' || apt.status === 'called' || apt.status === 'onway') && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={async () => {
+                                      // Remove from queue and reset status
+                                      const { supabase } = await import('@/integrations/supabase/client');
+                                      await supabase.from('queue').delete().eq('appointment_id', apt.id);
+                                      await supabase.from('appointments').update({ status: 'confirmed' }).eq('id', apt.id);
+                                      refreshData();
+                                      notify.info(`${apt.clientName} removido da fila.`);
+                                    }}
+                                    className="border-destructive text-destructive hover:bg-destructive/10"
+                                  >
+                                    <X className="w-4 h-4" />
+                                    Remover Fila
+                                  </Button>
+                                )}
+
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => window.open(`tel:${apt.clientPhone}`, '_self')}
+                                  className="border-green-500 text-green-500 hover:bg-green-500/10"
+                                >
+                                  <Phone className="w-4 h-4" />
+                                </Button>
+                                
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    completeAppointment(apt.id);
+                                    notify.success('Atendimento concluído!');
+                                  }}
+                                  className="border-green-500 text-green-500 hover:bg-green-500/10"
+                                >
+                                  <Play className="w-4 h-4" />
+                                </Button>
+                                
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    cancelAppointment(apt.id);
+                                    notify.info('Agendamento cancelado');
+                                  }}
+                                  className="text-destructive hover:bg-destructive/10"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+                
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAgendaPage(Math.max(0, agendaPage - 1))}
+                      disabled={agendaPage === 0}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <Button
+                        key={i}
+                        variant={agendaPage === i ? "hero" : "outline"}
+                        size="sm"
+                        onClick={() => setAgendaPage(i)}
+                        className="min-w-[40px]"
+                      >
+                        {i + 1}
+                      </Button>
+                    ))}
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAgendaPage(Math.min(totalPages - 1, agendaPage + 1))}
+                      disabled={agendaPage >= totalPages - 1}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         );
