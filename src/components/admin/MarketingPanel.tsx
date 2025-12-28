@@ -234,7 +234,8 @@ export default function MarketingPanel() {
         
         const parts = line.split(/[,;]/);
         const phone = parts[0]?.replace(/\D/g, '').trim();
-        const name = parts[1]?.trim() || phone;
+        // Name is truly optional - don't use phone as fallback
+        const name = parts[1]?.trim() || '';
         
         if (phone && phone.length >= 10 && !contacts.some(c => c.phone === phone) && !newContacts.some(c => c.phone === phone)) {
           if (contacts.length + newContacts.length < (settings?.max_contacts || 100)) {
@@ -262,7 +263,8 @@ export default function MarketingPanel() {
     lines.forEach(line => {
       const parts = line.split(/[,;]/);
       const phone = parts[0]?.replace(/\D/g, '').trim();
-      const name = parts[1]?.trim() || phone;
+      // Name is truly optional - don't use phone as fallback
+      const name = parts[1]?.trim() || '';
       
       if (phone && phone.length >= 10 && !contacts.some(c => c.phone === phone) && !newContacts.some(c => c.phone === phone)) {
         if (contacts.length + newContacts.length < (settings?.max_contacts || 100)) {
@@ -303,7 +305,8 @@ export default function MarketingPanel() {
       return;
     }
 
-    setContacts(prev => [...prev, { phone, name: contactInput.name.trim() || phone }]);
+    // Name is truly optional - don't use phone as fallback
+    setContacts(prev => [...prev, { phone, name: contactInput.name.trim() || '' }]);
     setContactInput({ phone: '', name: '' });
     notify.success('Contato adicionado');
   };
@@ -1004,7 +1007,7 @@ export default function MarketingPanel() {
               <div className="max-h-32 overflow-y-auto space-y-2">
                 {contacts.slice(0, 5).map((contact, idx) => (
                   <div key={idx} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
-                    <span className="truncate text-sm">{contact.name} - {contact.phone}</span>
+                    <span className="truncate text-sm">{contact.name ? `${contact.name} - ${contact.phone}` : contact.phone}</span>
                     <button onClick={() => removeContact(contact.phone)} className="p-1.5 hover:bg-destructive/20 rounded-lg text-destructive">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1216,7 +1219,7 @@ export default function MarketingPanel() {
                 <div className="max-h-48 overflow-y-auto space-y-2">
                   {contacts.map((contact, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
-                      <span className="truncate text-sm">{contact.name} - {contact.phone}</span>
+                      <span className="truncate text-sm">{contact.name ? `${contact.name} - ${contact.phone}` : contact.phone}</span>
                       <button onClick={() => removeContact(contact.phone)} className="p-1.5 hover:bg-destructive/20 rounded-lg text-destructive">
                         <Trash2 className="w-4 h-4" />
                       </button>

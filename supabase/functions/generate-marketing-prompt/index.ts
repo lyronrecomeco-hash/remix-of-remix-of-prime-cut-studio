@@ -82,24 +82,28 @@ EXEMPLOS DE ESTRUTURAS QUE FUNCIONAM:
     let userPrompt = '';
 
     if (type === 'generate') {
-      userPrompt = `Crie uma mensagem de marketing PERSUASIVA para uma barbearia com base neste contexto/objetivo:
+      userPrompt = `O usuário quer que você crie a seguinte mensagem de marketing:
 
-${context}
+"${context}"
 
-IMPORTANTE: Use a estrutura DOR → AGITAÇÃO → SOLUÇÃO → CTA.
-Responda APENAS com a mensagem final, sem explicações.`;
+INSTRUÇÕES IMPORTANTES:
+- Siga EXATAMENTE o que o usuário pediu acima
+- Se ele especificou um estilo, tom ou estrutura específica, use esse
+- Se ele não especificou, use a estrutura: GANCHO → PROBLEMA → SOLUÇÃO → CTA
+- Use {{nome}} para personalização se apropriado
+- Máximo 350 caracteres
+- Responda APENAS com a mensagem final, sem explicações.`;
     } else if (type === 'improve') {
-      userPrompt = `Melhore esta mensagem de marketing de barbearia, tornando-a MAIS PERSUASIVA:
+      userPrompt = `Melhore esta mensagem de marketing seguindo as instruções do usuário:
 
 MENSAGEM ATUAL:
 ${currentMessage}
 
-${feedback ? `AJUSTES SOLICITADOS: ${feedback}` : 'Torne-a mais impactante, com melhor gancho emocional e CTA mais forte.'}
+${feedback ? `O USUÁRIO PEDIU: ${feedback}` : 'Torne-a mais impactante, com melhor gancho emocional e CTA mais forte.'}
 
 IMPORTANTE: 
-- Mantenha a estrutura DOR → SOLUÇÃO → CTA
-- Melhore o gancho inicial
-- Fortaleça a urgência
+- Siga EXATAMENTE o que o usuário pediu
+- Mantenha o tom e estilo que ele quer
 - Responda APENAS com a mensagem melhorada, sem explicações.`;
     }
 

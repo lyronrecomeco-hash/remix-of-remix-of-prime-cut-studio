@@ -129,40 +129,37 @@ serve(async (req) => {
 
         console.log(`Sending to ${phone}`);
 
-        // Send image first if exists
-        if (campaign.image_url) {
-          try {
-            await fetch(imageApiUrl, {
-              method: 'POST',
-              headers: {
-                'Authorization': chatproConfig.api_token,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                number: phone,
-                url: campaign.image_url,
-                caption: '',
-              }),
-            });
-            // Small delay after image
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          } catch (imgErr) {
-            console.error('Image send error:', imgErr);
-          }
-        }
+        let response;
 
-        // Send message
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': chatproConfig.api_token,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            number: phone,
-            message: message,
-          }),
-        });
+        // Send image WITH message as caption if image exists
+        if (campaign.image_url) {
+          console.log(`Sending image with message to ${phone}`);
+          response = await fetch(imageApiUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': chatproConfig.api_token,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              number: phone,
+              url: campaign.image_url,
+              caption: message, // Send message as caption with the image
+            }),
+          });
+        } else {
+          // Send text message only if no image
+          response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': chatproConfig.api_token,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              number: phone,
+              message: message,
+            }),
+          });
+        }
 
         const responseText = await response.text();
         console.log(`Response for ${phone}:`, response.status, responseText);
