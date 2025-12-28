@@ -36,6 +36,9 @@ import {
   Sun,
   Zap,
   Plus,
+  Bell,
+  BellRing,
+  Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +48,7 @@ import { useNotification } from '@/contexts/NotificationContext';
 import { supabase } from '@/integrations/supabase/client';
 import OverloadAlertModal from './OverloadAlertModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { sendPushNotification } from '@/lib/webhooks';
 
 interface MessageTemplate {
   id: string;
@@ -106,6 +110,10 @@ interface SecuritySettings {
   loginAttemptLimit: number;
   requireStrongPassword: boolean;
   auditLog: boolean;
+  pushAlertsEnabled: boolean;
+  alertOnNewLogin: boolean;
+  alertOnFailedLogin: boolean;
+  alertOnSettingsChange: boolean;
 }
 
 interface BarberSchedule {
@@ -176,6 +184,10 @@ const defaultSecuritySettings: SecuritySettings = {
   loginAttemptLimit: 5,
   requireStrongPassword: true,
   auditLog: true,
+  pushAlertsEnabled: false,
+  alertOnNewLogin: true,
+  alertOnFailedLogin: true,
+  alertOnSettingsChange: false,
 };
 
 const defaultBackupConfig: BackupConfig = {
@@ -232,6 +244,8 @@ export default function SettingsPanel() {
   const [securitySettings, setSecuritySettings] = useState<SecuritySettings>(defaultSecuritySettings);
   const [newIpAddress, setNewIpAddress] = useState('');
   const [savingTheme, setSavingTheme] = useState(false);
+  const [themePreviewOpen, setThemePreviewOpen] = useState(false);
+  const [previewTheme, setPreviewTheme] = useState<string>('');
 
   // Barber schedules state
   const [barberSchedules, setBarberSchedules] = useState<BarberSchedule[]>([]);
@@ -613,10 +627,34 @@ export default function SettingsPanel() {
 
   const handleSaveTheme = () => {
     setSavingTheme(true);
+    // Aplicar tema globalmente via localStorage para persistir
+    localStorage.setItem('app_theme', theme);
+    document.documentElement.className = document.documentElement.className
+      .split(' ')
+      .filter(c => !c.startsWith('theme-'))
+      .join(' ');
+    if (theme !== 'gold') {
+      document.documentElement.classList.add(`theme-${theme}`);
+    }
     setTimeout(() => {
       notify.success('Tema salvo e aplicado ao site!');
       setSavingTheme(false);
     }, 500);
+  };
+
+  const handlePreviewTheme = (themeId: string) => {
+    setPreviewTheme(themeId);
+    setThemePreviewOpen(true);
+  };
+
+  const sendSecurityAlert = async (alertType: string, message: string) => {
+    if (!securitySettings.pushAlertsEnabled) return;
+    
+    await sendPushNotification(
+      `🔒 Alerta de Segurança: ${alertType}`,
+      message,
+      'admin'
+    );
   };
 
   const addIpToWhitelist = () => {
@@ -647,35 +685,44 @@ export default function SettingsPanel() {
     switch (activeSection) {
       case 'theme':
         return (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Tema Visual</h3>
-              <Button onClick={handleSaveTheme} disabled={savingTheme} size="sm">
-                {savingTheme ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                Salvar Tema
-              </Button>
+              <h3 className="text-xl font-bold">Tema Visual</h3>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => handlePreviewTheme(theme)} size="default">
+                  <Monitor className="w-4 h-4 mr-2" />
+                  Preview Site
+                </Button>
+                <Button onClick={handleSaveTheme} disabled={savingTheme} size="default">
+                  {savingTheme ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  Salvar Tema
+                </Button>
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">Escolha o tema que combina com seu estabelecimento.</p>
-            <div className="grid grid-cols-3 gap-3">
+            <p className="text-base text-muted-foreground">Escolha o tema que combina com seu estabelecimento.</p>
+            <div className="grid grid-cols-3 gap-4">
               {allThemes.map((t) => {
                 const Icon = t.icon;
                 return (
                   <button
                     key={t.id}
                     onClick={() => setTheme(t.id as any)}
-                    className={`p-3 rounded-xl border-2 transition-all ${
-                      theme === t.id ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary/50'
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      theme === t.id ? 'border-primary ring-2 ring-primary/30 bg-primary/5' : 'border-border hover:border-primary/50'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-2">
-                      <Icon className="w-4 h-4 text-muted-foreground" />
-                      <div className="flex gap-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <Icon className="w-5 h-5 text-muted-foreground" />
+                      <div className="flex gap-1.5">
                         {t.colors.map((c, i) => (
-                          <div key={i} className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: c }} />
+                          <div key={i} className="w-5 h-5 rounded-full border border-border shadow-sm" style={{ backgroundColor: c }} />
                         ))}
                       </div>
                     </div>
-                    <p className="text-xs font-medium text-left">{t.label}</p>
+                    <p className="text-sm font-medium text-left">{t.label}</p>
+                    {theme === t.id && (
+                      <p className="text-xs text-primary mt-1">✓ Selecionado</p>
+                    )}
                   </button>
                 );
               })}
@@ -724,16 +771,89 @@ export default function SettingsPanel() {
 
       case 'security':
         return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Segurança Avançada</h3>
+          <div className="space-y-5">
+            <h3 className="text-xl font-bold">Segurança Avançada</h3>
+            
+            {/* Push Alerts de Segurança */}
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <BellRing className="w-5 h-5 text-blue-500" />
+                  <div>
+                    <span className="text-base font-semibold">Alertas Push de Segurança</span>
+                    <p className="text-sm text-muted-foreground">Receba notificações em tempo real</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const newValue = !securitySettings.pushAlertsEnabled;
+                    saveSecuritySettings({ ...securitySettings, pushAlertsEnabled: newValue });
+                    if (newValue) {
+                      sendSecurityAlert('Ativação', 'Alertas de segurança push foram ativados');
+                    }
+                  }}
+                  className={`w-14 h-7 rounded-full transition-colors relative ${
+                    securitySettings.pushAlertsEnabled ? 'bg-blue-500' : 'bg-secondary'
+                  }`}
+                >
+                  <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${
+                    securitySettings.pushAlertsEnabled ? 'left-8' : 'left-1'
+                  }`} />
+                </button>
+              </div>
+
+              {securitySettings.pushAlertsEnabled && (
+                <div className="space-y-3 pl-8 border-l-2 border-blue-500/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Alertar novo login</span>
+                    <button
+                      onClick={() => saveSecuritySettings({ ...securitySettings, alertOnNewLogin: !securitySettings.alertOnNewLogin })}
+                      className={`w-10 h-5 rounded-full transition-colors relative ${
+                        securitySettings.alertOnNewLogin ? 'bg-primary' : 'bg-secondary'
+                      }`}
+                    >
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                        securitySettings.alertOnNewLogin ? 'left-5' : 'left-0.5'
+                      }`} />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Alertar tentativas falhas</span>
+                    <button
+                      onClick={() => saveSecuritySettings({ ...securitySettings, alertOnFailedLogin: !securitySettings.alertOnFailedLogin })}
+                      className={`w-10 h-5 rounded-full transition-colors relative ${
+                        securitySettings.alertOnFailedLogin ? 'bg-primary' : 'bg-secondary'
+                      }`}
+                    >
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                        securitySettings.alertOnFailedLogin ? 'left-5' : 'left-0.5'
+                      }`} />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Alertar mudanças de config</span>
+                    <button
+                      onClick={() => saveSecuritySettings({ ...securitySettings, alertOnSettingsChange: !securitySettings.alertOnSettingsChange })}
+                      className={`w-10 h-5 rounded-full transition-colors relative ${
+                        securitySettings.alertOnSettingsChange ? 'bg-primary' : 'bg-secondary'
+                      }`}
+                    >
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                        securitySettings.alertOnSettingsChange ? 'left-5' : 'left-0.5'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             
             {/* Alerta de Sobrecarga */}
-            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
               <div className="flex items-center gap-3">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
                 <div>
-                  <span className="text-sm font-medium">Alerta de Sobrecarga</span>
-                  <p className="text-xs text-muted-foreground">Notifica ao atingir limite diário</p>
+                  <span className="text-base font-medium">Alerta de Sobrecarga</span>
+                  <p className="text-sm text-muted-foreground">Notifica ao atingir limite diário</p>
                 </div>
               </div>
               <button
@@ -745,140 +865,140 @@ export default function SettingsPanel() {
                     notify.info('Alertas desativados');
                   }
                 }}
-                className={`w-12 h-6 rounded-full transition-colors relative ${
+                className={`w-14 h-7 rounded-full transition-colors relative ${
                   shopSettings.overloadAlertEnabled ? 'bg-primary' : 'bg-secondary'
                 }`}
               >
-                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-                  shopSettings.overloadAlertEnabled ? 'left-7' : 'left-1'
+                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${
+                  shopSettings.overloadAlertEnabled ? 'left-8' : 'left-1'
                 }`} />
               </button>
             </div>
 
             {shopSettings.overloadAlertEnabled && (
-              <div className="pl-7 pb-2">
-                <label className="text-xs text-muted-foreground block mb-1">Limite diário de agendamentos</label>
+              <div className="pl-8 pb-2">
+                <label className="text-sm text-muted-foreground block mb-2">Limite diário de agendamentos</label>
                 <Input
                   type="number"
                   value={shopSettings.dailyAppointmentLimit || 20}
                   onChange={(e) => updateShopSettings({ dailyAppointmentLimit: Number(e.target.value) })}
                   min={1}
                   max={100}
-                  className="h-9 max-w-[120px]"
+                  className="h-11 max-w-[140px]"
                 />
               </div>
             )}
 
             {/* Autenticação em Duas Etapas */}
-            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
               <div className="flex items-center gap-3">
-                <Key className="w-4 h-4 text-blue-500" />
+                <Key className="w-5 h-5 text-blue-500" />
                 <div>
-                  <span className="text-sm font-medium">Autenticação 2 Fatores</span>
-                  <p className="text-xs text-muted-foreground">Proteção extra no login</p>
+                  <span className="text-base font-medium">Autenticação 2 Fatores</span>
+                  <p className="text-sm text-muted-foreground">Proteção extra no login</p>
                 </div>
               </div>
               <button
                 onClick={() => saveSecuritySettings({ ...securitySettings, twoFactorAuth: !securitySettings.twoFactorAuth })}
-                className={`w-12 h-6 rounded-full transition-colors relative ${
+                className={`w-14 h-7 rounded-full transition-colors relative ${
                   securitySettings.twoFactorAuth ? 'bg-primary' : 'bg-secondary'
                 }`}
               >
-                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-                  securitySettings.twoFactorAuth ? 'left-7' : 'left-1'
+                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${
+                  securitySettings.twoFactorAuth ? 'left-8' : 'left-1'
                 }`} />
               </button>
             </div>
 
             {/* Senha Forte */}
-            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
               <div className="flex items-center gap-3">
-                <Lock className="w-4 h-4 text-green-500" />
+                <Lock className="w-5 h-5 text-green-500" />
                 <div>
-                  <span className="text-sm font-medium">Exigir Senha Forte</span>
-                  <p className="text-xs text-muted-foreground">Mín. 8 caracteres, maiúscula, número</p>
+                  <span className="text-base font-medium">Exigir Senha Forte</span>
+                  <p className="text-sm text-muted-foreground">Mín. 8 caracteres, maiúscula, número</p>
                 </div>
               </div>
               <button
                 onClick={() => saveSecuritySettings({ ...securitySettings, requireStrongPassword: !securitySettings.requireStrongPassword })}
-                className={`w-12 h-6 rounded-full transition-colors relative ${
+                className={`w-14 h-7 rounded-full transition-colors relative ${
                   securitySettings.requireStrongPassword ? 'bg-primary' : 'bg-secondary'
                 }`}
               >
-                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-                  securitySettings.requireStrongPassword ? 'left-7' : 'left-1'
+                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${
+                  securitySettings.requireStrongPassword ? 'left-8' : 'left-1'
                 }`} />
               </button>
             </div>
 
             {/* Log de Auditoria */}
-            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
               <div className="flex items-center gap-3">
-                <ShieldCheck className="w-4 h-4 text-purple-500" />
+                <ShieldCheck className="w-5 h-5 text-purple-500" />
                 <div>
-                  <span className="text-sm font-medium">Log de Auditoria</span>
-                  <p className="text-xs text-muted-foreground">Registra todas as ações do admin</p>
+                  <span className="text-base font-medium">Log de Auditoria</span>
+                  <p className="text-sm text-muted-foreground">Registra todas as ações do admin</p>
                 </div>
               </div>
               <button
                 onClick={() => saveSecuritySettings({ ...securitySettings, auditLog: !securitySettings.auditLog })}
-                className={`w-12 h-6 rounded-full transition-colors relative ${
+                className={`w-14 h-7 rounded-full transition-colors relative ${
                   securitySettings.auditLog ? 'bg-primary' : 'bg-secondary'
                 }`}
               >
-                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-                  securitySettings.auditLog ? 'left-7' : 'left-1'
+                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${
+                  securitySettings.auditLog ? 'left-8' : 'left-1'
                 }`} />
               </button>
             </div>
 
             {/* Timeout de Sessão */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">Timeout Sessão (min)</label>
+                <label className="text-sm font-medium text-muted-foreground block mb-2">Timeout Sessão (min)</label>
                 <Input
                   type="number"
                   value={securitySettings.sessionTimeout}
                   onChange={(e) => saveSecuritySettings({ ...securitySettings, sessionTimeout: Number(e.target.value) })}
                   min={5}
                   max={120}
-                  className="h-9"
+                  className="h-11"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">Limite Tentativas Login</label>
+                <label className="text-sm font-medium text-muted-foreground block mb-2">Limite Tentativas Login</label>
                 <Input
                   type="number"
                   value={securitySettings.loginAttemptLimit}
                   onChange={(e) => saveSecuritySettings({ ...securitySettings, loginAttemptLimit: Number(e.target.value) })}
                   min={3}
                   max={10}
-                  className="h-9"
+                  className="h-11"
                 />
               </div>
             </div>
 
             {/* IP Whitelist */}
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Lista de IPs Permitidos</label>
-              <div className="flex gap-2">
+              <label className="text-sm font-medium text-muted-foreground block mb-2">Lista de IPs Permitidos</label>
+              <div className="flex gap-3">
                 <Input
                   value={newIpAddress}
                   onChange={(e) => setNewIpAddress(e.target.value)}
                   placeholder="192.168.1.1"
-                  className="h-9 flex-1"
+                  className="h-11 flex-1"
                 />
-                <Button size="sm" onClick={addIpToWhitelist} className="h-9">
-                  <Plus className="w-4 h-4" />
+                <Button onClick={addIpToWhitelist} className="h-11 px-4">
+                  <Plus className="w-5 h-5" />
                 </Button>
               </div>
               {securitySettings.ipWhitelist.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
+                <div className="flex flex-wrap gap-2 mt-3">
                   {securitySettings.ipWhitelist.map((ip) => (
-                    <span key={ip} className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                    <span key={ip} className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary text-sm rounded-full">
                       {ip}
                       <button onClick={() => removeIpFromWhitelist(ip)} className="hover:text-destructive">
-                        <X className="w-3 h-3" />
+                        <X className="w-4 h-4" />
                       </button>
                     </span>
                   ))}
@@ -890,30 +1010,30 @@ export default function SettingsPanel() {
 
       case 'social':
         return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Redes Sociais</h3>
-            <p className="text-sm text-muted-foreground">Configure seus perfis nas redes sociais.</p>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-5">
+            <h3 className="text-xl font-bold">Redes Sociais</h3>
+            <p className="text-base text-muted-foreground">Configure seus perfis nas redes sociais.</p>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground flex items-center gap-2 mb-1">
-                  <Instagram className="w-3 h-3" /> Instagram
+                <label className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-2">
+                  <Instagram className="w-4 h-4" /> Instagram
                 </label>
                 <Input
                   placeholder="@seuperfil"
                   value={shopSettings.social?.instagram || ''}
                   onChange={(e) => updateShopSettings({ social: { ...shopSettings.social, instagram: e.target.value } })}
-                  className="h-10"
+                  className="h-11"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground flex items-center gap-2 mb-1">
-                  <Facebook className="w-3 h-3" /> Facebook
+                <label className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-2">
+                  <Facebook className="w-4 h-4" /> Facebook
                 </label>
                 <Input
                   placeholder="nome.da.pagina"
                   value={shopSettings.social?.facebook || ''}
                   onChange={(e) => updateShopSettings({ social: { ...shopSettings.social, facebook: e.target.value } })}
-                  className="h-10"
+                  className="h-11"
                 />
               </div>
             </div>
@@ -922,46 +1042,46 @@ export default function SettingsPanel() {
 
       case 'backup':
         return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Backup e Restauração</h3>
+          <div className="space-y-5">
+            <h3 className="text-xl font-bold">Backup e Restauração</h3>
             
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-start gap-3">
-              <Shield className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+            <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-start gap-4">
+              <Shield className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
               <div>
-                <p className="text-sm font-medium">Backup Seguro SHA-256</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-base font-medium">Backup Seguro SHA-256</p>
+                <p className="text-sm text-muted-foreground">
                   Inclui: configurações, templates, ChatPro e textos.
                 </p>
               </div>
             </div>
 
             {/* Configuração de Backup Automático */}
-            <div className="bg-muted/30 rounded-lg p-3 space-y-3">
+            <div className="bg-muted/30 rounded-xl p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Settings className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Backup Automático</span>
+                <div className="flex items-center gap-3">
+                  <Settings className="w-5 h-5 text-muted-foreground" />
+                  <span className="text-base font-medium">Backup Automático</span>
                 </div>
                 <button
                   onClick={() => saveBackupConfig({ ...backupConfig, autoBackup: !backupConfig.autoBackup })}
-                  className={`w-12 h-6 rounded-full transition-colors relative ${
+                  className={`w-14 h-7 rounded-full transition-colors relative ${
                     backupConfig.autoBackup ? 'bg-primary' : 'bg-secondary'
                   }`}
                 >
-                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-                    backupConfig.autoBackup ? 'left-7' : 'left-1'
+                  <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${
+                    backupConfig.autoBackup ? 'left-8' : 'left-1'
                   }`} />
                 </button>
               </div>
               
               {backupConfig.autoBackup && (
-                <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="grid grid-cols-2 gap-4 pt-2">
                   <div>
-                    <label className="text-xs text-muted-foreground block mb-1">Frequência</label>
+                    <label className="text-sm text-muted-foreground block mb-2">Frequência</label>
                     <select
                       value={backupConfig.frequency}
                       onChange={(e) => saveBackupConfig({ ...backupConfig, frequency: e.target.value as any })}
-                      className="w-full h-9 px-3 bg-background border border-input rounded-md text-sm"
+                      className="w-full h-11 px-3 bg-background border border-input rounded-lg text-base"
                     >
                       <option value="daily">Diário</option>
                       <option value="weekly">Semanal</option>
@@ -969,11 +1089,11 @@ export default function SettingsPanel() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground block mb-1">Manter últimos</label>
+                    <label className="text-sm text-muted-foreground block mb-2">Manter últimos</label>
                     <select
                       value={backupConfig.keepLastBackups}
                       onChange={(e) => saveBackupConfig({ ...backupConfig, keepLastBackups: Number(e.target.value) })}
-                      className="w-full h-9 px-3 bg-background border border-input rounded-md text-sm"
+                      className="w-full h-11 px-3 bg-background border border-input rounded-lg text-base"
                     >
                       <option value={3}>3 backups</option>
                       <option value={5}>5 backups</option>
@@ -984,30 +1104,30 @@ export default function SettingsPanel() {
               )}
 
               {backupConfig.lastBackupDate && (
-                <p className="text-xs text-muted-foreground pt-1">
+                <p className="text-sm text-muted-foreground pt-1">
                   Último backup: {new Date(backupConfig.lastBackupDate).toLocaleString('pt-BR')}
                 </p>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Button onClick={handleExportBackup} disabled={isExporting} className="h-10">
-                {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            <div className="grid grid-cols-2 gap-4">
+              <Button onClick={handleExportBackup} disabled={isExporting} className="h-11">
+                {isExporting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Download className="w-5 h-5 mr-2" />}
                 Exportar
               </Button>
               
               <input ref={backupFileInputRef} type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
               
-              <Button variant="outline" onClick={() => backupFileInputRef.current?.click()} disabled={isImporting} className="h-10">
-                {isImporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+              <Button variant="outline" onClick={() => backupFileInputRef.current?.click()} disabled={isImporting} className="h-11">
+                {isImporting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Upload className="w-5 h-5 mr-2" />}
                 Importar
               </Button>
             </div>
 
             {importError && (
-              <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
-                <p className="text-xs text-destructive">{importError}</p>
+              <div className="flex items-center gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
+                <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+                <p className="text-sm text-destructive">{importError}</p>
               </div>
             )}
           </div>
@@ -1015,27 +1135,27 @@ export default function SettingsPanel() {
 
       case 'texts':
         return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Textos do Site</h3>
-            <p className="text-sm text-muted-foreground">
+          <div className="space-y-5">
+            <h3 className="text-xl font-bold">Textos do Site</h3>
+            <p className="text-base text-muted-foreground">
               Personalize os textos que aparecem no site público.
             </p>
             
-            <div className="bg-muted/30 rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <Type className="w-5 h-5 text-primary" />
+            <div className="bg-muted/30 rounded-xl p-5 space-y-4">
+              <div className="flex items-center gap-4">
+                <Type className="w-6 h-6 text-primary" />
                 <div>
-                  <p className="text-sm font-medium">Seções Editáveis</p>
-                  <p className="text-xs text-muted-foreground">Hero, Sobre, Serviços, Galeria, CTA, Rodapé</p>
+                  <p className="text-base font-medium">Seções Editáveis</p>
+                  <p className="text-sm text-muted-foreground">Hero, Sobre, Serviços, Galeria, CTA, Rodapé</p>
                 </div>
               </div>
-              <Button onClick={() => setTextsModalOpen(true)} className="w-full h-10">
-                <Type className="w-4 h-4 mr-2" />
+              <Button onClick={() => setTextsModalOpen(true)} className="w-full h-11">
+                <Type className="w-5 h-5 mr-2" />
                 Abrir Editor de Textos
               </Button>
             </div>
             
-            <div className="text-xs text-muted-foreground p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+            <div className="text-sm text-muted-foreground p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
               <strong>Dica:</strong> Use textos curtos e diretos para melhor experiência do usuário.
             </div>
           </div>
@@ -1043,64 +1163,64 @@ export default function SettingsPanel() {
 
       case 'chatpro':
         return (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Integração ChatPro</h3>
+              <h3 className="text-xl font-bold">Integração ChatPro</h3>
               <button
                 onClick={() => chatproConfig && updateChatProConfig({ is_enabled: !chatproConfig.is_enabled })}
                 disabled={chatproLoading}
-                className={`w-12 h-6 rounded-full transition-colors relative ${
+                className={`w-14 h-7 rounded-full transition-colors relative ${
                   chatproConfig?.is_enabled ? 'bg-primary' : 'bg-secondary'
                 }`}
               >
-                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-                  chatproConfig?.is_enabled ? 'left-7' : 'left-1'
+                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${
+                  chatproConfig?.is_enabled ? 'left-8' : 'left-1'
                 }`} />
               </button>
             </div>
 
             {chatproConfig?.is_enabled && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">API Token</label>
+                  <label className="text-sm text-muted-foreground block mb-2">API Token</label>
                   <Input
                     type="password"
                     value={chatproConfig?.api_token || ''}
                     onChange={(e) => updateChatProConfig({ api_token: e.target.value })}
                     placeholder="Seu token..."
-                    className="h-9"
+                    className="h-11"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-muted-foreground block mb-1">Instance ID</label>
+                    <label className="text-sm text-muted-foreground block mb-2">Instance ID</label>
                     <Input
                       value={chatproConfig?.instance_id || ''}
                       onChange={(e) => updateChatProConfig({ instance_id: e.target.value })}
                       placeholder="ID..."
-                      className="h-9"
+                      className="h-11"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground block mb-1">Endpoint</label>
+                    <label className="text-sm text-muted-foreground block mb-2">Endpoint</label>
                     <Input
                       value={chatproConfig?.base_endpoint || ''}
                       onChange={(e) => updateChatProConfig({ base_endpoint: e.target.value })}
                       placeholder="https://..."
-                      className="h-9"
+                      className="h-11"
                     />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2 border-t border-border">
+                <div className="flex items-center gap-3 pt-3 border-t border-border">
                   <Input
                     value={testPhone}
                     onChange={(e) => setTestPhone(e.target.value)}
                     placeholder="5511999999999"
-                    className="h-9 flex-1"
+                    className="h-11 flex-1"
                   />
-                  <Button variant="outline" onClick={testChatProConnection} disabled={testingChatPro} className="h-9">
-                    {testingChatPro ? <Loader2 className="w-4 h-4 animate-spin" /> : <TestTube className="w-4 h-4" />}
+                  <Button variant="outline" onClick={testChatProConnection} disabled={testingChatPro} className="h-11 px-4">
+                    {testingChatPro ? <Loader2 className="w-5 h-5 animate-spin" /> : <TestTube className="w-5 h-5" />}
                   </Button>
                 </div>
               </div>
@@ -1557,6 +1677,38 @@ export default function SettingsPanel() {
           notify.success('Alertas de sobrecarga ativados');
         }}
       />
+
+      {/* Modal de Preview do Tema */}
+      <Dialog open={themePreviewOpen} onOpenChange={setThemePreviewOpen}>
+        <DialogContent className="max-w-4xl h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Monitor className="w-5 h-5 text-primary" />
+              Preview do Tema: {allThemes.find(t => t.id === previewTheme)?.label}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 rounded-lg overflow-hidden border border-border">
+            <iframe
+              src={`/?theme=${previewTheme}`}
+              className="w-full h-full"
+              title="Preview do Tema"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="outline" onClick={() => setThemePreviewOpen(false)}>
+              Fechar
+            </Button>
+            <Button onClick={() => {
+              setTheme(previewTheme as any);
+              handleSaveTheme();
+              setThemePreviewOpen(false);
+            }}>
+              <Save className="w-4 h-4 mr-2" />
+              Aplicar Este Tema
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
