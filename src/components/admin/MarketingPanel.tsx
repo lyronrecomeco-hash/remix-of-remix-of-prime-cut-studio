@@ -27,6 +27,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
+  Shield,
+  Zap,
+  Timer,
+  TrendingUp,
+  Info,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +46,20 @@ interface MarketingSettings {
   is_enabled: boolean;
   max_contacts: number;
   delay_between_messages: number;
+  // Anti-blocking protection fields
+  min_delay_seconds: number;
+  max_delay_seconds: number;
+  daily_limit: number;
+  warmup_enabled: boolean;
+  warmup_day: number;
+  pause_every_n_messages: number;
+  pause_duration_seconds: number;
+  allowed_start_hour: number;
+  allowed_end_hour: number;
+  messages_sent_today: number;
+  last_reset_date: string;
+  consecutive_errors: number;
+  max_consecutive_errors: number;
 }
 
 interface Campaign {
@@ -78,6 +98,8 @@ export default function MarketingPanel() {
   const [showContactsModal, setShowContactsModal] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showProtectionModal, setShowProtectionModal] = useState(false);
+  const [showDocsModal, setShowDocsModal] = useState(false);
   const [sendingCampaign, setSendingCampaign] = useState<string | null>(null);
   const [testingCampaign, setTestingCampaign] = useState<string | null>(null);
   const [campaignPage, setCampaignPage] = useState(0);
@@ -518,6 +540,7 @@ export default function MarketingPanel() {
       sending: { label: 'Enviando', color: 'bg-blue-500/20 text-blue-400', icon: <Loader2 className="w-3.5 h-3.5 animate-spin" /> },
       completed: { label: 'Concluída', color: 'bg-green-500/20 text-green-400', icon: <CheckCircle className="w-3.5 h-3.5" /> },
       failed: { label: 'Falhou', color: 'bg-destructive/20 text-destructive', icon: <XCircle className="w-3.5 h-3.5" /> },
+      paused: { label: 'Pausada', color: 'bg-orange-500/20 text-orange-400', icon: <Timer className="w-3.5 h-3.5" /> },
     };
     const c = config[status] || config.draft;
     return (
@@ -525,6 +548,12 @@ export default function MarketingPanel() {
         {c.icon} {c.label}
       </span>
     );
+  };
+
+  // Calculate warmup limit based on day
+  const getWarmupLimit = (day: number, baseLimit: number): number => {
+    const warmupLimits: Record<number, number> = { 1: 20, 2: 35, 3: 50, 4: 75, 5: 100 };
+    return Math.min(warmupLimits[day] || baseLimit, baseLimit);
   };
 
   if (loading) {
@@ -588,6 +617,74 @@ export default function MarketingPanel() {
             <p className="text-sm text-muted-foreground">
               <strong className="text-yellow-500">Atenção:</strong> Envio em massa pode resultar em bloqueio pelo WhatsApp. Use com moderação e respeite os termos de uso.
             </p>
+          </div>
+
+          {/* Anti-Blocking Protection Status */}
+          <div className="glass-card rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                  <Shield className="w-5 h-5 text-green-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base">Proteção Anti-Bloqueio</h3>
+                  <p className="text-sm text-muted-foreground">Sistema ativo protegendo seu número</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowDocsModal(true)} className="h-9">
+                  <BookOpen className="w-4 h-4 mr-1.5" />
+                  Guia
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowProtectionModal(true)} className="h-9">
+                  <Settings className="w-4 h-4 mr-1.5" />
+                  Configurar
+                </Button>
+              </div>
+            </div>
+            
+            {/* Status Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-secondary/30 rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center gap-1.5 text-primary mb-1">
+                  <TrendingUp className="w-4 h-4" />
+                  <span className="text-sm font-medium">Dia</span>
+                </div>
+                <span className="text-xl font-bold">{settings?.warmup_day || 1}/5</span>
+                <p className="text-xs text-muted-foreground">Aquecimento</p>
+              </div>
+              
+              <div className="bg-secondary/30 rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center gap-1.5 text-blue-400 mb-1">
+                  <Zap className="w-4 h-4" />
+                  <span className="text-sm font-medium">Limite</span>
+                </div>
+                <span className="text-xl font-bold">
+                  {settings?.warmup_enabled 
+                    ? getWarmupLimit(settings?.warmup_day || 1, settings?.daily_limit || 50) 
+                    : settings?.daily_limit || 50}
+                </span>
+                <p className="text-xs text-muted-foreground">msg/dia</p>
+              </div>
+              
+              <div className="bg-secondary/30 rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center gap-1.5 text-green-400 mb-1">
+                  <Send className="w-4 h-4" />
+                  <span className="text-sm font-medium">Hoje</span>
+                </div>
+                <span className="text-xl font-bold">{settings?.messages_sent_today || 0}</span>
+                <p className="text-xs text-muted-foreground">enviadas</p>
+              </div>
+              
+              <div className="bg-secondary/30 rounded-lg p-3 text-center">
+                <div className="flex items-center justify-center gap-1.5 text-orange-400 mb-1">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-sm font-medium">Horário</span>
+                </div>
+                <span className="text-xl font-bold">{settings?.allowed_start_hour || 8}h-{settings?.allowed_end_hour || 20}h</span>
+                <p className="text-xs text-muted-foreground">permitido</p>
+              </div>
+            </div>
           </div>
 
           {/* New Campaign Button */}
@@ -1232,6 +1329,349 @@ export default function MarketingPanel() {
 
           <Button variant="hero" onClick={() => setShowContactsModal(false)} className="w-full h-11">
             Concluído
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Protection Settings Modal */}
+      <Dialog open={showProtectionModal} onOpenChange={setShowProtectionModal}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <Shield className="w-6 h-6 text-green-500" />
+              Proteção Anti-Bloqueio
+            </DialogTitle>
+            <DialogDescription className="text-base">Configure as proteções para evitar bloqueio do seu número</DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Delay Settings */}
+            <div className="space-y-4">
+              <h4 className="font-semibold flex items-center gap-2">
+                <Timer className="w-4 h-4 text-primary" />
+                Intervalo entre Mensagens
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-muted-foreground block mb-2">Mínimo (segundos)</label>
+                  <Input
+                    type="number"
+                    min={5}
+                    max={60}
+                    value={settings?.min_delay_seconds || 8}
+                    onChange={(e) => updateSettings({ min_delay_seconds: Number(e.target.value) })}
+                    className="h-11"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground block mb-2">Máximo (segundos)</label>
+                  <Input
+                    type="number"
+                    min={10}
+                    max={120}
+                    value={settings?.max_delay_seconds || 20}
+                    onChange={(e) => updateSettings({ max_delay_seconds: Number(e.target.value) })}
+                    className="h-11"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Delay aleatório entre {settings?.min_delay_seconds || 8}s e {settings?.max_delay_seconds || 20}s simula comportamento humano</p>
+            </div>
+
+            {/* Pause Settings */}
+            <div className="space-y-4">
+              <h4 className="font-semibold flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" />
+                Pausas Automáticas
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-muted-foreground block mb-2">Pausar a cada X msg</label>
+                  <Input
+                    type="number"
+                    min={5}
+                    max={50}
+                    value={settings?.pause_every_n_messages || 10}
+                    onChange={(e) => updateSettings({ pause_every_n_messages: Number(e.target.value) })}
+                    className="h-11"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground block mb-2">Duração pausa (seg)</label>
+                  <Input
+                    type="number"
+                    min={10}
+                    max={300}
+                    value={settings?.pause_duration_seconds || 30}
+                    onChange={(e) => updateSettings({ pause_duration_seconds: Number(e.target.value) })}
+                    className="h-11"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Daily Limit */}
+            <div className="space-y-4">
+              <h4 className="font-semibold flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                Limite Diário e Aquecimento
+              </h4>
+              <div>
+                <label className="text-sm text-muted-foreground block mb-2">Limite máximo por dia</label>
+                <Input
+                  type="number"
+                  min={10}
+                  max={500}
+                  value={settings?.daily_limit || 50}
+                  onChange={(e) => updateSettings({ daily_limit: Number(e.target.value) })}
+                  className="h-11"
+                />
+              </div>
+              <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+                <div>
+                  <span className="font-medium">Aquecimento Progressivo</span>
+                  <p className="text-xs text-muted-foreground">Aumenta limite gradualmente em 5 dias</p>
+                </div>
+                <button
+                  onClick={() => updateSettings({ warmup_enabled: !settings?.warmup_enabled })}
+                  className={`w-12 h-6 rounded-full transition-colors relative ${
+                    settings?.warmup_enabled ? 'bg-green-500' : 'bg-secondary'
+                  }`}
+                >
+                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${
+                    settings?.warmup_enabled ? 'left-6' : 'left-0.5'
+                  }`} />
+                </button>
+              </div>
+              {settings?.warmup_enabled && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                  <p className="text-sm text-green-400">
+                    <strong>Dia {settings?.warmup_day || 1}/5:</strong> Limite atual de {getWarmupLimit(settings?.warmup_day || 1, settings?.daily_limit || 50)} mensagens
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Progressão: 20 → 35 → 50 → 75 → {settings?.daily_limit || 100} msg/dia
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Allowed Hours */}
+            <div className="space-y-4">
+              <h4 className="font-semibold flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" />
+                Horário Permitido
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-muted-foreground block mb-2">Início</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={settings?.allowed_start_hour || 8}
+                    onChange={(e) => updateSettings({ allowed_start_hour: Number(e.target.value) })}
+                    className="h-11"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground block mb-2">Fim</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={24}
+                    value={settings?.allowed_end_hour || 20}
+                    onChange={(e) => updateSettings({ allowed_end_hour: Number(e.target.value) })}
+                    className="h-11"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Envio só permitido entre {settings?.allowed_start_hour || 8}h e {settings?.allowed_end_hour || 20}h</p>
+            </div>
+
+            {/* Error Detection */}
+            <div className="space-y-4">
+              <h4 className="font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-primary" />
+                Detecção de Erros
+              </h4>
+              <div>
+                <label className="text-sm text-muted-foreground block mb-2">Pausar após X erros consecutivos</label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={settings?.max_consecutive_errors || 3}
+                  onChange={(e) => updateSettings({ max_consecutive_errors: Number(e.target.value) })}
+                  className="h-11"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Pausa automática protege contra bloqueios em cascata</p>
+            </div>
+          </div>
+
+          <Button variant="hero" onClick={() => setShowProtectionModal(false)} className="w-full h-11">
+            Concluído
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Documentation Modal */}
+      <Dialog open={showDocsModal} onOpenChange={setShowDocsModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <BookOpen className="w-6 h-6 text-primary" />
+              Guia de Proteção Anti-Bloqueio
+            </DialogTitle>
+            <DialogDescription className="text-base">Entenda como o sistema protege seu número</DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Strategy Overview */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-5">
+              <h4 className="font-bold text-lg mb-3 flex items-center gap-2">
+                <Shield className="w-5 h-5 text-primary" />
+                Como Funciona a Proteção
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                O sistema implementa múltiplas camadas de proteção que simulam o comportamento humano 
+                e respeitam os limites do WhatsApp para evitar bloqueios.
+              </p>
+            </div>
+
+            {/* Features */}
+            <div className="grid gap-4">
+              <div className="border border-border rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                    <Timer className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <h5 className="font-semibold mb-1">Delays Inteligentes (8-20s)</h5>
+                    <p className="text-sm text-muted-foreground">
+                      Intervalos aleatórios entre mensagens simulam digitação humana. 
+                      Humanos não enviam mensagens a cada 1 segundo.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-border rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <h5 className="font-semibold mb-1">Pausas Automáticas</h5>
+                    <p className="text-sm text-muted-foreground">
+                      A cada 10 mensagens, o sistema faz uma pausa de 30 segundos. 
+                      Isso imita o comportamento de "descanso" natural.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-border rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                    <TrendingUp className="w-5 h-5 text-green-400" />
+                  </div>
+                  <div>
+                    <h5 className="font-semibold mb-1">Aquecimento Progressivo (5 dias)</h5>
+                    <p className="text-sm text-muted-foreground">
+                      Dia 1: 20 msg → Dia 2: 35 msg → Dia 3: 50 msg → Dia 4: 75 msg → Dia 5+: limite total.
+                      Números novos precisam de aquecimento gradual.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-border rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <div>
+                    <h5 className="font-semibold mb-1">Horário Comercial (8h-20h)</h5>
+                    <p className="text-sm text-muted-foreground">
+                      Envios bloqueados fora do horário comercial. 
+                      Mensagens às 3h da manhã são suspeitas para o algoritmo.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-border rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <h5 className="font-semibold mb-1">Detecção de Erros</h5>
+                    <p className="text-sm text-muted-foreground">
+                      Se 3 mensagens seguidas falharem, a campanha é pausada automaticamente. 
+                      Isso evita bloqueio em cascata quando algo está errado.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Best Practices */}
+            <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-5">
+              <h4 className="font-bold text-lg mb-3 flex items-center gap-2 text-green-400">
+                <CheckCircle className="w-5 h-5" />
+                Boas Práticas
+              </h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  <span>Use listas de contatos que já interagiram com você (clientes, leads)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  <span>Personalize mensagens com o nome do destinatário usando {"{{nome}}"}</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  <span>Mantenha o limite diário baixo nas primeiras semanas</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  <span>Evite enviar para números desconhecidos ou comprados</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* What NOT to do */}
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-5">
+              <h4 className="font-bold text-lg mb-3 flex items-center gap-2 text-red-400">
+                <XCircle className="w-5 h-5" />
+                O Que NÃO Fazer
+              </h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <span>Enviar para listas compradas ou de números desconhecidos</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <span>Reduzir os delays abaixo de 8 segundos</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <span>Enviar centenas de mensagens no primeiro dia</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <span>Ignorar campanhas pausadas - investigue o problema primeiro</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <Button variant="hero" onClick={() => setShowDocsModal(false)} className="w-full h-11">
+            Entendido
           </Button>
         </DialogContent>
       </Dialog>
