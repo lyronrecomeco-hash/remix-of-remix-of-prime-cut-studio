@@ -286,22 +286,41 @@ const LeaveManagement = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-full overflow-hidden">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Palmtree className="w-6 h-6 text-green-500" />
-            Gestão de Folgas e Férias
+    <div className="space-y-4 max-w-full overflow-hidden">
+      {/* Header com Filtros Integrados */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Palmtree className="w-5 h-5 sm:w-6 sm:h-6 text-green-500" />
+            Folgas e Férias
           </h2>
-          <p className="text-muted-foreground text-sm">
-            Gerencie as ausências dos barbeiros
-          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="bg-secondary px-2 py-1.5 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">Status</option>
+              <option value="pending">Pendentes</option>
+              <option value="approved">Aprovados</option>
+              <option value="rejected">Rejeitados</option>
+            </select>
+            <select
+              value={filterBarber}
+              onChange={(e) => setFilterBarber(e.target.value)}
+              className="bg-secondary px-2 py-1.5 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">Barbeiro</option>
+              {barbers.map(barber => (
+                <option key={barber.id} value={barber.id}>{barber.name}</option>
+              ))}
+            </select>
+            <Button onClick={openNewModal} size="sm">
+              <Plus className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline">Nova</span>
+            </Button>
+          </div>
         </div>
-        <Button onClick={openNewModal}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nova Folga
-        </Button>
       </div>
 
       {/* Stats */}
@@ -420,33 +439,8 @@ const LeaveManagement = () => {
         </div>
       </motion.div>
 
-      {/* Filters */}
-      <div className="glass-card rounded-xl p-4 flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Filtros:</span>
-        </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="bg-secondary px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <option value="all">Todos os Status</option>
-          <option value="pending">Pendentes</option>
-          <option value="approved">Aprovados</option>
-          <option value="rejected">Rejeitados</option>
-        </select>
-        <select
-          value={filterBarber}
-          onChange={(e) => setFilterBarber(e.target.value)}
-          className="bg-secondary px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          <option value="all">Todos os Barbeiros</option>
-          {barbers.map(barber => (
-            <option key={barber.id} value={barber.id}>{barber.name}</option>
-          ))}
-        </select>
-      </div>
+      {/* Divisor visual */}
+      <div className="border-t border-border/30" />
 
       {/* Leaves List */}
       <div className="space-y-3">
