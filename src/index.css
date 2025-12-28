@@ -352,6 +352,16 @@ img {
   overscroll-behavior-y: contain;
 }
 
+/* Hidden scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* GPU acceleration for smooth animations */
 .gpu-accelerated {
   transform: translateZ(0);

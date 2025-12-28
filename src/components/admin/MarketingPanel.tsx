@@ -565,47 +565,47 @@ export default function MarketingPanel() {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full min-h-0 max-w-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-3">
-            <Megaphone className="w-7 h-7 text-primary" />
+          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2 sm:gap-3">
+            <Megaphone className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
             Marketing
           </h2>
-          <p className="text-base text-muted-foreground">Disparo em massa via WhatsApp</p>
+          <p className="text-sm sm:text-base text-muted-foreground">Disparo em massa via WhatsApp</p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {settings?.is_enabled && (
-            <Button variant="outline" onClick={() => setShowSettingsModal(true)} className="h-10">
+            <Button variant="outline" onClick={() => setShowSettingsModal(true)} className="h-9 sm:h-10 px-2 sm:px-4">
               <Settings className="w-4 h-4" />
             </Button>
           )}
           <button
             onClick={toggleMarketing}
-            className={`w-16 h-8 rounded-full transition-colors relative ${
+            className={`w-14 sm:w-16 h-7 sm:h-8 rounded-full transition-colors relative ${
               settings?.is_enabled ? 'bg-primary' : 'bg-secondary'
             }`}
           >
-            <div className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${
-              settings?.is_enabled ? 'left-9' : 'left-1'
+            <div className={`absolute top-0.5 sm:top-1 w-5 sm:w-6 h-5 sm:h-6 rounded-full bg-white transition-all ${
+              settings?.is_enabled ? 'left-7 sm:left-9' : 'left-1'
             }`} />
           </button>
         </div>
       </div>
 
       {!settings?.is_enabled ? (
-        <div className="glass-card rounded-2xl p-12 text-center">
+        <div className="glass-card rounded-2xl p-6 sm:p-12 text-center">
           <div className="opacity-60 pointer-events-none select-none">
-            <Megaphone className="w-20 h-20 text-muted-foreground mx-auto mb-6" />
-            <h3 className="text-2xl font-bold mb-3">Modo Marketing Desativado</h3>
-            <p className="text-lg text-muted-foreground mb-6">
+            <Megaphone className="w-16 sm:w-20 h-16 sm:h-20 text-muted-foreground mx-auto mb-4 sm:mb-6" />
+            <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3">Modo Marketing Desativado</h3>
+            <p className="text-sm sm:text-lg text-muted-foreground mb-4 sm:mb-6">
               Ative o modo Marketing para enviar mensagens em massa via WhatsApp.
             </p>
           </div>
-          <Button variant="hero" size="lg" onClick={toggleMarketing} className="mt-4 h-12 px-8">
-            <Power className="w-5 h-5" />
+          <Button variant="hero" size="lg" onClick={toggleMarketing} className="mt-2 sm:mt-4 h-10 sm:h-12 px-6 sm:px-8">
+            <Power className="w-4 sm:w-5 h-4 sm:h-5" />
             Ativar Marketing
           </Button>
         </div>
@@ -620,76 +620,76 @@ export default function MarketingPanel() {
           </div>
 
           {/* Anti-Blocking Protection Status */}
-          <div className="glass-card rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
+          <div className="glass-card rounded-xl p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
                   <Shield className="w-5 h-5 text-green-500" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-base">Proteção Anti-Bloqueio</h3>
-                  <p className="text-sm text-muted-foreground">Sistema ativo protegendo seu número</p>
+                  <h3 className="font-semibold text-sm sm:text-base">Proteção Anti-Bloqueio</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Sistema ativo protegendo seu número</p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setShowDocsModal(true)} className="h-9">
-                  <BookOpen className="w-4 h-4 mr-1.5" />
-                  Guia
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button variant="outline" size="sm" onClick={() => setShowDocsModal(true)} className="h-8 sm:h-9 flex-1 sm:flex-none">
+                  <BookOpen className="w-4 h-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Guia</span>
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowProtectionModal(true)} className="h-9">
-                  <Settings className="w-4 h-4 mr-1.5" />
-                  Configurar
+                <Button variant="outline" size="sm" onClick={() => setShowProtectionModal(true)} className="h-8 sm:h-9 flex-1 sm:flex-none">
+                  <Settings className="w-4 h-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Configurar</span>
                 </Button>
               </div>
             </div>
             
             {/* Status Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-secondary/30 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center gap-1.5 text-primary mb-1">
-                  <TrendingUp className="w-4 h-4" />
-                  <span className="text-sm font-medium">Dia</span>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+              <div className="bg-secondary/30 rounded-lg p-2 sm:p-3 text-center">
+                <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-primary mb-1">
+                  <TrendingUp className="w-3 sm:w-4 h-3 sm:h-4" />
+                  <span className="text-xs sm:text-sm font-medium">Dia</span>
                 </div>
-                <span className="text-xl font-bold">{settings?.warmup_day || 1}/5</span>
-                <p className="text-xs text-muted-foreground">Aquecimento</p>
+                <span className="text-lg sm:text-xl font-bold">{settings?.warmup_day || 1}/5</span>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">Aquecimento</p>
               </div>
               
-              <div className="bg-secondary/30 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center gap-1.5 text-blue-400 mb-1">
-                  <Zap className="w-4 h-4" />
-                  <span className="text-sm font-medium">Limite</span>
+              <div className="bg-secondary/30 rounded-lg p-2 sm:p-3 text-center">
+                <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-blue-400 mb-1">
+                  <Zap className="w-3 sm:w-4 h-3 sm:h-4" />
+                  <span className="text-xs sm:text-sm font-medium">Limite</span>
                 </div>
-                <span className="text-xl font-bold">
+                <span className="text-lg sm:text-xl font-bold">
                   {settings?.warmup_enabled 
                     ? getWarmupLimit(settings?.warmup_day || 1, settings?.daily_limit || 50) 
                     : settings?.daily_limit || 50}
                 </span>
-                <p className="text-xs text-muted-foreground">msg/dia</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">msg/dia</p>
               </div>
               
-              <div className="bg-secondary/30 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center gap-1.5 text-green-400 mb-1">
-                  <Send className="w-4 h-4" />
-                  <span className="text-sm font-medium">Hoje</span>
+              <div className="bg-secondary/30 rounded-lg p-2 sm:p-3 text-center">
+                <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-green-400 mb-1">
+                  <Send className="w-3 sm:w-4 h-3 sm:h-4" />
+                  <span className="text-xs sm:text-sm font-medium">Hoje</span>
                 </div>
-                <span className="text-xl font-bold">{settings?.messages_sent_today || 0}</span>
-                <p className="text-xs text-muted-foreground">enviadas</p>
+                <span className="text-lg sm:text-xl font-bold">{settings?.messages_sent_today || 0}</span>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">enviadas</p>
               </div>
               
-              <div className="bg-secondary/30 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center gap-1.5 text-orange-400 mb-1">
-                  <Clock className="w-4 h-4" />
-                  <span className="text-sm font-medium">Horário</span>
+              <div className="bg-secondary/30 rounded-lg p-2 sm:p-3 text-center">
+                <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-orange-400 mb-1">
+                  <Clock className="w-3 sm:w-4 h-3 sm:h-4" />
+                  <span className="text-xs sm:text-sm font-medium">Horário</span>
                 </div>
-                <span className="text-xl font-bold">{settings?.allowed_start_hour || 8}h-{settings?.allowed_end_hour || 20}h</span>
-                <p className="text-xs text-muted-foreground">permitido</p>
+                <span className="text-base sm:text-xl font-bold">{settings?.allowed_start_hour || 8}h-{settings?.allowed_end_hour || 20}h</span>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">permitido</p>
               </div>
             </div>
           </div>
 
           {/* New Campaign Button */}
-          <Button variant="hero" size="lg" onClick={() => setShowNewCampaignModal(true)} className="w-full h-14 text-lg">
-            <Plus className="w-5 h-5" />
+          <Button variant="hero" size="lg" onClick={() => setShowNewCampaignModal(true)} className="w-full h-12 sm:h-14 text-base sm:text-lg">
+            <Plus className="w-4 sm:w-5 h-4 sm:h-5" />
             Nova Campanha
           </Button>
 

@@ -1476,7 +1476,7 @@ const AdminPanel = () => {
 
       {/* Sidebar Desktop */}
       {menuStyle === 'sidebar' && (
-        <aside className={`hidden lg:flex flex-col bg-sidebar/95 backdrop-blur-sm border-r border-sidebar-border relative z-10 h-screen sticky top-0 transition-all duration-300 ${
+        <aside className={`hidden lg:flex flex-col bg-sidebar/95 backdrop-blur-sm border-r border-sidebar-border relative z-10 h-screen sticky top-0 transition-all duration-300 overflow-hidden ${
           isSidebarCollapsed ? 'w-[68px]' : 'w-64'
         }`}>
           <div className={`p-4 ${isSidebarCollapsed ? 'px-3' : 'p-6'}`}>
@@ -1517,7 +1517,7 @@ const AdminPanel = () => {
             </div>
           )}
 
-          <nav className={`flex-1 ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
+          <nav className={`flex-1 overflow-y-auto scrollbar-hide ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
             {menuItems.map((item) => (
               <div key={item.id} className="relative group">
                 <button
@@ -1596,7 +1596,7 @@ const AdminPanel = () => {
                 </button>
               </div>
 
-              <nav className="flex-1 px-3 sm:px-4 overflow-y-auto admin-scroll-container">
+              <nav className="flex-1 px-3 sm:px-4 overflow-y-auto scrollbar-hide">
                 {menuItems.map((item) => (
                   <button
                     key={item.id}
