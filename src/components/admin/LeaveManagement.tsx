@@ -58,6 +58,7 @@ const LeaveManagement = () => {
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showRegisteredModal, setShowRegisteredModal] = useState(false);
   const [editingLeave, setEditingLeave] = useState<Leave | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterBarber, setFilterBarber] = useState<string>('all');
@@ -295,6 +296,7 @@ const LeaveManagement = () => {
             Folgas e Férias
           </h2>
           <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="w-4 h-4 text-muted-foreground hidden sm:block" />
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -315,6 +317,14 @@ const LeaveManagement = () => {
                 <option key={barber.id} value={barber.id}>{barber.name}</option>
               ))}
             </select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRegisteredModal(true)}
+            >
+              <span className="sm:hidden">Lista</span>
+              <span className="hidden sm:inline">Folgas registradas</span>
+            </Button>
             <Button onClick={openNewModal} size="sm">
               <Plus className="w-4 h-4 sm:mr-1" />
               <span className="hidden sm:inline">Nova</span>
@@ -439,107 +449,143 @@ const LeaveManagement = () => {
         </div>
       </motion.div>
 
-      {/* Divisor visual */}
-      <div className="border-t border-border/30" />
-
-      {/* Leaves List */}
-      <div className="space-y-3">
-        {isLoading ? (
-          <div className="text-center py-8 text-muted-foreground">Carregando...</div>
-        ) : filteredLeaves.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            Nenhuma folga encontrada
-          </div>
-        ) : (
-          filteredLeaves.map((leave, index) => {
-            const typeConfig = leaveTypeConfig[leave.leave_type as keyof typeof leaveTypeConfig];
-            const statusCfg = statusConfig[leave.status as keyof typeof statusConfig];
-            const duration = differenceInDays(parseISO(leave.end_date), parseISO(leave.start_date)) + 1;
-            const TypeIcon = typeConfig.icon;
-
-            return (
-              <motion.div
-                key={leave.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="glass-card rounded-xl p-4"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <div className={`w-12 h-12 rounded-xl ${typeConfig.color.split(' ')[0]} flex items-center justify-center flex-shrink-0`}>
-                    <TypeIcon className={`w-6 h-6 ${typeConfig.color.split(' ')[1]}`} />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold">{getBarberName(leave.barber_id)}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${typeConfig.color}`}>
-                        {typeConfig.label}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${statusCfg.color}`}>
-                        {statusCfg.label}
-                      </span>
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {format(parseISO(leave.start_date), "dd/MM/yyyy")} 
-                      {leave.start_date !== leave.end_date && (
-                        <> até {format(parseISO(leave.end_date), "dd/MM/yyyy")}</>
-                      )}
-                      <span className="ml-2">({duration} dia{duration > 1 ? 's' : ''})</span>
-                    </div>
-                    {leave.reason && (
-                      <p className="text-sm text-muted-foreground mt-1 italic">
-                        "{leave.reason}"
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {leave.status === 'pending' && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleApprove(leave.id)}
-                          className="text-green-500 border-green-500/30 hover:bg-green-500/10"
-                        >
-                          <Check className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleReject(leave.id)}
-                          className="text-red-500 border-red-500/30 hover:bg-red-500/10"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(leave)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(leave.id)}
-                      className="text-red-500 border-red-500/30 hover:bg-red-500/10"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })
-        )}
+      {/* Acesso rápido à lista (sem estender o layout) */}
+      <div className="glass-card rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-semibold">Folgas registradas</h3>
+          <p className="text-sm text-muted-foreground truncate">
+            {isLoading ? 'Carregando…' : `${filteredLeaves.length} registro(s) com os filtros atuais`}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setShowRegisteredModal(true)}>
+          Ver lista
+        </Button>
       </div>
 
-      {/* Modal */}
+
+      {/* Modais */}
       <AnimatePresence>
+        {showRegisteredModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowRegisteredModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.98, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.98, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="glass-card rounded-2xl p-4 sm:p-6 w-full max-w-3xl"
+            >
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div className="min-w-0">
+                  <h3 className="text-lg font-semibold truncate">Folgas registradas</h3>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {filterStatus === 'all' ? 'Todos os status' : `Status: ${statusConfig[filterStatus as keyof typeof statusConfig]?.label || filterStatus}`} • {filterBarber === 'all' ? 'Todos os barbeiros' : `Barbeiro: ${getBarberName(filterBarber)}`}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setShowRegisteredModal(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="max-h-[70vh] overflow-y-auto scrollbar-hide pr-1">
+                <div className="space-y-3">
+                  {isLoading ? (
+                    <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+                  ) : filteredLeaves.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Nenhuma folga encontrada
+                    </div>
+                  ) : (
+                    filteredLeaves.map((leave, index) => {
+                      const typeConfig = leaveTypeConfig[leave.leave_type as keyof typeof leaveTypeConfig];
+                      const statusCfg = statusConfig[leave.status as keyof typeof statusConfig];
+                      const duration = differenceInDays(parseISO(leave.end_date), parseISO(leave.start_date)) + 1;
+                      const TypeIcon = typeConfig.icon;
+
+                      return (
+                        <motion.div
+                          key={leave.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.02 }}
+                          className="glass-card rounded-xl p-4"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                            <div className={`w-12 h-12 rounded-xl ${typeConfig.color.split(' ')[0]} flex items-center justify-center flex-shrink-0`}>
+                              <TypeIcon className={`w-6 h-6 ${typeConfig.color.split(' ')[1]}`} />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold">{getBarberName(leave.barber_id)}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs ${typeConfig.color}`}>
+                                  {typeConfig.label}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs ${statusCfg.color}`}>
+                                  {statusCfg.label}
+                                </span>
+                              </div>
+                              <div className="text-sm text-muted-foreground mt-1">
+                                {format(parseISO(leave.start_date), "dd/MM/yyyy")}
+                                {leave.start_date !== leave.end_date && (
+                                  <> até {format(parseISO(leave.end_date), "dd/MM/yyyy")}</>
+                                )}
+                                <span className="ml-2">({duration} dia{duration > 1 ? 's' : ''})</span>
+                              </div>
+                              {leave.reason && (
+                                <p className="text-sm text-muted-foreground mt-1 italic">"{leave.reason}"</p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {leave.status === 'pending' && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleApprove(leave.id)}
+                                    className="text-green-500 border-green-500/30 hover:bg-green-500/10"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleReject(leave.id)}
+                                    className="text-red-500 border-red-500/30 hover:bg-red-500/10"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                              <Button size="sm" variant="outline" onClick={() => handleEdit(leave)}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDelete(leave.id)}
+                                className="text-red-500 border-red-500/30 hover:bg-red-500/10"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {showModal && (
           <motion.div
             initial={{ opacity: 0 }}

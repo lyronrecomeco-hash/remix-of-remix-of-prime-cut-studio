@@ -1476,7 +1476,7 @@ const AdminPanel = () => {
 
       {/* Sidebar Desktop */}
       {menuStyle === 'sidebar' && (
-        <aside className={`hidden lg:flex flex-col bg-sidebar/95 backdrop-blur-sm border-r border-sidebar-border relative z-10 h-screen sticky top-0 transition-all duration-300 overflow-hidden ${
+        <aside className={`hidden lg:flex flex-col bg-sidebar/95 backdrop-blur-sm border-r border-sidebar-border relative z-10 h-screen sticky top-0 transition-all duration-300 overflow-hidden min-h-0 ${
           isSidebarCollapsed ? 'w-[68px]' : 'w-64'
         }`}>
           <div className={`p-4 ${isSidebarCollapsed ? 'px-3' : 'p-6'}`}>
@@ -1517,7 +1517,7 @@ const AdminPanel = () => {
             </div>
           )}
 
-          <nav className={`flex-1 overflow-y-auto scrollbar-hide ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
+          <nav className={`flex-1 min-h-0 overflow-y-auto scrollbar-hide ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
             {menuItems.map((item) => (
               <div key={item.id} className="relative group">
                 <button
@@ -1579,7 +1579,7 @@ const AdminPanel = () => {
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed left-0 top-0 bottom-0 w-[280px] max-w-[85vw] bg-sidebar/95 backdrop-blur-md border-r border-sidebar-border z-50 lg:hidden flex flex-col"
+              className="fixed left-0 top-0 bottom-0 w-[280px] max-w-[85vw] bg-sidebar/95 backdrop-blur-md border-r border-sidebar-border z-50 lg:hidden flex flex-col min-h-0"
             >
               <div className="p-4 sm:p-6 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
@@ -1596,7 +1596,7 @@ const AdminPanel = () => {
                 </button>
               </div>
 
-              <nav className="flex-1 px-3 sm:px-4 overflow-y-auto scrollbar-hide">
+              <nav className="flex-1 min-h-0 px-3 sm:px-4 overflow-y-auto scrollbar-hide">
                 {menuItems.map((item) => (
                   <button
                     key={item.id}
