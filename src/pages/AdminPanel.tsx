@@ -46,6 +46,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { useApp, Appointment, AppContext } from '@/contexts/AppContext';
 import { useFeedback, Feedback } from '@/contexts/FeedbackContext';
 import { useGallery } from '@/contexts/GalleryContext';
@@ -900,159 +901,186 @@ const AdminPanel = () => {
             )}
 
             {/* Availability Modal */}
-            <AnimatePresence>
-              {showAvailabilityModal && (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
-                    onClick={() => setShowAvailabilityModal(false)}
-                  />
-                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="w-full max-w-2xl bg-card border border-border rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
-                    >
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-xl font-bold">Disponibilidade do Profissional</h3>
-                      <button onClick={() => setShowAvailabilityModal(false)} className="p-2 hover:bg-secondary rounded-lg">
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="text-sm text-muted-foreground block mb-1">Profissional</label>
-                        <select
-                          value={selectedBarberForAvailability}
-                          onChange={(e) => setSelectedBarberForAvailability(e.target.value)}
-                          className="w-full bg-secondary px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            {typeof document !== 'undefined' &&
+              createPortal(
+                <AnimatePresence>
+                  {showAvailabilityModal && (
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+                        onClick={() => setShowAvailabilityModal(false)}
+                      />
+                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="w-full max-w-2xl bg-card border border-border rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
                         >
-                          {barbers.map((barber) => (
-                            <option key={barber.id} value={barber.id}>{barber.name}</option>
-                          ))}
-                        </select>
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold">Disponibilidade do Profissional</h3>
+                            <button onClick={() => setShowAvailabilityModal(false)} className="p-2 hover:bg-secondary rounded-lg">
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                              <label className="text-sm text-muted-foreground block mb-1">Profissional</label>
+                              <select
+                                value={selectedBarberForAvailability}
+                                onChange={(e) => setSelectedBarberForAvailability(e.target.value)}
+                                className="w-full bg-secondary px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                              >
+                                {barbers.map((barber) => (
+                                  <option key={barber.id} value={barber.id}>
+                                    {barber.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-sm text-muted-foreground block mb-1">Data</label>
+                              <Input type="date" value={availabilityDate} onChange={(e) => setAvailabilityDate(e.target.value)} />
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 mb-4">
+                            <Button variant="outline" size="sm" onClick={handleSelectAllSlots}>
+                              Selecionar Todos
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={handleClearAllSlots}>
+                              Limpar Todos
+                            </Button>
+                          </div>
+
+                          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-4">
+                            {allPossibleSlots.map((time) => (
+                              <button
+                                key={time}
+                                onClick={() => handleToggleTimeSlot(time)}
+                                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                  selectedTimeSlots.includes(time)
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+                                }`}
+                              >
+                                {time}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center justify-between pt-4 border-t border-border">
+                            <p className="text-sm text-muted-foreground">{selectedTimeSlots.length} horário(s) selecionado(s)</p>
+                            <Button
+                              variant="hero"
+                              onClick={() => {
+                                handleSaveAvailability();
+                                setShowAvailabilityModal(false);
+                              }}
+                            >
+                              <Check className="w-4 h-4" />
+                              Salvar
+                            </Button>
+                          </div>
+                        </motion.div>
                       </div>
-                      <div>
-                        <label className="text-sm text-muted-foreground block mb-1">Data</label>
-                        <Input
-                          type="date"
-                          value={availabilityDate}
-                          onChange={(e) => setAvailabilityDate(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 mb-4">
-                      <Button variant="outline" size="sm" onClick={handleSelectAllSlots}>Selecionar Todos</Button>
-                      <Button variant="outline" size="sm" onClick={handleClearAllSlots}>Limpar Todos</Button>
-                    </div>
-
-                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-4">
-                      {allPossibleSlots.map((time) => (
-                        <button
-                          key={time}
-                          onClick={() => handleToggleTimeSlot(time)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                            selectedTimeSlots.includes(time)
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
-                          }`}
-                        >
-                          {time}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-4 border-t border-border">
-                      <p className="text-sm text-muted-foreground">{selectedTimeSlots.length} horário(s) selecionado(s)</p>
-                      <Button variant="hero" onClick={() => { handleSaveAvailability(); setShowAvailabilityModal(false); }}>
-                        <Check className="w-4 h-4" />
-                        Salvar
-                      </Button>
-                    </div>
-                  </motion.div>
-                </div>
-                </>
+                    </>
+                  )}
+                </AnimatePresence>,
+                document.body
               )}
-            </AnimatePresence>
 
             {/* Block Modal */}
-            <AnimatePresence>
-              {showBlockModal && (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
-                    onClick={() => setShowBlockModal(false)}
-                  />
-                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="w-full max-w-lg bg-card border border-border rounded-2xl p-6"
-                    >
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-xl font-bold">Bloquear Horários</h3>
-                      <button onClick={() => setShowBlockModal(false)} className="p-2 hover:bg-secondary rounded-lg">
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm text-muted-foreground block mb-1">Data</label>
-                          <Input
-                            type="date"
-                            value={blockSlotForm.date}
-                            onChange={(e) => setBlockSlotForm(prev => ({ ...prev, date: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm text-muted-foreground block mb-1">Motivo</label>
-                          <Input
-                            placeholder="Ex: Reunião"
-                            value={blockSlotForm.reason}
-                            onChange={(e) => setBlockSlotForm(prev => ({ ...prev, reason: e.target.value }))}
-                          />
-                        </div>
+            {typeof document !== 'undefined' &&
+              createPortal(
+                <AnimatePresence>
+                  {showBlockModal && (
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+                        onClick={() => setShowBlockModal(false)}
+                      />
+                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="w-full max-w-lg bg-card border border-border rounded-2xl p-6"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-xl font-bold">Bloquear Horários</h3>
+                            <button onClick={() => setShowBlockModal(false)} className="p-2 hover:bg-secondary rounded-lg">
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+
+                          <p className="text-sm text-muted-foreground mb-6">
+                            Ao adicionar um bloqueio, este intervalo ficará indisponível para novos agendamentos e não aparecerá como horário livre para clientes.
+                          </p>
+
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm text-muted-foreground block mb-1">Data</label>
+                                <Input
+                                  type="date"
+                                  value={blockSlotForm.date}
+                                  onChange={(e) => setBlockSlotForm((prev) => ({ ...prev, date: e.target.value }))}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm text-muted-foreground block mb-1">Motivo</label>
+                                <Input
+                                  placeholder="Ex: Reunião"
+                                  value={blockSlotForm.reason}
+                                  onChange={(e) => setBlockSlotForm((prev) => ({ ...prev, reason: e.target.value }))}
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm text-muted-foreground block mb-1">Início</label>
+                                <Input
+                                  type="time"
+                                  value={blockSlotForm.startTime}
+                                  onChange={(e) => setBlockSlotForm((prev) => ({ ...prev, startTime: e.target.value }))}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm text-muted-foreground block mb-1">Fim</label>
+                                <Input
+                                  type="time"
+                                  value={blockSlotForm.endTime}
+                                  onChange={(e) => setBlockSlotForm((prev) => ({ ...prev, endTime: e.target.value }))}
+                                />
+                              </div>
+                            </div>
+                            <Button
+                              variant="hero"
+                              onClick={() => {
+                                handleAddBlockedSlot();
+                                setShowBlockModal(false);
+                              }}
+                              className="w-full"
+                            >
+                              <Plus className="w-4 h-4" />
+                              Adicionar Bloqueio
+                            </Button>
+                          </div>
+                        </motion.div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm text-muted-foreground block mb-1">Início</label>
-                          <Input
-                            type="time"
-                            value={blockSlotForm.startTime}
-                            onChange={(e) => setBlockSlotForm(prev => ({ ...prev, startTime: e.target.value }))}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm text-muted-foreground block mb-1">Fim</label>
-                          <Input
-                            type="time"
-                            value={blockSlotForm.endTime}
-                            onChange={(e) => setBlockSlotForm(prev => ({ ...prev, endTime: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                      <Button variant="hero" onClick={() => { handleAddBlockedSlot(); setShowBlockModal(false); }} className="w-full">
-                        <Plus className="w-4 h-4" />
-                        Adicionar Bloqueio
-                      </Button>
-                    </div>
-                  </motion.div>
-                </div>
-                </>
+                    </>
+                  )}
+                </AnimatePresence>,
+                document.body
               )}
-            </AnimatePresence>
           </div>
         );
 
