@@ -94,16 +94,16 @@ serve(async (req) => {
       .update({ status: 'sending' })
       .eq('id', campaign_id);
 
-    // Build ChatPro API URL
+    // Build ChatPro API URL - base_endpoint already contains instance_id
     let baseUrl = chatproConfig.base_endpoint.replace(/\/$/, '');
-    let apiUrl: string;
-    if (baseUrl.includes(chatproConfig.instance_id)) {
-      apiUrl = `${baseUrl}/api/v1/send_message`;
-    } else {
-      apiUrl = `${baseUrl}/${chatproConfig.instance_id}/api/v1/send_message`;
+    
+    // Remove instance_id if it's duplicated in base_endpoint
+    if (baseUrl.endsWith(chatproConfig.instance_id)) {
+      baseUrl = baseUrl; // Already correct format: https://v5.chatpro.com.br/chatpro-xxx
     }
-
-    const imageApiUrl = apiUrl.replace('send_message', 'send_image');
+    
+    const apiUrl = `${baseUrl}/api/v1/send_message`;
+    const imageApiUrl = `${baseUrl}/api/v1/send_message_file_from_url`; // Correct endpoint for images with caption
     const delayMs = (settings.delay_between_messages || 3) * 1000;
     
     let sentCount = campaign.sent_count || 0;
