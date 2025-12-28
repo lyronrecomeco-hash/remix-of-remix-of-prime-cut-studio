@@ -46,7 +46,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router-dom';
-import { useApp, Appointment } from '@/contexts/AppContext';
+import { useApp, Appointment, AppContext } from '@/contexts/AppContext';
 import { useFeedback, Feedback } from '@/contexts/FeedbackContext';
 import { useGallery } from '@/contexts/GalleryContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -65,6 +65,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { DollarSign } from 'lucide-react';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/admin/PullToRefreshIndicator';
+import { useContext } from 'react';
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: Calendar },
@@ -82,6 +83,9 @@ const menuItems = [
 ];
 
 const AdminPanel = () => {
+  // Check context availability first to prevent hot reload errors
+  const appContext = useContext(AppContext);
+  
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -100,6 +104,18 @@ const AdminPanel = () => {
   const { notify } = useNotification();
   const { signOut, user, isSuperAdmin } = useAuth();
 
+  // Show loading if context not available (happens during HMR)
+  if (!appContext) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Carregando painel...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Sync sidebar collapsed state
   useEffect(() => {
     localStorage.setItem('sidebar_collapsed', String(isSidebarCollapsed));
@@ -110,7 +126,7 @@ const AdminPanel = () => {
     localStorage.setItem('menu_style', menuStyle);
   }, [menuStyle]);
   
-  // App context
+  // App context (now safe to destructure)
   const {
     appointments,
     confirmAppointment,
@@ -142,7 +158,7 @@ const AdminPanel = () => {
     theme,
     setTheme,
     refreshData,
-  } = useApp();
+  } = appContext;
 
   // Pull-to-refresh
   const handleRefresh = useCallback(async () => {
