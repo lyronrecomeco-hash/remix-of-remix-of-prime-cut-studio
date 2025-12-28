@@ -286,7 +286,7 @@ const LeaveManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full overflow-hidden">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -374,7 +374,7 @@ const LeaveManagement = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1 overflow-x-auto">
           {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
             <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
               {day}
@@ -388,7 +388,7 @@ const LeaveManagement = () => {
             return (
               <div
                 key={index}
-                className={`min-h-[60px] p-1 border border-border/30 rounded-lg ${
+                className={`min-h-[50px] sm:min-h-[60px] p-0.5 sm:p-1 border border-border/30 rounded-lg ${
                   !isCurrentMonth ? 'opacity-30' : ''
                 } ${isToday ? 'ring-2 ring-primary' : ''}`}
               >

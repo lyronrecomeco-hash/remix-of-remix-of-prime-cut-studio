@@ -285,7 +285,7 @@ const BarberPerformance = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-full overflow-hidden">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -336,7 +336,7 @@ const BarberPerformance = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -400,62 +400,65 @@ const BarberPerformance = () => {
       </div>
 
       {/* Charts Row */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Barber Comparison */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="glass-card rounded-xl p-6"
+          className="glass-card rounded-xl p-4 sm:p-6 min-w-0"
         >
-          <h3 className="font-semibold mb-4 flex items-center gap-2">
-            <Award className="w-5 h-5 text-primary" />
+          <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm sm:text-base">
+            <Award className="w-4 sm:w-5 h-4 sm:h-5 text-primary" />
             Comparativo de Barbeiros
           </h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={comparisonData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 20%)" />
-              <XAxis dataKey="name" stroke="hsl(0, 0%, 50%)" fontSize={12} />
-              <YAxis stroke="hsl(0, 0%, 50%)" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(0, 0%, 7%)',
-                  border: '1px solid hsl(43, 30%, 18%)',
-                  borderRadius: '8px',
-                }}
-              />
-              <Bar dataKey="atendimentos" fill="hsl(43, 74%, 49%)" name="Atendimentos" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="w-full overflow-x-auto">
+            <ResponsiveContainer width="100%" height={200} minWidth={280}>
+              <BarChart data={comparisonData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 20%)" />
+                <XAxis dataKey="name" stroke="hsl(0, 0%, 50%)" fontSize={10} />
+                <YAxis stroke="hsl(0, 0%, 50%)" fontSize={10} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(0, 0%, 7%)',
+                    border: '1px solid hsl(43, 30%, 18%)',
+                    borderRadius: '8px',
+                  }}
+                />
+                <Bar dataKey="atendimentos" fill="hsl(43, 74%, 49%)" name="Atendimentos" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </motion.div>
 
-        {/* Revenue Comparison */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="glass-card rounded-xl p-6"
+          className="glass-card rounded-xl p-4 sm:p-6 min-w-0"
         >
-          <h3 className="font-semibold mb-4 flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-green-500" />
+          <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm sm:text-base">
+            <DollarSign className="w-4 sm:w-5 h-4 sm:h-5 text-green-500" />
             Receita por Barbeiro
           </h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={comparisonData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 20%)" />
-              <XAxis dataKey="name" stroke="hsl(0, 0%, 50%)" fontSize={12} />
-              <YAxis stroke="hsl(0, 0%, 50%)" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(0, 0%, 7%)',
-                  border: '1px solid hsl(43, 30%, 18%)',
-                  borderRadius: '8px',
-                }}
-                formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Receita']}
-              />
-              <Bar dataKey="receita" fill="hsl(142, 71%, 45%)" name="Receita (R$)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="w-full overflow-x-auto">
+            <ResponsiveContainer width="100%" height={200} minWidth={280}>
+              <BarChart data={comparisonData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 20%)" />
+                <XAxis dataKey="name" stroke="hsl(0, 0%, 50%)" fontSize={10} />
+                <YAxis stroke="hsl(0, 0%, 50%)" fontSize={10} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(0, 0%, 7%)',
+                    border: '1px solid hsl(43, 30%, 18%)',
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Receita']}
+                />
+                <Bar dataKey="receita" fill="hsl(142, 71%, 45%)" name="Receita (R$)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </motion.div>
       </div>
 
@@ -464,27 +467,29 @@ const BarberPerformance = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
-        className="glass-card rounded-xl p-6"
+        className="glass-card rounded-xl p-4 sm:p-6 min-w-0"
       >
-        <h3 className="font-semibold mb-4 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-primary" />
+        <h3 className="font-semibold mb-4 flex items-center gap-2 text-sm sm:text-base">
+          <TrendingUp className="w-4 sm:w-5 h-4 sm:h-5 text-primary" />
           Atendimentos Diários - {monthNames[selectedMonth]}
         </h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={dailyData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 20%)" />
-            <XAxis dataKey="date" stroke="hsl(0, 0%, 50%)" fontSize={10} />
-            <YAxis stroke="hsl(0, 0%, 50%)" fontSize={12} />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'hsl(0, 0%, 7%)',
-                border: '1px solid hsl(43, 30%, 18%)',
-                borderRadius: '8px',
-              }}
-            />
-            <Line type="monotone" dataKey="count" stroke="hsl(43, 74%, 49%)" strokeWidth={2} dot={false} name="Atendimentos" />
-          </LineChart>
-        </ResponsiveContainer>
+        <div className="w-full overflow-x-auto">
+          <ResponsiveContainer width="100%" height={180} minWidth={400}>
+            <LineChart data={dailyData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 20%)" />
+              <XAxis dataKey="date" stroke="hsl(0, 0%, 50%)" fontSize={9} interval={2} />
+              <YAxis stroke="hsl(0, 0%, 50%)" fontSize={10} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(0, 0%, 7%)',
+                  border: '1px solid hsl(43, 30%, 18%)',
+                  borderRadius: '8px',
+                }}
+              />
+              <Line type="monotone" dataKey="count" stroke="hsl(43, 74%, 49%)" strokeWidth={2} dot={false} name="Atendimentos" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </motion.div>
 
       {/* Radar Chart for Selected Barber */}
