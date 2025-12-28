@@ -141,7 +141,7 @@ interface AppState {
   hasClientAppointments: () => boolean;
 }
 
-const AppContext = createContext<AppState | undefined>(undefined);
+export const AppContext = createContext<AppState | undefined>(undefined);
 
 const defaultShopSettings: ShopSettings = {
   name: 'Barber Studio',
