@@ -1233,30 +1233,31 @@ export default function SettingsPanel() {
 
       case 'templates':
         return (
-          <div className="space-y-3">
-            <h3 className="text-lg font-semibold">Templates de Mensagem</h3>
-            <div className="space-y-2">
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold">Templates de Mensagem</h3>
+            <p className="text-base text-muted-foreground">Configure as mensagens automáticas para cada evento.</p>
+            <div className="space-y-3">
               {Object.entries(eventLabels).map(([eventType, label]) => {
                 const template = getTemplateForEvent(eventType);
                 const isExpanded = expandedTemplate === eventType;
 
                 return (
-                  <div key={eventType} className="bg-secondary/30 rounded-lg overflow-hidden">
+                  <div key={eventType} className="bg-secondary/30 rounded-xl overflow-hidden">
                     <button
                       onClick={() => setExpandedTemplate(isExpanded ? null : eventType)}
-                      className="w-full flex items-center justify-between p-3 hover:bg-secondary/50 transition-colors"
+                      className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors"
                     >
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${template?.is_active ? 'bg-green-500' : 'bg-muted'}`} />
-                        <span className="text-sm font-medium">{label}</span>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${template?.is_active ? 'bg-green-500' : 'bg-muted'}`} />
+                        <span className="text-base font-medium">{label}</span>
                       </div>
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                     </button>
 
                     {isExpanded && template && (
-                      <div className="p-3 pt-0 space-y-3">
-                        <div className="flex items-center gap-2 pb-2 border-b border-border">
-                          <span className="text-xs text-muted-foreground">ChatPro:</span>
+                      <div className="p-4 pt-0 space-y-4">
+                        <div className="flex items-center gap-3 pb-3 border-b border-border">
+                          <span className="text-sm text-muted-foreground">ChatPro:</span>
                           <button
                             onClick={() => toggleChatProForEvent(eventType, !template.chatpro_enabled)}
                             className={`w-8 h-4 rounded-full transition-colors relative ${
@@ -1334,40 +1335,47 @@ export default function SettingsPanel() {
 
       case 'api':
         return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">API de Integração</h3>
-            <p className="text-sm text-muted-foreground">
-              Use esta URL para integrar com sistemas externos.
+          <div className="space-y-5">
+            <h3 className="text-xl font-bold">API de Integração</h3>
+            <p className="text-base text-muted-foreground">
+              Use esta URL para integrar com sistemas externos como N8N, Zapier ou Make.
             </p>
             
-            <div className="bg-secondary/50 rounded-lg p-3">
-              <div className="flex items-center justify-between gap-2">
-                <code className="font-mono text-xs break-all flex-1">{apiBaseUrl}</code>
+            <div className="bg-secondary/50 rounded-xl p-4">
+              <label className="text-sm text-muted-foreground block mb-2">URL Base da API</label>
+              <div className="flex items-center justify-between gap-3">
+                <code className="font-mono text-sm break-all flex-1 p-3 bg-background rounded-lg">{apiBaseUrl}</code>
                 <button
                   onClick={() => copyToClipboard(apiBaseUrl, 'URL copiada!')}
-                  className="p-2 hover:bg-secondary rounded-lg transition-colors flex-shrink-0"
+                  className="p-3 hover:bg-secondary rounded-lg transition-colors flex-shrink-0"
                 >
-                  <Copy className="w-4 h-4" />
+                  <Copy className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-              <p className="text-xs font-medium">Endpoints disponíveis:</p>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li className="flex items-center gap-2">
-                  <span className="px-1.5 py-0.5 bg-green-500/20 text-green-500 rounded text-[10px]">GET</span>
-                  /appointments
+            <div className="bg-muted/30 rounded-xl p-4 space-y-3">
+              <p className="text-base font-medium">Endpoints disponíveis:</p>
+              <ul className="text-base text-muted-foreground space-y-2">
+                <li className="flex items-center gap-3">
+                  <span className="px-2 py-1 bg-green-500/20 text-green-500 rounded text-sm font-medium">GET</span>
+                  <span>/appointments</span>
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-500 rounded text-[10px]">POST</span>
-                  /appointments
+                <li className="flex items-center gap-3">
+                  <span className="px-2 py-1 bg-blue-500/20 text-blue-500 rounded text-sm font-medium">POST</span>
+                  <span>/appointments</span>
                 </li>
-                <li className="flex items-center gap-2">
-                  <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-500 rounded text-[10px]">PUT</span>
-                  /appointments/:id
+                <li className="flex items-center gap-3">
+                  <span className="px-2 py-1 bg-amber-500/20 text-amber-500 rounded text-sm font-medium">PUT</span>
+                  <span>/appointments/:id</span>
                 </li>
               </ul>
+            </div>
+            
+            <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+              <p className="text-sm">
+                <strong>Dica:</strong> Configure webhooks via ChatPro para receber notificações de eventos em tempo real.
+              </p>
             </div>
           </div>
         );
@@ -1476,7 +1484,7 @@ export default function SettingsPanel() {
 
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4">
         {/* Menu lateral de categorias - Desktop only */}
-        <div className="hidden lg:flex w-44 flex-shrink-0 flex-col space-y-1.5 overflow-y-auto">
+        <div className="hidden lg:flex w-52 flex-shrink-0 flex-col space-y-2">
           {settingsSections.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection === section.id;
@@ -1484,21 +1492,21 @@ export default function SettingsPanel() {
               <button
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
-                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all text-left ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
                   isActive 
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-card hover:bg-muted/50 border border-border'
                 }`}
               >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span className="font-medium text-sm">{section.label}</span>
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <span className="font-medium text-base">{section.label}</span>
               </button>
             );
           })}
         </div>
 
         {/* Área de conteúdo */}
-        <div className="flex-1 min-h-0 overflow-y-auto bg-card border border-border rounded-xl p-4 lg:p-5">
+        <div className="flex-1 min-h-0 overflow-y-auto bg-card border border-border rounded-xl p-5 lg:p-6">
           {renderSectionContent()}
         </div>
       </div>

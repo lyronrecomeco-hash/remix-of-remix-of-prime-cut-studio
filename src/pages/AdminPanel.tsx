@@ -792,168 +792,68 @@ const AdminPanel = () => {
         );
 
       case 'horarios':
+        const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+        const [showBlockModal, setShowBlockModal] = useState(false);
+        
         return (
           <div>
             <h2 className="text-2xl font-bold mb-6">Gestão de Horários</h2>
             
-            <div className="glass-card rounded-xl p-6 mb-6">
-              <h3 className="font-semibold mb-4">Horário de Funcionamento</h3>
-              <div className="space-y-3">
-                {[
-                  { day: 'Segunda a Sexta', time: shopSettings.hours.weekdays },
-                  { day: 'Sábado', time: shopSettings.hours.saturday },
-                  { day: 'Domingo', time: shopSettings.hours.sunday },
-                ].map((item) => (
-                  <div key={item.day} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                    <span>{item.day}</span>
-                    <span className="text-primary font-medium">{item.time}</span>
-                  </div>
-                ))}
+            {/* Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="glass-card rounded-xl p-6 text-center">
+                <Clock className="w-8 h-8 text-primary mx-auto mb-3" />
+                <h3 className="font-semibold mb-2">Segunda a Sexta</h3>
+                <p className="text-xl text-primary font-bold">{shopSettings.hours.weekdays}</p>
+              </div>
+              <div className="glass-card rounded-xl p-6 text-center">
+                <Clock className="w-8 h-8 text-primary mx-auto mb-3" />
+                <h3 className="font-semibold mb-2">Sábado</h3>
+                <p className="text-xl text-primary font-bold">{shopSettings.hours.saturday}</p>
+              </div>
+              <div className="glass-card rounded-xl p-6 text-center">
+                <Clock className="w-8 h-8 text-primary mx-auto mb-3" />
+                <h3 className="font-semibold mb-2">Intervalo</h3>
+                <p className="text-xl text-primary font-bold">{shopSettings.lunchBreak.start} - {shopSettings.lunchBreak.end}</p>
               </div>
             </div>
 
-            {/* Barber Availability Management */}
-            <div className="glass-card rounded-xl p-6 mb-6">
-              <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-primary" />
-                Disponibilidade do Profissional
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Selecione os horários disponíveis para atendimento em cada dia
-              </p>
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <button
+                onClick={() => setShowAvailabilityModal(true)}
+                className="glass-card rounded-xl p-6 hover:bg-secondary/50 transition-all flex items-center gap-4"
+              >
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-primary" />
+                </div>
+                <div className="text-left">
+                  <h3 className="font-semibold">Disponibilidade do Barbeiro</h3>
+                  <p className="text-sm text-muted-foreground">Configure horários por profissional e data</p>
+                </div>
+                <ChevronRight className="w-5 h-5 ml-auto" />
+              </button>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="text-sm text-muted-foreground block mb-1">Profissional</label>
-                  <select
-                    value={selectedBarberForAvailability}
-                    onChange={(e) => setSelectedBarberForAvailability(e.target.value)}
-                    className="w-full bg-secondary px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    {barbers.map((barber) => (
-                      <option key={barber.id} value={barber.id}>
-                        {barber.name}
-                      </option>
-                    ))}
-                  </select>
+              <button
+                onClick={() => setShowBlockModal(true)}
+                className="glass-card rounded-xl p-6 hover:bg-secondary/50 transition-all flex items-center gap-4"
+              >
+                <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center">
+                  <XCircle className="w-6 h-6 text-destructive" />
                 </div>
-                <div>
-                  <label className="text-sm text-muted-foreground block mb-1">Data</label>
-                  <Input
-                    type="date"
-                    value={availabilityDate}
-                    onChange={(e) => setAvailabilityDate(e.target.value)}
-                  />
+                <div className="text-left">
+                  <h3 className="font-semibold">Bloquear Horários</h3>
+                  <p className="text-sm text-muted-foreground">Bloqueie datas ou horários específicos</p>
                 </div>
-              </div>
-
-              <div className="flex gap-2 mb-4">
-                <Button variant="outline" size="sm" onClick={handleSelectAllSlots}>
-                  Selecionar Todos
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleClearAllSlots}>
-                  Limpar Todos
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 mb-4">
-                {allPossibleSlots.map((time) => (
-                  <button
-                    key={time}
-                    onClick={() => handleToggleTimeSlot(time)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                      selectedTimeSlots.includes(time)
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
-                    }`}
-                  >
-                    {time}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {selectedTimeSlots.length} horário(s) selecionado(s)
-                </p>
-                <Button variant="hero" onClick={handleSaveAvailability}>
-                  <Check className="w-4 h-4" />
-                  Salvar Disponibilidade
-                </Button>
-              </div>
+                <ChevronRight className="w-5 h-5 ml-auto" />
+              </button>
             </div>
 
-            <div className="glass-card rounded-xl p-6 mb-6">
-              <h3 className="font-semibold mb-4">Intervalo para Almoço</h3>
-              <div className="flex items-center gap-4">
-                <input
-                  type="time"
-                  value={shopSettings.lunchBreak.start}
-                  onChange={(e) => updateShopSettings({ 
-                    lunchBreak: { ...shopSettings.lunchBreak, start: e.target.value }
-                  })}
-                  className="bg-secondary px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-                <span>até</span>
-                <input
-                  type="time"
-                  value={shopSettings.lunchBreak.end}
-                  onChange={(e) => updateShopSettings({ 
-                    lunchBreak: { ...shopSettings.lunchBreak, end: e.target.value }
-                  })}
-                  className="bg-secondary px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-            </div>
-
-            <div className="glass-card rounded-xl p-6">
-              <h3 className="font-semibold mb-4">Bloquear Horários</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Data</label>
-                    <Input
-                      type="date"
-                      value={blockSlotForm.date}
-                      onChange={(e) => setBlockSlotForm(prev => ({ ...prev, date: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Motivo</label>
-                    <Input
-                      placeholder="Ex: Reunião"
-                      value={blockSlotForm.reason}
-                      onChange={(e) => setBlockSlotForm(prev => ({ ...prev, reason: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Início</label>
-                    <Input
-                      type="time"
-                      value={blockSlotForm.startTime}
-                      onChange={(e) => setBlockSlotForm(prev => ({ ...prev, startTime: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground block mb-1">Fim</label>
-                    <Input
-                      type="time"
-                      value={blockSlotForm.endTime}
-                      onChange={(e) => setBlockSlotForm(prev => ({ ...prev, endTime: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <Button variant="hero" onClick={handleAddBlockedSlot} className="w-full">
-                  <Plus className="w-4 h-4" />
-                  Adicionar Bloqueio
-                </Button>
-              </div>
-
-              {blockedSlots.length > 0 && (
-                <div className="mt-6 space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">Bloqueios ativos</h4>
+            {/* Blocked Slots List */}
+            {blockedSlots.length > 0 && (
+              <div className="glass-card rounded-xl p-6">
+                <h3 className="font-semibold mb-4">Bloqueios Ativos</h3>
+                <div className="space-y-2">
                   {blockedSlots.map((slot) => (
                     <div key={slot.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
                       <div>
@@ -971,8 +871,159 @@ const AdminPanel = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Availability Modal */}
+            <AnimatePresence>
+              {showAvailabilityModal && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+                    onClick={() => setShowAvailabilityModal(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="fixed inset-4 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-2xl md:w-full bg-card border border-border rounded-2xl p-6 z-50 max-h-[90vh] overflow-y-auto"
+                  >
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold">Disponibilidade do Profissional</h3>
+                      <button onClick={() => setShowAvailabilityModal(false)} className="p-2 hover:bg-secondary rounded-lg">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="text-sm text-muted-foreground block mb-1">Profissional</label>
+                        <select
+                          value={selectedBarberForAvailability}
+                          onChange={(e) => setSelectedBarberForAvailability(e.target.value)}
+                          className="w-full bg-secondary px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          {barbers.map((barber) => (
+                            <option key={barber.id} value={barber.id}>{barber.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-sm text-muted-foreground block mb-1">Data</label>
+                        <Input
+                          type="date"
+                          value={availabilityDate}
+                          onChange={(e) => setAvailabilityDate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 mb-4">
+                      <Button variant="outline" size="sm" onClick={handleSelectAllSlots}>Selecionar Todos</Button>
+                      <Button variant="outline" size="sm" onClick={handleClearAllSlots}>Limpar Todos</Button>
+                    </div>
+
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-4">
+                      {allPossibleSlots.map((time) => (
+                        <button
+                          key={time}
+                          onClick={() => handleToggleTimeSlot(time)}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                            selectedTimeSlots.includes(time)
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+                          }`}
+                        >
+                          {time}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-4 border-t border-border">
+                      <p className="text-sm text-muted-foreground">{selectedTimeSlots.length} horário(s) selecionado(s)</p>
+                      <Button variant="hero" onClick={() => { handleSaveAvailability(); setShowAvailabilityModal(false); }}>
+                        <Check className="w-4 h-4" />
+                        Salvar
+                      </Button>
+                    </div>
+                  </motion.div>
+                </>
               )}
-            </div>
+            </AnimatePresence>
+
+            {/* Block Modal */}
+            <AnimatePresence>
+              {showBlockModal && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+                    onClick={() => setShowBlockModal(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="fixed inset-4 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-lg md:w-full bg-card border border-border rounded-2xl p-6 z-50"
+                  >
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-xl font-bold">Bloquear Horários</h3>
+                      <button onClick={() => setShowBlockModal(false)} className="p-2 hover:bg-secondary rounded-lg">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm text-muted-foreground block mb-1">Data</label>
+                          <Input
+                            type="date"
+                            value={blockSlotForm.date}
+                            onChange={(e) => setBlockSlotForm(prev => ({ ...prev, date: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-muted-foreground block mb-1">Motivo</label>
+                          <Input
+                            placeholder="Ex: Reunião"
+                            value={blockSlotForm.reason}
+                            onChange={(e) => setBlockSlotForm(prev => ({ ...prev, reason: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm text-muted-foreground block mb-1">Início</label>
+                          <Input
+                            type="time"
+                            value={blockSlotForm.startTime}
+                            onChange={(e) => setBlockSlotForm(prev => ({ ...prev, startTime: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-muted-foreground block mb-1">Fim</label>
+                          <Input
+                            type="time"
+                            value={blockSlotForm.endTime}
+                            onChange={(e) => setBlockSlotForm(prev => ({ ...prev, endTime: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <Button variant="hero" onClick={() => { handleAddBlockedSlot(); setShowBlockModal(false); }} className="w-full">
+                        <Plus className="w-4 h-4" />
+                        Adicionar Bloqueio
+                      </Button>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
         );
 
@@ -1282,37 +1333,69 @@ const AdminPanel = () => {
       {/* Dock Style Menu (Mac style) - Desktop only */}
       {menuStyle === 'dock' && (
         <div className="hidden lg:flex fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="flex items-center gap-1 px-3 py-2 bg-sidebar/95 backdrop-blur-md border border-sidebar-border rounded-2xl shadow-2xl">
-            {menuItems.map((item) => (
-              <div key={item.id} className="relative group">
-                <button
-                  onClick={() => setActiveTab(item.id)}
-                  className={`p-3 rounded-xl transition-all duration-200 hover:scale-110 hover:-translate-y-1 ${
-                    activeTab === item.id
-                      ? 'bg-primary text-primary-foreground scale-105'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                  }`}
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            className="flex items-center gap-1 px-3 py-2 bg-background/90 backdrop-blur-2xl border border-border/50 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+          >
+            {menuItems.map((item, index) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <motion.div 
+                  key={item.id} 
+                  className="relative group"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: index * 0.03, type: 'spring', stiffness: 400, damping: 20 }}
                 >
-                  <item.icon className="w-5 h-5" />
-                  {item.id === 'feedbacks' && newFeedbacksCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
-                      {newFeedbacksCount}
-                    </span>
-                  )}
-                </button>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-background border border-border rounded-lg text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                  {item.label}
-                </div>
-              </div>
-            ))}
-            <div className="w-px h-8 bg-border mx-1" />
-            <button
+                  <motion.button
+                    onClick={() => setActiveTab(item.id)}
+                    whileHover={{ scale: 1.3, y: -12 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                    className={`relative p-3 rounded-xl transition-colors duration-200 ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {item.id === 'feedbacks' && newFeedbacksCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center font-bold shadow-sm">
+                        {newFeedbacksCount}
+                      </span>
+                    )}
+                    {isActive && (
+                      <motion.div 
+                        layoutId="dock-indicator"
+                        className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-primary rounded-full"
+                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                      />
+                    )}
+                  </motion.button>
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    whileHover={{ opacity: 1, y: 0 }}
+                    className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-1.5 bg-background/95 border border-border rounded-lg text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none backdrop-blur-sm"
+                  >
+                    {item.label}
+                  </motion.div>
+                </motion.div>
+              );
+            })}
+            <div className="w-px h-8 bg-border/50 mx-2" />
+            <motion.button
               onClick={() => signOut()}
-              className="p-3 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 hover:scale-110 hover:-translate-y-1"
+              whileHover={{ scale: 1.2, y: -8 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+              className="p-3 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors duration-200"
             >
               <LogOut className="w-5 h-5" />
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         </div>
       )}
 
@@ -1344,7 +1427,7 @@ const AdminPanel = () => {
             </div>
           </div>
 
-          <nav className={`flex-1 overflow-y-auto admin-scroll-container ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
+          <nav className={`flex-1 ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
             {menuItems.map((item) => (
               <div key={item.id} className="relative group">
                 <button
@@ -1358,7 +1441,7 @@ const AdminPanel = () => {
                   }`}
                 >
                   <item.icon className="w-5 h-5 flex-shrink-0" />
-                  {!isSidebarCollapsed && <span>{item.label}</span>}
+                  {!isSidebarCollapsed && <span className="text-base">{item.label}</span>}
                   {item.id === 'feedbacks' && newFeedbacksCount > 0 && (
                     <span className={`px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full ${
                       isSidebarCollapsed ? 'absolute -top-1 -right-1 w-4 h-4 p-0 flex items-center justify-center text-[10px]' : 'absolute right-4'
