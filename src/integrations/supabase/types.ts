@@ -270,6 +270,128 @@ export type Database = {
         }
         Relationships: []
       }
+      marketing_campaigns: {
+        Row: {
+          ai_prompt: string | null
+          button_text: string | null
+          button_url: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          message_template: string
+          name: string
+          scheduled_at: string | null
+          sent_count: number
+          status: string
+          target_count: number
+          updated_at: string
+          use_ai: boolean
+        }
+        Insert: {
+          ai_prompt?: string | null
+          button_text?: string | null
+          button_url?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          message_template: string
+          name: string
+          scheduled_at?: string | null
+          sent_count?: number
+          status?: string
+          target_count?: number
+          updated_at?: string
+          use_ai?: boolean
+        }
+        Update: {
+          ai_prompt?: string | null
+          button_text?: string | null
+          button_url?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          message_template?: string
+          name?: string
+          scheduled_at?: string | null
+          sent_count?: number
+          status?: string
+          target_count?: number
+          updated_at?: string
+          use_ai?: boolean
+        }
+        Relationships: []
+      }
+      marketing_contacts: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          name: string | null
+          phone: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          name?: string | null
+          phone: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          name?: string | null
+          phone?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_contacts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_settings: {
+        Row: {
+          created_at: string
+          delay_between_messages: number
+          id: string
+          is_enabled: boolean
+          max_contacts: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delay_between_messages?: number
+          id?: string
+          is_enabled?: boolean
+          max_contacts?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delay_between_messages?: number
+          id?: string
+          is_enabled?: boolean
+          max_contacts?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       message_templates: {
         Row: {
           button_text: string | null
