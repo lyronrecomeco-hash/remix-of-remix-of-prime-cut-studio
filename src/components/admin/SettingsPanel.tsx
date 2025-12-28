@@ -143,16 +143,16 @@ const CollapsibleSection = forwardRef<HTMLDivElement, SectionProps>(
     <div ref={ref} className="glass-card rounded-xl overflow-hidden h-fit">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 hover:bg-secondary/30 transition-colors"
+        className="w-full flex items-center justify-between p-5 hover:bg-secondary/30 transition-colors"
       >
-        <h3 className="font-semibold flex items-center gap-2 text-sm">
+        <h3 className="font-semibold flex items-center gap-3 text-base">
           {icon}
           {title}
         </h3>
-        {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        {isOpen ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
       </button>
       {isOpen && (
-        <div className="p-4 pt-0 border-t border-border">
+        <div className="p-5 pt-0 border-t border-border">
           {children}
         </div>
       )}
@@ -494,14 +494,14 @@ export default function SettingsPanel() {
       
       <div className="flex-1 min-h-0 overflow-y-auto pr-2 space-y-6">
         {/* Grid layout - seções lado a lado */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Tema Visual */}
           <CollapsibleSection 
             title="Tema Visual" 
-            icon={<Palette className="w-4 h-4 text-primary" />}
+            icon={<Palette className="w-5 h-5 text-primary" />}
             defaultOpen
           >
-            <div className="grid grid-cols-3 gap-2 mt-3">
+            <div className="grid grid-cols-3 gap-3 mt-4">
               {[
                 { id: 'gold', label: 'Black & Gold', colors: ['bg-black', 'bg-amber-500'], isNative: true },
                 { id: 'gold-shine', label: 'Gold Brilhante', colors: ['bg-black', 'bg-yellow-400'] },
@@ -510,16 +510,16 @@ export default function SettingsPanel() {
                 <button
                   key={t.id}
                   onClick={() => setTheme(t.id as any)}
-                  className={`p-3 rounded-lg border-2 transition-all ${
+                  className={`p-4 rounded-xl border-2 transition-all ${
                     theme === t.id ? 'border-primary gold-glow' : 'border-border hover:border-primary/50'
                   }`}
                 >
-                  <div className="flex gap-1 mb-1">
+                  <div className="flex gap-2 mb-2">
                     {t.colors.map((c, i) => (
-                      <div key={i} className={`w-4 h-4 rounded-full ${c}`} />
+                      <div key={i} className={`w-5 h-5 rounded-full ${c}`} />
                     ))}
                   </div>
-                  <p className="text-xs font-medium">{t.label}</p>
+                  <p className="text-sm font-medium">{t.label}</p>
                 </button>
               ))}
             </div>
@@ -528,13 +528,13 @@ export default function SettingsPanel() {
           {/* Segurança */}
           <CollapsibleSection 
             title="Segurança" 
-            icon={<Shield className="w-4 h-4 text-primary" />}
+            icon={<Shield className="w-5 h-5 text-primary" />}
           >
-            <div className="mt-3 space-y-3">
+            <div className="mt-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-medium">Alerta de Sobrecarga</span>
-                  <p className="text-[10px] text-muted-foreground">Notifica em sobrecarga</p>
+                  <span className="text-sm font-medium">Alerta de Sobrecarga</span>
+                  <p className="text-xs text-muted-foreground">Notifica quando atingir limite diário</p>
                 </div>
                 <button
                   onClick={() => {
@@ -545,25 +545,25 @@ export default function SettingsPanel() {
                       notify.info('Alertas desativados');
                     }
                   }}
-                  className={`w-10 h-5 rounded-full transition-colors relative ${
+                  className={`w-12 h-6 rounded-full transition-colors relative ${
                     shopSettings.overloadAlertEnabled ? 'bg-primary' : 'bg-secondary'
                   }`}
                 >
-                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
-                    shopSettings.overloadAlertEnabled ? 'left-5' : 'left-0.5'
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                    shopSettings.overloadAlertEnabled ? 'left-7' : 'left-1'
                   }`} />
                 </button>
               </div>
               {shopSettings.overloadAlertEnabled && (
-                <div className="pt-2 border-t border-border">
-                  <label className="text-xs text-muted-foreground block mb-1">Limite diário</label>
+                <div className="pt-3 border-t border-border">
+                  <label className="text-sm text-muted-foreground block mb-2">Limite diário de agendamentos</label>
                   <Input
                     type="number"
                     value={shopSettings.dailyAppointmentLimit || 20}
                     onChange={(e) => updateShopSettings({ dailyAppointmentLimit: Number(e.target.value) })}
                     min={1}
                     max={100}
-                    className="h-8 text-sm"
+                    className="h-10"
                   />
                 </div>
               )}
@@ -573,34 +573,34 @@ export default function SettingsPanel() {
           {/* Personalização da Barbearia */}
           <CollapsibleSection 
             title="Barbearia" 
-            icon={<Store className="w-4 h-4 text-primary" />}
+            icon={<Store className="w-5 h-5 text-primary" />}
           >
-            <div className="mt-3 space-y-3">
+            <div className="mt-4 space-y-4">
               <div>
-                <label className="text-xs text-muted-foreground block mb-1">Nome</label>
-                <Input value={shopSettings.name} onChange={(e) => updateShopSettings({ name: e.target.value })} className="h-8 text-sm" />
+                <label className="text-sm text-muted-foreground block mb-2">Nome da Barbearia</label>
+                <Input value={shopSettings.name} onChange={(e) => updateShopSettings({ name: e.target.value })} className="h-10" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground block mb-1">Tagline</label>
-                <Input value={shopSettings.tagline} onChange={(e) => updateShopSettings({ tagline: e.target.value })} className="h-8 text-sm" />
+                <label className="text-sm text-muted-foreground block mb-2">Tagline / Slogan</label>
+                <Input value={shopSettings.tagline} onChange={(e) => updateShopSettings({ tagline: e.target.value })} className="h-10" />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Telefone</label>
-                  <Input value={shopSettings.phone} onChange={(e) => updateShopSettings({ phone: e.target.value })} className="h-8 text-sm" />
+                  <label className="text-sm text-muted-foreground block mb-2">Telefone</label>
+                  <Input value={shopSettings.phone} onChange={(e) => updateShopSettings({ phone: e.target.value })} className="h-10" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground block mb-1">WhatsApp</label>
-                  <Input value={shopSettings.whatsapp} onChange={(e) => updateShopSettings({ whatsapp: e.target.value })} placeholder="55..." className="h-8 text-sm" />
+                  <label className="text-sm text-muted-foreground block mb-2">WhatsApp</label>
+                  <Input value={shopSettings.whatsapp} onChange={(e) => updateShopSettings({ whatsapp: e.target.value })} placeholder="55..." className="h-10" />
                 </div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground block mb-1">Endereço</label>
-                <Input value={shopSettings.address} onChange={(e) => updateShopSettings({ address: e.target.value })} className="h-8 text-sm" />
+                <label className="text-sm text-muted-foreground block mb-2">Endereço Completo</label>
+                <Input value={shopSettings.address} onChange={(e) => updateShopSettings({ address: e.target.value })} className="h-10" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground block mb-1">Link do Maps</label>
-                <Input value={shopSettings.mapsLink} onChange={(e) => updateShopSettings({ mapsLink: e.target.value })} placeholder="https://maps..." className="h-8 text-sm" />
+                <label className="text-sm text-muted-foreground block mb-2">Link do Google Maps</label>
+                <Input value={shopSettings.mapsLink} onChange={(e) => updateShopSettings({ mapsLink: e.target.value })} placeholder="https://maps.google.com/..." className="h-10" />
               </div>
             </div>
           </CollapsibleSection>
@@ -608,29 +608,29 @@ export default function SettingsPanel() {
           {/* Redes Sociais */}
           <CollapsibleSection 
             title="Redes Sociais" 
-            icon={<Instagram className="w-4 h-4 text-primary" />}
+            icon={<Instagram className="w-5 h-5 text-primary" />}
           >
-            <div className="mt-3 space-y-3">
+            <div className="mt-4 space-y-4">
               <div>
-                <label className="text-xs text-muted-foreground block mb-1 flex items-center gap-1">
-                  <Instagram className="w-3 h-3" /> Instagram
+                <label className="text-sm text-muted-foreground block mb-2 flex items-center gap-2">
+                  <Instagram className="w-4 h-4" /> Instagram
                 </label>
                 <Input
                   placeholder="@seuperfil"
                   value={shopSettings.social?.instagram || ''}
                   onChange={(e) => updateShopSettings({ social: { ...shopSettings.social, instagram: e.target.value } })}
-                  className="h-8 text-sm"
+                  className="h-10"
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground block mb-1 flex items-center gap-1">
-                  <Facebook className="w-3 h-3" /> Facebook
+                <label className="text-sm text-muted-foreground block mb-2 flex items-center gap-2">
+                  <Facebook className="w-4 h-4" /> Facebook
                 </label>
                 <Input
                   placeholder="nome.da.pagina"
                   value={shopSettings.social?.facebook || ''}
                   onChange={(e) => updateShopSettings({ social: { ...shopSettings.social, facebook: e.target.value } })}
-                  className="h-8 text-sm"
+                  className="h-10"
                 />
               </div>
             </div>
@@ -639,32 +639,31 @@ export default function SettingsPanel() {
           {/* Backup e Restauração */}
           <CollapsibleSection
             title="Backup e Restauração" 
-            icon={<Database className="w-4 h-4 text-primary" />}
+            icon={<Database className="w-5 h-5 text-primary" />}
           >
-            <div className="mt-3 space-y-4">
-              <div className="bg-secondary/20 rounded-lg p-3 flex items-start gap-2">
-                <Shield className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                <div className="text-xs">
-                  <p className="font-medium mb-0.5">Backup Seguro (SHA-256)</p>
-                  <p className="text-muted-foreground text-[10px]">
-                    Inclui: configurações, templates, ChatPro e textos.
+            <div className="mt-4 space-y-5">
+              <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-start gap-3">
+                <Shield className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-sm mb-1">Backup Seguro com SHA-256</p>
+                  <p className="text-sm text-muted-foreground">
+                    Inclui: configurações da barbearia, templates de mensagem, configuração ChatPro e textos do site.
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-4">
                 <Button 
                   onClick={handleExportBackup}
                   disabled={isExporting}
-                  size="sm"
-                  className="w-full"
+                  className="h-12"
                 >
                   {isExporting ? (
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
-                    <Download className="w-3 h-3 mr-1" />
+                    <Download className="w-4 h-4 mr-2" />
                   )}
-                  Exportar
+                  Exportar Backup
                 </Button>
                 
                 <input
@@ -679,22 +678,21 @@ export default function SettingsPanel() {
                   variant="outline"
                   onClick={() => backupFileInputRef.current?.click()}
                   disabled={isImporting}
-                  size="sm"
-                  className="w-full"
+                  className="h-12"
                 >
                   {isImporting ? (
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
-                    <Upload className="w-3 h-3 mr-1" />
+                    <Upload className="w-4 h-4 mr-2" />
                   )}
-                  Importar
+                  Importar Backup
                 </Button>
               </div>
 
               {importError && (
-                <div className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded-lg">
-                  <AlertCircle className="w-3 h-3 text-destructive flex-shrink-0" />
-                  <p className="text-[10px] text-destructive">{importError}</p>
+                <div className="flex items-center gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
+                  <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+                  <p className="text-sm text-destructive">{importError}</p>
                 </div>
               )}
             </div>
@@ -703,85 +701,84 @@ export default function SettingsPanel() {
           {/* Textos do Site */}
           <CollapsibleSection 
             title="Textos do Site" 
-            icon={<Type className="w-4 h-4 text-primary" />}
+            icon={<Type className="w-5 h-5 text-primary" />}
           >
-            <div className="mt-3 space-y-3">
-              <p className="text-[10px] text-muted-foreground">
-                Personalize textos das seções do site.
+            <div className="mt-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Personalize os textos e títulos das seções do site público.
               </p>
               
-              <div className="space-y-2">
-                <div className="p-2 bg-secondary/20 rounded-lg space-y-2">
-                  <h5 className="text-xs font-medium">Hero</h5>
+              <div className="space-y-4">
+                <div className="p-4 bg-secondary/30 rounded-xl space-y-3">
+                  <h5 className="text-sm font-semibold">Hero (Topo)</h5>
                   <Input 
                     value={siteTexts.hero_title} 
                     onChange={(e) => setSiteTexts(prev => ({ ...prev, hero_title: e.target.value }))}
-                    placeholder="Título"
-                    className="h-7 text-xs"
+                    placeholder="Título principal"
+                    className="h-10"
                   />
                   <Input 
                     value={siteTexts.hero_subtitle} 
                     onChange={(e) => setSiteTexts(prev => ({ ...prev, hero_subtitle: e.target.value }))}
                     placeholder="Subtítulo"
-                    className="h-7 text-xs"
+                    className="h-10"
                   />
                 </div>
 
-                <div className="p-2 bg-secondary/20 rounded-lg space-y-2">
-                  <h5 className="text-xs font-medium">Sobre</h5>
+                <div className="p-4 bg-secondary/30 rounded-xl space-y-3">
+                  <h5 className="text-sm font-semibold">Sobre Nós</h5>
                   <Input 
                     value={siteTexts.about_title} 
                     onChange={(e) => setSiteTexts(prev => ({ ...prev, about_title: e.target.value }))}
-                    placeholder="Título"
-                    className="h-7 text-xs"
+                    placeholder="Título da seção"
+                    className="h-10"
                   />
                   <Textarea 
                     value={siteTexts.about_description} 
                     onChange={(e) => setSiteTexts(prev => ({ ...prev, about_description: e.target.value }))}
-                    placeholder="Descrição"
-                    rows={2}
-                    className="text-xs"
+                    placeholder="Descrição da barbearia"
+                    rows={3}
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 bg-secondary/20 rounded-lg space-y-1">
-                    <h5 className="text-xs font-medium">Serviços</h5>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-secondary/30 rounded-xl space-y-2">
+                    <h5 className="text-sm font-semibold">Serviços</h5>
                     <Input 
                       value={siteTexts.services_title} 
                       onChange={(e) => setSiteTexts(prev => ({ ...prev, services_title: e.target.value }))}
                       placeholder="Título"
-                      className="h-7 text-xs"
+                      className="h-10"
                     />
                   </div>
-                  <div className="p-2 bg-secondary/20 rounded-lg space-y-1">
-                    <h5 className="text-xs font-medium">Galeria</h5>
+                  <div className="p-4 bg-secondary/30 rounded-xl space-y-2">
+                    <h5 className="text-sm font-semibold">Galeria</h5>
                     <Input 
                       value={siteTexts.gallery_title} 
                       onChange={(e) => setSiteTexts(prev => ({ ...prev, gallery_title: e.target.value }))}
                       placeholder="Título"
-                      className="h-7 text-xs"
+                      className="h-10"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 bg-secondary/20 rounded-lg space-y-1">
-                    <h5 className="text-xs font-medium">CTA</h5>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-secondary/30 rounded-xl space-y-2">
+                    <h5 className="text-sm font-semibold">CTA (Chamada)</h5>
                     <Input 
                       value={siteTexts.cta_title} 
                       onChange={(e) => setSiteTexts(prev => ({ ...prev, cta_title: e.target.value }))}
                       placeholder="Título"
-                      className="h-7 text-xs"
+                      className="h-10"
                     />
                   </div>
-                  <div className="p-2 bg-secondary/20 rounded-lg space-y-1">
-                    <h5 className="text-xs font-medium">Rodapé</h5>
+                  <div className="p-4 bg-secondary/30 rounded-xl space-y-2">
+                    <h5 className="text-sm font-semibold">Rodapé</h5>
                     <Input 
                       value={siteTexts.footer_text} 
                       onChange={(e) => setSiteTexts(prev => ({ ...prev, footer_text: e.target.value }))}
-                      placeholder="Texto"
-                      className="h-7 text-xs"
+                      placeholder="Texto do rodapé"
+                      className="h-10"
                     />
                   </div>
                 </div>
@@ -790,40 +787,37 @@ export default function SettingsPanel() {
               <Button 
                 onClick={saveSiteTexts}
                 disabled={savingSiteTexts}
-                size="sm"
-                className="w-full"
+                className="w-full h-12"
               >
                 {savingSiteTexts ? (
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
-                  <Save className="w-3 h-3 mr-1" />
+                  <Save className="w-4 h-4 mr-2" />
                 )}
-                Salvar Textos
+                Salvar Textos do Site
               </Button>
             </div>
           </CollapsibleSection>
         </div>
 
-        {/* Seções maiores - largura total */}
-        <div className="space-y-4">
-          {/* Integração ChatPro */}
-          <CollapsibleSection 
-            title="Integração ChatPro (WhatsApp)" 
-            icon={<MessageCircle className="w-4 h-4 text-primary" />}
-          >
-            <div className="mt-3 space-y-4">
-              <div className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
-                <div>
-                  <span className="text-sm font-medium">ChatPro Ativo</span>
-                  <p className="text-xs text-muted-foreground">
-                    {chatproConfig?.is_enabled ? 'Enviando mensagens via WhatsApp' : 'Desativado'}
-                  </p>
+        {/* Seção de Integrações - Full Width */}
+        <div className="space-y-6">
+          {/* ChatPro Integration */}
+          <div className="glass-card rounded-xl overflow-hidden">
+            <div className="p-5 border-b border-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <MessageCircle className="w-5 h-5 text-primary" />
+                  <div>
+                    <h3 className="font-semibold text-base">Integração ChatPro</h3>
+                    <p className="text-sm text-muted-foreground">WhatsApp Business API</p>
+                  </div>
                 </div>
                 <button
-                  onClick={() => updateChatProConfig({ is_enabled: !chatproConfig?.is_enabled })}
+                  onClick={() => chatproConfig && updateChatProConfig({ is_enabled: !chatproConfig.is_enabled })}
                   disabled={chatproLoading}
                   className={`w-12 h-6 rounded-full transition-colors relative ${
-                    chatproConfig?.is_enabled ? 'bg-green-500' : 'bg-secondary'
+                    chatproConfig?.is_enabled ? 'bg-primary' : 'bg-secondary'
                   }`}
                 >
                   <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
@@ -831,306 +825,204 @@ export default function SettingsPanel() {
                   }`} />
                 </button>
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Endpoint Base</label>
-                  <Input
-                    placeholder="https://api.chatpro.com.br"
-                    value={chatproConfig?.base_endpoint || ''}
-                    onChange={(e) => setChatproConfig(prev => prev ? { ...prev, base_endpoint: e.target.value } : null)}
-                    className="font-mono text-xs h-8"
-                  />
+            {chatproConfig?.is_enabled && (
+              <div className="p-5 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-sm text-muted-foreground block mb-2">API Token</label>
+                    <Input
+                      type="password"
+                      value={chatproConfig?.api_token || ''}
+                      onChange={(e) => updateChatProConfig({ api_token: e.target.value })}
+                      placeholder="Seu token..."
+                      className="h-10"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground block mb-2">Instance ID</label>
+                    <Input
+                      value={chatproConfig?.instance_id || ''}
+                      onChange={(e) => updateChatProConfig({ instance_id: e.target.value })}
+                      placeholder="ID da instância..."
+                      className="h-10"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground block mb-2">Endpoint</label>
+                    <Input
+                      value={chatproConfig?.base_endpoint || ''}
+                      onChange={(e) => updateChatProConfig({ base_endpoint: e.target.value })}
+                      placeholder="https://..."
+                      className="h-10"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">Instance ID</label>
-                  <Input
-                    placeholder="sua_instancia"
-                    value={chatproConfig?.instance_id || ''}
-                    onChange={(e) => setChatproConfig(prev => prev ? { ...prev, instance_id: e.target.value } : null)}
-                    className="font-mono text-xs h-8"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground block mb-1">API Token</label>
-                  <Input
-                    type="password"
-                    placeholder="••••••••"
-                    value={chatproConfig?.api_token || ''}
-                    onChange={(e) => setChatproConfig(prev => prev ? { ...prev, api_token: e.target.value } : null)}
-                    className="font-mono text-xs h-8"
-                  />
-                </div>
-              </div>
 
-              <Button
-                onClick={() => updateChatProConfig({
-                  base_endpoint: chatproConfig?.base_endpoint,
-                  instance_id: chatproConfig?.instance_id,
-                  api_token: chatproConfig?.api_token,
-                })}
-                disabled={chatproLoading}
-                size="sm"
-              >
-                {chatproLoading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
-                Salvar
-              </Button>
-
-              {/* Teste */}
-              <div className="pt-3 border-t border-border">
-                <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                  <TestTube className="w-4 h-4 text-primary" />
-                  Testar Conexão
-                </h4>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-3 pt-2 border-t border-border">
                   <Input
-                    placeholder="5511999999999"
                     value={testPhone}
                     onChange={(e) => setTestPhone(e.target.value)}
-                    className="h-8 text-sm"
+                    placeholder="5511999999999"
+                    className="max-w-xs h-10"
                   />
                   <Button
-                    onClick={testChatProConnection}
-                    disabled={testingChatPro || !chatproConfig?.is_enabled}
                     variant="outline"
-                    size="sm"
+                    onClick={testChatProConnection}
+                    disabled={testingChatPro}
+                    className="h-10"
                   >
-                    {testingChatPro ? <Loader2 className="w-4 h-4 animate-spin" /> : <TestTube className="w-4 h-4" />}
+                    {testingChatPro ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <TestTube className="w-4 h-4 mr-2" />
+                    )}
+                    Testar Conexão
                   </Button>
                 </div>
               </div>
+            )}
+          </div>
 
-              {/* Eventos */}
-              <div className="pt-3 border-t border-border">
-                <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                  <Power className="w-4 h-4 text-primary" />
-                  Eventos Automáticos
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {Object.entries(eventLabels).map(([eventType, label]) => {
-                    const template = getTemplateForEvent(eventType);
-                    const isEnabled = template?.chatpro_enabled !== false;
-
-                    return (
-                      <div key={eventType} className="flex items-center justify-between p-2 bg-secondary/20 rounded-lg">
-                        <span className="text-xs font-medium truncate">{label}</span>
-                        <button
-                          onClick={() => toggleChatProForEvent(eventType, !isEnabled)}
-                          className={`w-8 h-4 rounded-full transition-colors relative flex-shrink-0 ${
-                            isEnabled ? 'bg-green-500' : 'bg-secondary'
-                          }`}
-                        >
-                          <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${
-                            isEnabled ? 'left-4' : 'left-0.5'
-                          }`} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-border">
-                <a 
-                  href="https://chatpro.readme.io/reference/introdu%C3%A7%C3%A3o-%C3%A0s-apis-do-chatpro" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-xs text-primary hover:underline"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  Documentação ChatPro
-                </a>
-              </div>
+          {/* Templates de Mensagem */}
+          <div className="glass-card rounded-xl overflow-hidden">
+            <div className="p-5 border-b border-border">
+              <h3 className="font-semibold text-base flex items-center gap-3">
+                <FileText className="w-5 h-5 text-primary" />
+                Templates de Mensagem
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">Configure as mensagens automáticas</p>
             </div>
-          </CollapsibleSection>
 
-          {/* Integrações e API */}
-          <CollapsibleSection 
-            title="Integrações e API" 
-            icon={<Webhook className="w-4 h-4 text-primary" />}
-          >
-            <div className="mt-3 space-y-4">
-              <div>
-                <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                  <Webhook className="w-4 h-4 text-primary" />
-                  Endpoints para n8n
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {Object.entries(eventLabels).map(([eventType, label]) => (
-                    <div key={eventType} className="flex items-center gap-2">
-                      <Input
-                        value={`${apiBaseUrl}?event=${eventType}`}
-                        readOnly
-                        className="font-mono text-[10px] flex-1 h-7"
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => copyToClipboard(`${apiBaseUrl}?event=${eventType}`, `URL ${label} copiada!`)}
-                      >
-                        <Copy className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <div className="p-5 space-y-3">
+              {Object.entries(eventLabels).map(([eventType, label]) => {
+                const template = getTemplateForEvent(eventType);
+                const isExpanded = expandedTemplate === eventType;
 
-              {/* Templates */}
-              <div className="pt-3 border-t border-border">
-                <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-primary" />
-                  Templates de Mensagens
-                </h4>
-                <div className="space-y-2">
-                  {Object.entries(eventLabels).map(([eventType, label]) => {
-                    const template = getTemplateForEvent(eventType);
-                    const isExpanded = expandedTemplate === eventType;
-                    const isPreview = previewTemplate === eventType;
+                return (
+                  <div key={eventType} className="bg-secondary/30 rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => setExpandedTemplate(isExpanded ? null : eventType)}
+                      className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${template?.is_active ? 'bg-green-500' : 'bg-muted'}`} />
+                        <span className="font-medium text-sm">{label}</span>
+                      </div>
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
 
-                    return (
-                      <div key={eventType} className="border border-border rounded-lg overflow-hidden">
-                        <button
-                          onClick={() => setExpandedTemplate(isExpanded ? null : eventType)}
-                          className="w-full flex items-center justify-between p-2 hover:bg-secondary/30 transition-colors"
-                        >
-                          <span className="text-xs font-medium">{label}</span>
-                          {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                        </button>
+                    {isExpanded && template && (
+                      <div className="p-4 pt-0 space-y-4">
+                        <div className="flex items-center gap-3 pb-3 border-b border-border">
+                          <span className="text-sm text-muted-foreground">ChatPro:</span>
+                          <button
+                            onClick={() => toggleChatProForEvent(eventType, !template.chatpro_enabled)}
+                            className={`w-10 h-5 rounded-full transition-colors relative ${
+                              template.chatpro_enabled ? 'bg-primary' : 'bg-secondary'
+                            }`}
+                          >
+                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                              template.chatpro_enabled ? 'left-5' : 'left-0.5'
+                            }`} />
+                          </button>
+                        </div>
 
-                        {isExpanded && (
-                          <div className="p-3 pt-0 space-y-2 border-t border-border">
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 text-xs"
-                                onClick={() => setPreviewTemplate(isPreview ? null : eventType)}
-                              >
-                                <Eye className="w-3 h-3 mr-1" />
-                                {isPreview ? 'Editar' : 'Preview'}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 text-xs"
-                                onClick={() => restoreDefaultTemplate(eventType)}
-                              >
-                                <RotateCcw className="w-3 h-3 mr-1" />
-                                Restaurar
-                              </Button>
-                            </div>
+                        <Textarea
+                          value={template.template}
+                          onChange={(e) => {
+                            const updated = templates.map(t =>
+                              t.event_type === eventType ? { ...t, template: e.target.value } : t
+                            );
+                            setTemplates(updated);
+                          }}
+                          rows={4}
+                        />
 
-                            {isPreview ? (
-                              <div className="bg-secondary/50 rounded-lg p-2 text-xs whitespace-pre-wrap">
-                                {getPreviewMessage(template?.template || '')}
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                <Textarea
-                                  value={template?.template || ''}
-                                  onChange={(e) => {
-                                    setTemplates(prev => prev.map(t =>
-                                      t.event_type === eventType ? { ...t, template: e.target.value } : t
-                                    ));
-                                  }}
-                                  rows={2}
-                                  className="font-mono text-xs"
-                                />
-
-                                <div className="grid grid-cols-2 gap-2">
-                                  <Input
-                                    placeholder="Texto do Botão"
-                                    value={template?.button_text || ''}
-                                    onChange={(e) => {
-                                      setTemplates(prev => prev.map(t =>
-                                        t.event_type === eventType ? { ...t, button_text: e.target.value } : t
-                                      ));
-                                    }}
-                                    className="text-xs h-7"
-                                  />
-                                  <Input
-                                    placeholder="URL do Botão"
-                                    value={template?.button_url || ''}
-                                    onChange={(e) => {
-                                      setTemplates(prev => prev.map(t =>
-                                        t.event_type === eventType ? { ...t, button_url: e.target.value } : t
-                                      ));
-                                    }}
-                                    className="text-xs h-7"
-                                  />
-                                </div>
-
-                                <Input
-                                  placeholder="URL da Imagem"
-                                  value={template?.image_url || ''}
-                                  onChange={(e) => {
-                                    setTemplates(prev => prev.map(t =>
-                                      t.event_type === eventType ? { ...t, image_url: e.target.value } : t
-                                    ));
-                                  }}
-                                  className="text-xs h-7"
-                                />
-                              </div>
-                            )}
-
-                            <div className="flex flex-wrap gap-1">
-                              {variables.map((v) => (
-                                <button
-                                  key={v.key}
-                                  onClick={() => copyToClipboard(v.key, `${v.key} copiado!`)}
-                                  className="px-1.5 py-0.5 bg-secondary rounded text-[10px] font-mono hover:bg-primary/20"
-                                >
-                                  {v.key}
-                                </button>
-                              ))}
-                            </div>
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs"
-                              onClick={() => updateTemplate(
-                                eventType, 
-                                template?.template || '',
-                                template?.button_text,
-                                template?.button_url,
-                                template?.image_url
-                              )}
+                        <div className="flex flex-wrap gap-2">
+                          {variables.map((v) => (
+                            <button
+                              key={v.key}
+                              onClick={() => {
+                                const textarea = document.querySelector(`textarea`) as HTMLTextAreaElement;
+                                const start = textarea.selectionStart;
+                                const end = textarea.selectionEnd;
+                                const newTemplate = template.template.substring(0, start) + v.key + template.template.substring(end);
+                                const updated = templates.map(t =>
+                                  t.event_type === eventType ? { ...t, template: newTemplate } : t
+                                );
+                                setTemplates(updated);
+                              }}
+                              className="px-3 py-1.5 bg-primary/20 text-primary rounded-lg text-xs font-mono hover:bg-primary/30 transition-colors"
                             >
-                              <Save className="w-3 h-3 mr-1" />
-                              Salvar
-                            </Button>
+                              {v.key}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="flex gap-3">
+                          <Button
+                            size="sm"
+                            onClick={() => updateTemplate(eventType, template.template)}
+                            className="h-9"
+                          >
+                            <Save className="w-4 h-4 mr-2" />
+                            Salvar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => restoreDefaultTemplate(eventType)}
+                            className="h-9"
+                          >
+                            <RotateCcw className="w-4 h-4 mr-2" />
+                            Restaurar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setPreviewTemplate(previewTemplate === eventType ? null : eventType)}
+                            className="h-9"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            Preview
+                          </Button>
+                        </div>
+
+                        {previewTemplate === eventType && (
+                          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
+                            <p className="text-xs text-green-400 mb-2 font-medium">Pré-visualização:</p>
+                            <p className="text-sm whitespace-pre-wrap">{getPreviewMessage(template.template)}</p>
                           </div>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Push */}
-              <div className="pt-3 border-t border-border">
-                <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-primary" />
-                  Notificações Push
-                </h4>
-                <ul className="text-xs space-y-1">
-                  {[
-                    'Novo agendamento criado',
-                    'Agendamento confirmado',
-                    'Cliente chamado',
-                    'Atendimento concluído',
-                  ].map((item) => (
-                    <li key={item} className="flex items-center gap-2">
-                      <Check className="w-3 h-3 text-green-500" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          </CollapsibleSection>
+          </div>
+
+          {/* API Info */}
+          <div className="glass-card rounded-xl p-5">
+            <h3 className="font-semibold text-base flex items-center gap-3 mb-4">
+              <Webhook className="w-5 h-5 text-primary" />
+              API de Integração
+            </h3>
+            <div className="bg-secondary/50 rounded-xl p-4 font-mono text-sm break-all">
+              {apiBaseUrl}
+              <button
+                onClick={() => copyToClipboard(apiBaseUrl, 'URL copiada!')}
+                className="ml-3 p-1.5 hover:bg-secondary rounded-lg transition-colors"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground mt-3">
+              Use esta URL para integrar com sistemas externos.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -1140,7 +1032,8 @@ export default function SettingsPanel() {
         type="explanation"
         onConfirm={() => {
           updateShopSettings({ overloadAlertEnabled: true });
-          notify.success('Alertas ativados!');
+          setShowOverloadModal(false);
+          notify.success('Alertas de sobrecarga ativados');
         }}
       />
     </div>

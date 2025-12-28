@@ -26,34 +26,81 @@ serve(async (req) => {
     const { type, context, currentMessage, feedback }: GenerateRequest = await req.json();
     console.log('Generating marketing prompt:', type, context);
 
-    let systemPrompt = `Você é um especialista em marketing para barbearias. 
-Crie mensagens de WhatsApp persuasivas, curtas e diretas para campanhas de marketing.
-As mensagens devem:
-- Ser em português brasileiro
-- Ter no máximo 300 caracteres
-- Usar emojis com moderação (1-3)
-- Incluir call-to-action claro
-- Ser personalizáveis com {{nome}} para o nome do cliente
-- Focar em promoções, lembretes ou anúncios
-- Evitar spam ou linguagem agressiva`;
+    const systemPrompt = `Você é um ESPECIALISTA em copywriting e marketing digital para barbearias.
+Seu objetivo é criar mensagens de WhatsApp EXTREMAMENTE persuasivas que CONVERTEM.
+
+ESTRUTURA OBRIGATÓRIA DA MENSAGEM:
+
+1. **GANCHO EMOCIONAL** (primeira linha):
+   - Toque na DOR do cliente (ex: "Cansado de não se sentir bem com seu visual?")
+   - Use uma pergunta poderosa ou afirmação que gere identificação
+   
+2. **AGITAÇÃO DO PROBLEMA**:
+   - Amplifique a dor sutilmente
+   - Mostre que você entende o problema
+   
+3. **SOLUÇÃO** (sua oferta):
+   - Apresente sua barbearia como A solução
+   - Destaque o benefício principal
+   - Se houver promoção, apresente com URGÊNCIA
+   
+4. **PROVA SOCIAL** (opcional):
+   - Mencione satisfação dos clientes
+   - Use números se possível
+   
+5. **CALL-TO-ACTION CLARO**:
+   - Diga EXATAMENTE o que fazer
+   - Crie urgência ("Vagas limitadas", "Só hoje", etc.)
+
+REGRAS IMPORTANTES:
+- Máximo 350 caracteres (mensagens curtas convertem mais)
+- Use 2-4 emojis estratégicos (não exagere)
+- Tom: profissional mas próximo, como um amigo expert
+- Personalize com {{nome}} no início
+- Em português brasileiro natural
+- Evite parecer spam ou desesperado
+- Foque em TRANSFORMAÇÃO, não apenas no serviço
+
+EXEMPLOS DE ESTRUTURAS QUE FUNCIONAM:
+
+"{{nome}}, [pergunta que toca na dor]? 💇‍♂️
+
+[Sua solução + benefício]
+
+[Oferta/urgência]
+
+[CTA direto]"
+
+"Ei {{nome}}! [Identificação do problema]
+
+[Como você resolve + diferencial]
+
+🔥 [Oferta irresistível]
+
+[CTA com urgência]"`;
 
     let userPrompt = '';
 
     if (type === 'generate') {
-      userPrompt = `Crie uma mensagem de marketing para uma barbearia com o seguinte contexto/objetivo:
+      userPrompt = `Crie uma mensagem de marketing PERSUASIVA para uma barbearia com base neste contexto/objetivo:
 
 ${context}
 
-Responda APENAS com a mensagem, sem explicações adicionais.`;
+IMPORTANTE: Use a estrutura DOR → AGITAÇÃO → SOLUÇÃO → CTA.
+Responda APENAS com a mensagem final, sem explicações.`;
     } else if (type === 'improve') {
-      userPrompt = `Melhore a seguinte mensagem de marketing de barbearia:
+      userPrompt = `Melhore esta mensagem de marketing de barbearia, tornando-a MAIS PERSUASIVA:
 
-Mensagem atual:
+MENSAGEM ATUAL:
 ${currentMessage}
 
-${feedback ? `Feedback do usuário: ${feedback}` : 'Torne-a mais atraente e persuasiva.'}
+${feedback ? `AJUSTES SOLICITADOS: ${feedback}` : 'Torne-a mais impactante, com melhor gancho emocional e CTA mais forte.'}
 
-Responda APENAS com a mensagem melhorada, sem explicações adicionais.`;
+IMPORTANTE: 
+- Mantenha a estrutura DOR → SOLUÇÃO → CTA
+- Melhore o gancho inicial
+- Fortaleça a urgência
+- Responda APENAS com a mensagem melhorada, sem explicações.`;
     }
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
