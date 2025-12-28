@@ -62,8 +62,11 @@ import InteractiveBackground from '@/components/admin/InteractiveBackground';
 import SettingsPanel from '@/components/admin/SettingsPanel';
 import MarketingPanel from '@/components/admin/MarketingPanel';
 import AuditLogsSection from '@/components/admin/AuditLogsSection';
+import BarberPerformance from '@/components/admin/BarberPerformance';
+import LeaveManagement from '@/components/admin/LeaveManagement';
+import MonthlyGoals from '@/components/admin/MonthlyGoals';
 import { useAuth } from '@/contexts/AuthContext';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, BarChart3, Palmtree, Target } from 'lucide-react';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/admin/PullToRefreshIndicator';
 import { useContext } from 'react';
@@ -73,6 +76,9 @@ const menuItems = [
   { id: 'agenda', label: 'Agenda', icon: Calendar },
   { id: 'fila', label: 'Fila de Espera', icon: Users },
   { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
+  { id: 'desempenho', label: 'Desempenho', icon: BarChart3 },
+  { id: 'metas', label: 'Metas', icon: Target },
+  { id: 'folgas', label: 'Folgas/Férias', icon: Palmtree },
   { id: 'horarios', label: 'Horários', icon: Clock },
   { id: 'servicos', label: 'Serviços', icon: Scissors },
   { id: 'galeria', label: 'Galeria', icon: Image },
@@ -1379,6 +1385,15 @@ const AdminPanel = () => {
 
       case 'logs':
         return <AuditLogsSection />;
+
+      case 'desempenho':
+        return <BarberPerformance />;
+
+      case 'folgas':
+        return <LeaveManagement />;
+
+      case 'metas':
+        return <MonthlyGoals />;
 
       default:
         return null;
