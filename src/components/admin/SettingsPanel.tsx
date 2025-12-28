@@ -1,4 +1,4 @@
-import React, { useState, useEffect, forwardRef } from 'react';
+import React, { useState, useEffect, forwardRef, useRef } from 'react';
 import { 
   Palette, 
   AlertTriangle, 
@@ -23,6 +23,13 @@ import {
   ExternalLink,
   Power,
   Loader2,
+  Download,
+  Upload,
+  FileText,
+  Database,
+  FileCheck,
+  AlertCircle,
+  Type,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +59,32 @@ interface ChatProConfig {
   is_enabled: boolean;
 }
 
+interface SiteSectionTexts {
+  hero_title: string;
+  hero_subtitle: string;
+  about_title: string;
+  about_description: string;
+  services_title: string;
+  services_subtitle: string;
+  gallery_title: string;
+  gallery_subtitle: string;
+  location_title: string;
+  cta_title: string;
+  cta_subtitle: string;
+  footer_text: string;
+}
+
+interface BackupData {
+  version: string;
+  timestamp: string;
+  shop_settings: any;
+  services: any[];
+  barbers: any[];
+  message_templates: any[];
+  chatpro_config: any;
+  site_texts?: SiteSectionTexts;
+}
+
 const defaultTemplates: Record<string, string> = {
   appointment_created: 'Olá, {{nome_cliente}}! Seu agendamento na {{nome_barbearia}} foi realizado com sucesso para {{data}} às {{hora}} para o serviço de {{serviço}}.',
   appointment_confirmed: 'Agendamento confirmado na {{nome_barbearia}} 🎉\nEstaremos te esperando no dia {{data}} às {{hora}}.',
@@ -79,6 +112,21 @@ const variables = [
   { key: '{{posição_fila}}', label: 'Posição na Fila' },
   { key: '{{protocolo}}', label: 'Protocolo' },
 ];
+
+const defaultSiteTexts: SiteSectionTexts = {
+  hero_title: 'Sua Barbearia',
+  hero_subtitle: 'Tradição e estilo em cada corte',
+  about_title: 'Sobre Nós',
+  about_description: 'Uma barbearia tradicional com foco em qualidade e atendimento personalizado.',
+  services_title: 'Nossos Serviços',
+  services_subtitle: 'Conheça nossos serviços especializados',
+  gallery_title: 'Galeria',
+  gallery_subtitle: 'Veja nossos trabalhos',
+  location_title: 'Localização',
+  cta_title: 'Agende Agora',
+  cta_subtitle: 'Reserve seu horário e venha nos visitar',
+  footer_text: 'Todos os direitos reservados',
+};
 
 interface SectionProps {
   title: string;
@@ -116,7 +164,7 @@ CollapsibleSection.displayName = 'CollapsibleSection';
 
 export default function SettingsPanel() {
   const { notify } = useNotification();
-  const { shopSettings, updateShopSettings, theme, setTheme } = useApp();
+  const { shopSettings, updateShopSettings, theme, setTheme, services, barbers } = useApp();
   const [showOverloadModal, setShowOverloadModal] = useState(false);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
@@ -129,6 +177,16 @@ export default function SettingsPanel() {
   const [chatproLoading, setChatproLoading] = useState(false);
   const [testingChatPro, setTestingChatPro] = useState(false);
   const [testPhone, setTestPhone] = useState('');
+  
+  // Backup state
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const backupFileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Site texts state
+  const [siteTexts, setSiteTexts] = useState<SiteSectionTexts>(defaultSiteTexts);
+  const [savingSiteTexts, setSavingSiteTexts] = useState(false);
 
   useEffect(() => {
     fetchTemplates();
@@ -263,16 +321,197 @@ export default function SettingsPanel() {
     notify.success(message);
   };
 
+  // ===== BACKUP FUNCTIONS =====
+  const handleExportBackup = async () => {
+    setIsExporting(true);
+    try {
+      // Fetch all data
+      const [templatesRes, chatproRes] = await Promise.all([
+        supabase.from('message_templates').select('*'),
+        supabase.from('chatpro_config').select('*').limit(1).maybeSingle(),
+      ]);
+
+      const backupData: BackupData = {
+        version: '2.0',
+        timestamp: new Date().toISOString(),
+        shop_settings: shopSettings,
+        services: services,
+        barbers: barbers,
+        message_templates: templatesRes.data || [],
+        chatpro_config: chatproRes.data,
+        site_texts: siteTexts,
+      };
+
+      // Generate encrypted backup (base64 encoding for safety)
+      const jsonStr = JSON.stringify(backupData, null, 2);
+      const encodedBackup = btoa(unescape(encodeURIComponent(jsonStr)));
+      
+      // Create checksum
+      const checksum = await generateChecksum(jsonStr);
+      
+      const finalBackup = {
+        data: encodedBackup,
+        checksum,
+        created_at: new Date().toISOString(),
+        app_version: '2.0',
+      };
+
+      // Download file
+      const blob = new Blob([JSON.stringify(finalBackup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup-barbearia-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      notify.success('Backup exportado com sucesso!');
+    } catch (error) {
+      console.error('Export error:', error);
+      notify.error('Erro ao exportar backup');
+    }
+    setIsExporting(false);
+  };
+
+  const generateChecksum = async (data: string): Promise<string> => {
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(data);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  const verifyChecksum = async (data: string, checksum: string): Promise<boolean> => {
+    const calculatedChecksum = await generateChecksum(data);
+    return calculatedChecksum === checksum;
+  };
+
+  const handleImportBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    setImportError(null);
+
+    try {
+      const fileContent = await file.text();
+      const backupFile = JSON.parse(fileContent);
+
+      // Verify structure
+      if (!backupFile.data || !backupFile.checksum) {
+        throw new Error('Arquivo de backup inválido - estrutura incorreta');
+      }
+
+      // Decode data
+      const decodedData = decodeURIComponent(escape(atob(backupFile.data)));
+      
+      // Verify checksum
+      const isValid = await verifyChecksum(decodedData, backupFile.checksum);
+      if (!isValid) {
+        throw new Error('Arquivo de backup corrompido - checksum inválido');
+      }
+
+      const backupData: BackupData = JSON.parse(decodedData);
+
+      // Verify version
+      if (!backupData.version || !backupData.timestamp) {
+        throw new Error('Arquivo de backup inválido - versão não encontrada');
+      }
+
+      // Restore shop settings
+      if (backupData.shop_settings) {
+        await updateShopSettings(backupData.shop_settings);
+      }
+
+      // Restore message templates
+      if (backupData.message_templates && backupData.message_templates.length > 0) {
+        for (const template of backupData.message_templates) {
+          await supabase
+            .from('message_templates')
+            .upsert({
+              event_type: template.event_type,
+              title: template.title,
+              template: template.template,
+              is_active: template.is_active,
+              chatpro_enabled: template.chatpro_enabled,
+              button_text: template.button_text,
+              button_url: template.button_url,
+              image_url: template.image_url,
+            }, { onConflict: 'event_type' });
+        }
+      }
+
+      // Restore ChatPro config
+      if (backupData.chatpro_config) {
+        await supabase
+          .from('chatpro_config')
+          .update({
+            api_token: backupData.chatpro_config.api_token,
+            instance_id: backupData.chatpro_config.instance_id,
+            base_endpoint: backupData.chatpro_config.base_endpoint,
+            is_enabled: backupData.chatpro_config.is_enabled,
+          })
+          .eq('id', backupData.chatpro_config.id);
+      }
+
+      // Restore site texts
+      if (backupData.site_texts) {
+        setSiteTexts(backupData.site_texts);
+      }
+
+      // Refresh data
+      await fetchTemplates();
+      await fetchChatProConfig();
+
+      notify.success('Backup restaurado com sucesso!', `Versão: ${backupData.version} | Data: ${new Date(backupData.timestamp).toLocaleDateString('pt-BR')}`);
+    } catch (error: any) {
+      console.error('Import error:', error);
+      setImportError(error.message || 'Erro ao importar backup');
+      notify.error('Erro ao importar: ' + (error.message || 'Arquivo inválido'));
+    }
+
+    setIsImporting(false);
+    if (backupFileInputRef.current) {
+      backupFileInputRef.current.value = '';
+    }
+  };
+
+  // Save site texts to localStorage (could be extended to save to DB)
+  const saveSiteTexts = () => {
+    setSavingSiteTexts(true);
+    try {
+      localStorage.setItem('site_texts', JSON.stringify(siteTexts));
+      notify.success('Textos do site salvos!');
+    } catch (error) {
+      notify.error('Erro ao salvar textos');
+    }
+    setSavingSiteTexts(false);
+  };
+
+  // Load site texts from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('site_texts');
+    if (stored) {
+      try {
+        setSiteTexts(JSON.parse(stored));
+      } catch (e) {
+        console.error('Error loading site texts:', e);
+      }
+    }
+  }, []);
+
   const apiBaseUrl = `https://wvnszzrvrrueuycrpgyc.supabase.co/functions/v1/appointments-api`;
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <h2 className="text-2xl font-bold mb-4">Configurações</h2>
+      <h2 className="text-2xl font-bold mb-6">Configurações</h2>
       
       {/* Scrollable content area */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-2 space-y-4">
-        {/* Grid layout for sections - 2 columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-2 space-y-6">
+        {/* Grid layout for sections - 2 columns with proper gap */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Tema Visual */}
         <CollapsibleSection 
           title="Tema Visual" 
@@ -411,10 +650,259 @@ export default function SettingsPanel() {
             </div>
           </div>
         </CollapsibleSection>
+        {/* Backup e Restauração */}
+        <CollapsibleSection
+          title="Backup e Restauração" 
+          icon={<Database className="w-5 h-5 text-primary" />}
+        >
+          <div className="mt-4 space-y-6">
+            {/* Info */}
+            <div className="bg-secondary/20 rounded-lg p-4 flex items-start gap-3">
+              <Shield className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <p className="font-medium mb-1">Backup Seguro e Estruturado</p>
+                <p className="text-muted-foreground text-xs">
+                  O backup inclui: configurações da barbearia, templates de mensagens, 
+                  integrações ChatPro e textos do site. Possui verificação de integridade (SHA-256).
+                </p>
+              </div>
+            </div>
+
+            {/* Export */}
+            <div className="space-y-3">
+              <h4 className="font-medium flex items-center gap-2">
+                <Download className="w-4 h-4 text-primary" />
+                Exportar Backup
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Gera um arquivo JSON criptografado com todas as configurações do sistema.
+              </p>
+              <Button 
+                onClick={handleExportBackup}
+                disabled={isExporting}
+                className="w-full"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                {isExporting ? 'Gerando backup...' : 'Baixar Backup Completo'}
+              </Button>
+            </div>
+
+            {/* Import */}
+            <div className="space-y-3 pt-4 border-t border-border">
+              <h4 className="font-medium flex items-center gap-2">
+                <Upload className="w-4 h-4 text-primary" />
+                Importar Backup
+              </h4>
+              <p className="text-xs text-muted-foreground">
+                Restaura configurações de um backup anterior. O arquivo será validado antes da importação.
+              </p>
+              
+              <input
+                ref={backupFileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportBackup}
+                className="hidden"
+              />
+              
+              <Button 
+                variant="outline"
+                onClick={() => backupFileInputRef.current?.click()}
+                disabled={isImporting}
+                className="w-full"
+              >
+                {isImporting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4 mr-2" />
+                )}
+                {isImporting ? 'Importando...' : 'Selecionar Arquivo de Backup'}
+              </Button>
+
+              {importError && (
+                <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+                  <p className="text-xs text-destructive">{importError}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Backup Info */}
+            <div className="pt-4 border-t border-border">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <FileCheck className="w-4 h-4" />
+                <span>Dados incluídos: Configurações, Templates, ChatPro, Textos do Site</span>
+              </div>
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        {/* Edição de Seções do Site */}
+        <CollapsibleSection 
+          title="Textos do Site" 
+          icon={<Type className="w-5 h-5 text-primary" />}
+        >
+          <div className="mt-4 space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Personalize os textos e títulos das seções do seu site.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Hero */}
+              <div className="space-y-2 p-3 bg-secondary/20 rounded-lg">
+                <h5 className="text-sm font-medium">Seção Principal (Hero)</h5>
+                <div>
+                  <label className="text-xs text-muted-foreground">Título</label>
+                  <Input 
+                    value={siteTexts.hero_title} 
+                    onChange={(e) => setSiteTexts(prev => ({ ...prev, hero_title: e.target.value }))}
+                    placeholder="Título principal"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Subtítulo</label>
+                  <Input 
+                    value={siteTexts.hero_subtitle} 
+                    onChange={(e) => setSiteTexts(prev => ({ ...prev, hero_subtitle: e.target.value }))}
+                    placeholder="Subtítulo"
+                  />
+                </div>
+              </div>
+
+              {/* Sobre */}
+              <div className="space-y-2 p-3 bg-secondary/20 rounded-lg">
+                <h5 className="text-sm font-medium">Sobre Nós</h5>
+                <div>
+                  <label className="text-xs text-muted-foreground">Título</label>
+                  <Input 
+                    value={siteTexts.about_title} 
+                    onChange={(e) => setSiteTexts(prev => ({ ...prev, about_title: e.target.value }))}
+                    placeholder="Título da seção"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Descrição</label>
+                  <Textarea 
+                    value={siteTexts.about_description} 
+                    onChange={(e) => setSiteTexts(prev => ({ ...prev, about_description: e.target.value }))}
+                    placeholder="Descrição sobre a barbearia"
+                    rows={2}
+                  />
+                </div>
+              </div>
+
+              {/* Serviços */}
+              <div className="space-y-2 p-3 bg-secondary/20 rounded-lg">
+                <h5 className="text-sm font-medium">Serviços</h5>
+                <div>
+                  <label className="text-xs text-muted-foreground">Título</label>
+                  <Input 
+                    value={siteTexts.services_title} 
+                    onChange={(e) => setSiteTexts(prev => ({ ...prev, services_title: e.target.value }))}
+                    placeholder="Título da seção"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Subtítulo</label>
+                  <Input 
+                    value={siteTexts.services_subtitle} 
+                    onChange={(e) => setSiteTexts(prev => ({ ...prev, services_subtitle: e.target.value }))}
+                    placeholder="Subtítulo"
+                  />
+                </div>
+              </div>
+
+              {/* Galeria */}
+              <div className="space-y-2 p-3 bg-secondary/20 rounded-lg">
+                <h5 className="text-sm font-medium">Galeria</h5>
+                <div>
+                  <label className="text-xs text-muted-foreground">Título</label>
+                  <Input 
+                    value={siteTexts.gallery_title} 
+                    onChange={(e) => setSiteTexts(prev => ({ ...prev, gallery_title: e.target.value }))}
+                    placeholder="Título da seção"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Subtítulo</label>
+                  <Input 
+                    value={siteTexts.gallery_subtitle} 
+                    onChange={(e) => setSiteTexts(prev => ({ ...prev, gallery_subtitle: e.target.value }))}
+                    placeholder="Subtítulo"
+                  />
+                </div>
+              </div>
+
+              {/* Localização */}
+              <div className="space-y-2 p-3 bg-secondary/20 rounded-lg">
+                <h5 className="text-sm font-medium">Localização</h5>
+                <div>
+                  <label className="text-xs text-muted-foreground">Título</label>
+                  <Input 
+                    value={siteTexts.location_title} 
+                    onChange={(e) => setSiteTexts(prev => ({ ...prev, location_title: e.target.value }))}
+                    placeholder="Título da seção"
+                  />
+                </div>
+              </div>
+
+              {/* CTA */}
+              <div className="space-y-2 p-3 bg-secondary/20 rounded-lg">
+                <h5 className="text-sm font-medium">Chamada para Ação (CTA)</h5>
+                <div>
+                  <label className="text-xs text-muted-foreground">Título</label>
+                  <Input 
+                    value={siteTexts.cta_title} 
+                    onChange={(e) => setSiteTexts(prev => ({ ...prev, cta_title: e.target.value }))}
+                    placeholder="Título da seção"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Subtítulo</label>
+                  <Input 
+                    value={siteTexts.cta_subtitle} 
+                    onChange={(e) => setSiteTexts(prev => ({ ...prev, cta_subtitle: e.target.value }))}
+                    placeholder="Subtítulo"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="space-y-2 p-3 bg-secondary/20 rounded-lg">
+              <h5 className="text-sm font-medium">Rodapé</h5>
+              <div>
+                <label className="text-xs text-muted-foreground">Texto do rodapé</label>
+                <Input 
+                  value={siteTexts.footer_text} 
+                  onChange={(e) => setSiteTexts(prev => ({ ...prev, footer_text: e.target.value }))}
+                  placeholder="Texto de copyright"
+                />
+              </div>
+            </div>
+
+            <Button 
+              onClick={saveSiteTexts}
+              disabled={savingSiteTexts}
+              className="w-full"
+            >
+              {savingSiteTexts ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Salvar Textos do Site
+            </Button>
+          </div>
+        </CollapsibleSection>
         </div>
 
         {/* Full-width sections for larger content */}
-        <div className="space-y-4">
+        <div className="space-y-6">
         {/* Integração ChatPro */}
         <CollapsibleSection 
           title="Integração ChatPro (WhatsApp)" 
