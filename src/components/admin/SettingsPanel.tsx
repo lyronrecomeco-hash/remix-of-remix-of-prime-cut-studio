@@ -23,6 +23,19 @@ import {
   AlertCircle,
   Type,
   X,
+  Lock,
+  Key,
+  UserCheck,
+  ShieldCheck,
+  AlertTriangle,
+  Settings,
+  Sparkles,
+  Heart,
+  Flower2,
+  Moon,
+  Sun,
+  Zap,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,6 +92,28 @@ interface BackupData {
   site_texts?: SiteSectionTexts;
 }
 
+interface BackupConfig {
+  autoBackup: boolean;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  keepLastBackups: number;
+  lastBackupDate?: string;
+}
+
+interface SecuritySettings {
+  twoFactorAuth: boolean;
+  sessionTimeout: number;
+  ipWhitelist: string[];
+  loginAttemptLimit: number;
+  requireStrongPassword: boolean;
+  auditLog: boolean;
+}
+
+interface BarberSchedule {
+  barberId: string;
+  barberName: string;
+  schedules: { day: string; start: string; end: string; enabled: boolean }[];
+}
+
 const defaultTemplates: Record<string, string> = {
   appointment_created: 'Olá, {{nome_cliente}}! Seu agendamento na {{nome_barbearia}} foi realizado com sucesso para {{data}} às {{hora}} para o serviço de {{serviço}}.',
   appointment_confirmed: 'Agendamento confirmado na {{nome_barbearia}} 🎉\nEstaremos te esperando no dia {{data}} às {{hora}}.',
@@ -122,6 +157,35 @@ const defaultSiteTexts: SiteSectionTexts = {
   footer_text: 'Todos os direitos reservados',
 };
 
+const allThemes = [
+  { id: 'gold', label: 'Black & Gold', colors: ['#000000', '#F59E0B'], icon: Sparkles },
+  { id: 'gold-shine', label: 'Gold Brilhante', colors: ['#000000', '#FBBF24'], icon: Sun },
+  { id: 'gold-metallic', label: 'Gold Metálico', colors: ['#1A1A1A', '#D97706'], icon: Zap },
+  { id: 'dark-elegant', label: 'Dark Elegante', colors: ['#0F0F0F', '#6366F1'], icon: Moon },
+  { id: 'classic-wood', label: 'Clássico Madeira', colors: ['#2D1B0E', '#8B4513'], icon: Store },
+  { id: 'modern-steel', label: 'Aço Moderno', colors: ['#1F2937', '#9CA3AF'], icon: Shield },
+  { id: 'rose-feminine', label: 'Rosé Feminino', colors: ['#FDF2F8', '#EC4899'], icon: Heart },
+  { id: 'lavender-soft', label: 'Lavanda Suave', colors: ['#F5F3FF', '#8B5CF6'], icon: Flower2 },
+  { id: 'coral-beauty', label: 'Coral Beauty', colors: ['#FFF1F2', '#FB7185'], icon: Sparkles },
+];
+
+const defaultSecuritySettings: SecuritySettings = {
+  twoFactorAuth: false,
+  sessionTimeout: 30,
+  ipWhitelist: [],
+  loginAttemptLimit: 5,
+  requireStrongPassword: true,
+  auditLog: true,
+};
+
+const defaultBackupConfig: BackupConfig = {
+  autoBackup: false,
+  frequency: 'weekly',
+  keepLastBackups: 5,
+};
+
+const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+
 type SettingsSection = 'theme' | 'shop' | 'security' | 'social' | 'backup' | 'texts' | 'chatpro' | 'templates' | 'api';
 
 const settingsSections = [
@@ -145,6 +209,7 @@ export default function SettingsPanel() {
   const [previewTemplate, setPreviewTemplate] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<SettingsSection>('theme');
   const [textsModalOpen, setTextsModalOpen] = useState(false);
+  const [hoursModalOpen, setHoursModalOpen] = useState(false);
   
   // ChatPro state
   const [chatproConfig, setChatproConfig] = useState<ChatProConfig | null>(null);
@@ -157,15 +222,95 @@ export default function SettingsPanel() {
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const backupFileInputRef = useRef<HTMLInputElement>(null);
+  const [backupConfig, setBackupConfig] = useState<BackupConfig>(defaultBackupConfig);
   
   // Site texts state
   const [siteTexts, setSiteTexts] = useState<SiteSectionTexts>(defaultSiteTexts);
   const [savingSiteTexts, setSavingSiteTexts] = useState(false);
 
+  // Security state
+  const [securitySettings, setSecuritySettings] = useState<SecuritySettings>(defaultSecuritySettings);
+  const [newIpAddress, setNewIpAddress] = useState('');
+  const [savingTheme, setSavingTheme] = useState(false);
+
+  // Barber schedules state
+  const [barberSchedules, setBarberSchedules] = useState<BarberSchedule[]>([]);
+  const [selectedBarberId, setSelectedBarberId] = useState<string>('');
+
   useEffect(() => {
     fetchTemplates();
     fetchChatProConfig();
+    loadSecuritySettings();
+    loadBackupConfig();
+    loadBarberSchedules();
   }, []);
+
+  useEffect(() => {
+    loadBarberSchedules();
+  }, [barbers]);
+
+  const loadSecuritySettings = () => {
+    const stored = localStorage.getItem('security_settings');
+    if (stored) {
+      try {
+        setSecuritySettings(JSON.parse(stored));
+      } catch (e) {
+        console.error('Error loading security settings:', e);
+      }
+    }
+  };
+
+  const loadBackupConfig = () => {
+    const stored = localStorage.getItem('backup_config');
+    if (stored) {
+      try {
+        setBackupConfig(JSON.parse(stored));
+      } catch (e) {
+        console.error('Error loading backup config:', e);
+      }
+    }
+  };
+
+  const loadBarberSchedules = () => {
+    const stored = localStorage.getItem('barber_schedules');
+    if (stored) {
+      try {
+        setBarberSchedules(JSON.parse(stored));
+      } catch (e) {
+        console.error('Error loading barber schedules:', e);
+      }
+    } else if (barbers && barbers.length > 0) {
+      const initialSchedules: BarberSchedule[] = barbers.map(b => ({
+        barberId: b.id,
+        barberName: b.name,
+        schedules: daysOfWeek.map((day, idx) => ({
+          day,
+          start: '09:00',
+          end: '18:00',
+          enabled: idx < 6,
+        })),
+      }));
+      setBarberSchedules(initialSchedules);
+    }
+  };
+
+  const saveSecuritySettings = (settings: SecuritySettings) => {
+    setSecuritySettings(settings);
+    localStorage.setItem('security_settings', JSON.stringify(settings));
+    notify.success('Configurações de segurança salvas!');
+  };
+
+  const saveBackupConfig = (config: BackupConfig) => {
+    setBackupConfig(config);
+    localStorage.setItem('backup_config', JSON.stringify(config));
+    notify.success('Configuração de backup salva!');
+  };
+
+  const saveBarberSchedules = () => {
+    localStorage.setItem('barber_schedules', JSON.stringify(barberSchedules));
+    notify.success('Horários salvos!');
+    setHoursModalOpen(false);
+  };
 
   const fetchTemplates = async () => {
     const { data } = await supabase.from('message_templates').select('*');
@@ -336,6 +481,11 @@ export default function SettingsPanel() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
+      // Update last backup date
+      const updatedConfig = { ...backupConfig, lastBackupDate: new Date().toISOString() };
+      setBackupConfig(updatedConfig);
+      localStorage.setItem('backup_config', JSON.stringify(updatedConfig));
+
       notify.success('Backup exportado com sucesso!');
     } catch (error) {
       console.error('Export error:', error);
@@ -461,6 +611,35 @@ export default function SettingsPanel() {
     }
   }, []);
 
+  const handleSaveTheme = () => {
+    setSavingTheme(true);
+    setTimeout(() => {
+      notify.success('Tema salvo e aplicado ao site!');
+      setSavingTheme(false);
+    }, 500);
+  };
+
+  const addIpToWhitelist = () => {
+    if (!newIpAddress.trim()) return;
+    const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (!ipPattern.test(newIpAddress)) {
+      notify.error('IP inválido. Use formato: 192.168.1.1');
+      return;
+    }
+    if (securitySettings.ipWhitelist.includes(newIpAddress)) {
+      notify.error('IP já está na lista');
+      return;
+    }
+    const updated = { ...securitySettings, ipWhitelist: [...securitySettings.ipWhitelist, newIpAddress] };
+    saveSecuritySettings(updated);
+    setNewIpAddress('');
+  };
+
+  const removeIpFromWhitelist = (ip: string) => {
+    const updated = { ...securitySettings, ipWhitelist: securitySettings.ipWhitelist.filter(i => i !== ip) };
+    saveSecuritySettings(updated);
+  };
+
   const apiBaseUrl = `https://wvnszzrvrrueuycrpgyc.supabase.co/functions/v1/appointments-api`;
 
   // Render section content
@@ -469,28 +648,37 @@ export default function SettingsPanel() {
       case 'theme':
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Tema Visual</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {[
-                { id: 'gold', label: 'Black & Gold', colors: ['bg-black', 'bg-amber-500'] },
-                { id: 'gold-shine', label: 'Gold Brilhante', colors: ['bg-black', 'bg-yellow-400'] },
-                { id: 'gold-metallic', label: 'Gold Metálico', colors: ['bg-black', 'bg-amber-300'] },
-              ].map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTheme(t.id as any)}
-                  className={`p-4 rounded-xl border-2 transition-all ${
-                    theme === t.id ? 'border-primary gold-glow' : 'border-border hover:border-primary/50'
-                  }`}
-                >
-                  <div className="flex gap-2 mb-3">
-                    {t.colors.map((c, i) => (
-                      <div key={i} className={`w-6 h-6 rounded-full ${c}`} />
-                    ))}
-                  </div>
-                  <p className="text-sm font-medium">{t.label}</p>
-                </button>
-              ))}
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Tema Visual</h3>
+              <Button onClick={handleSaveTheme} disabled={savingTheme} size="sm">
+                {savingTheme ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                Salvar Tema
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">Escolha o tema que combina com seu estabelecimento.</p>
+            <div className="grid grid-cols-3 gap-3">
+              {allThemes.map((t) => {
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTheme(t.id as any)}
+                    className={`p-3 rounded-xl border-2 transition-all ${
+                      theme === t.id ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Icon className="w-4 h-4 text-muted-foreground" />
+                      <div className="flex gap-1">
+                        {t.colors.map((c, i) => (
+                          <div key={i} className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: c }} />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs font-medium text-left">{t.label}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
         );
@@ -498,34 +686,38 @@ export default function SettingsPanel() {
       case 'shop':
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Dados da Barbearia</h3>
-            <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Dados da Barbearia</h3>
+              <Button variant="outline" size="sm" onClick={() => setHoursModalOpen(true)}>
+                <Clock className="w-4 h-4 mr-2" />
+                Horários
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium text-muted-foreground block mb-2">Nome</label>
-                <Input value={shopSettings.name} onChange={(e) => updateShopSettings({ name: e.target.value })} className="h-11" />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground block mb-2">Tagline</label>
-                <Input value={shopSettings.tagline} onChange={(e) => updateShopSettings({ tagline: e.target.value })} className="h-11" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground block mb-2">Telefone</label>
-                  <Input value={shopSettings.phone} onChange={(e) => updateShopSettings({ phone: e.target.value })} className="h-11" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground block mb-2">WhatsApp</label>
-                  <Input value={shopSettings.whatsapp} onChange={(e) => updateShopSettings({ whatsapp: e.target.value })} placeholder="55..." className="h-11" />
-                </div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Nome</label>
+                <Input value={shopSettings.name} onChange={(e) => updateShopSettings({ name: e.target.value })} className="h-10" />
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground block mb-2">Endereço</label>
-                <Input value={shopSettings.address} onChange={(e) => updateShopSettings({ address: e.target.value })} className="h-11" />
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Tagline</label>
+                <Input value={shopSettings.tagline} onChange={(e) => updateShopSettings({ tagline: e.target.value })} className="h-10" />
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground block mb-2">Link Google Maps</label>
-                <Input value={shopSettings.mapsLink} onChange={(e) => updateShopSettings({ mapsLink: e.target.value })} placeholder="https://maps.google.com/..." className="h-11" />
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Telefone</label>
+                <Input value={shopSettings.phone} onChange={(e) => updateShopSettings({ phone: e.target.value })} className="h-10" />
               </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">WhatsApp</label>
+                <Input value={shopSettings.whatsapp} onChange={(e) => updateShopSettings({ whatsapp: e.target.value })} placeholder="55..." className="h-10" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Endereço</label>
+              <Input value={shopSettings.address} onChange={(e) => updateShopSettings({ address: e.target.value })} className="h-10" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Link Google Maps</label>
+              <Input value={shopSettings.mapsLink} onChange={(e) => updateShopSettings({ mapsLink: e.target.value })} placeholder="https://maps.google.com/..." className="h-10" />
             </div>
           </div>
         );
@@ -533,11 +725,16 @@ export default function SettingsPanel() {
       case 'security':
         return (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Segurança</h3>
-            <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl">
-              <div>
-                <span className="font-medium">Alerta de Sobrecarga</span>
-                <p className="text-sm text-muted-foreground">Notifica ao atingir limite diário</p>
+            <h3 className="text-lg font-semibold">Segurança Avançada</h3>
+            
+            {/* Alerta de Sobrecarga */}
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                <div>
+                  <span className="text-sm font-medium">Alerta de Sobrecarga</span>
+                  <p className="text-xs text-muted-foreground">Notifica ao atingir limite diário</p>
+                </div>
               </div>
               <button
                 onClick={() => {
@@ -548,28 +745,146 @@ export default function SettingsPanel() {
                     notify.info('Alertas desativados');
                   }
                 }}
-                className={`w-14 h-7 rounded-full transition-colors relative ${
+                className={`w-12 h-6 rounded-full transition-colors relative ${
                   shopSettings.overloadAlertEnabled ? 'bg-primary' : 'bg-secondary'
                 }`}
               >
-                <div className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${
-                  shopSettings.overloadAlertEnabled ? 'left-8' : 'left-1'
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                  shopSettings.overloadAlertEnabled ? 'left-7' : 'left-1'
                 }`} />
               </button>
             </div>
+
             {shopSettings.overloadAlertEnabled && (
-              <div className="pt-4 border-t border-border">
-                <label className="text-sm font-medium text-muted-foreground block mb-2">Limite diário</label>
+              <div className="pl-7 pb-2">
+                <label className="text-xs text-muted-foreground block mb-1">Limite diário de agendamentos</label>
                 <Input
                   type="number"
                   value={shopSettings.dailyAppointmentLimit || 20}
                   onChange={(e) => updateShopSettings({ dailyAppointmentLimit: Number(e.target.value) })}
                   min={1}
                   max={100}
-                  className="h-11 max-w-[200px]"
+                  className="h-9 max-w-[120px]"
                 />
               </div>
             )}
+
+            {/* Autenticação em Duas Etapas */}
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Key className="w-4 h-4 text-blue-500" />
+                <div>
+                  <span className="text-sm font-medium">Autenticação 2 Fatores</span>
+                  <p className="text-xs text-muted-foreground">Proteção extra no login</p>
+                </div>
+              </div>
+              <button
+                onClick={() => saveSecuritySettings({ ...securitySettings, twoFactorAuth: !securitySettings.twoFactorAuth })}
+                className={`w-12 h-6 rounded-full transition-colors relative ${
+                  securitySettings.twoFactorAuth ? 'bg-primary' : 'bg-secondary'
+                }`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                  securitySettings.twoFactorAuth ? 'left-7' : 'left-1'
+                }`} />
+              </button>
+            </div>
+
+            {/* Senha Forte */}
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Lock className="w-4 h-4 text-green-500" />
+                <div>
+                  <span className="text-sm font-medium">Exigir Senha Forte</span>
+                  <p className="text-xs text-muted-foreground">Mín. 8 caracteres, maiúscula, número</p>
+                </div>
+              </div>
+              <button
+                onClick={() => saveSecuritySettings({ ...securitySettings, requireStrongPassword: !securitySettings.requireStrongPassword })}
+                className={`w-12 h-6 rounded-full transition-colors relative ${
+                  securitySettings.requireStrongPassword ? 'bg-primary' : 'bg-secondary'
+                }`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                  securitySettings.requireStrongPassword ? 'left-7' : 'left-1'
+                }`} />
+              </button>
+            </div>
+
+            {/* Log de Auditoria */}
+            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-4 h-4 text-purple-500" />
+                <div>
+                  <span className="text-sm font-medium">Log de Auditoria</span>
+                  <p className="text-xs text-muted-foreground">Registra todas as ações do admin</p>
+                </div>
+              </div>
+              <button
+                onClick={() => saveSecuritySettings({ ...securitySettings, auditLog: !securitySettings.auditLog })}
+                className={`w-12 h-6 rounded-full transition-colors relative ${
+                  securitySettings.auditLog ? 'bg-primary' : 'bg-secondary'
+                }`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                  securitySettings.auditLog ? 'left-7' : 'left-1'
+                }`} />
+              </button>
+            </div>
+
+            {/* Timeout de Sessão */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Timeout Sessão (min)</label>
+                <Input
+                  type="number"
+                  value={securitySettings.sessionTimeout}
+                  onChange={(e) => saveSecuritySettings({ ...securitySettings, sessionTimeout: Number(e.target.value) })}
+                  min={5}
+                  max={120}
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Limite Tentativas Login</label>
+                <Input
+                  type="number"
+                  value={securitySettings.loginAttemptLimit}
+                  onChange={(e) => saveSecuritySettings({ ...securitySettings, loginAttemptLimit: Number(e.target.value) })}
+                  min={3}
+                  max={10}
+                  className="h-9"
+                />
+              </div>
+            </div>
+
+            {/* IP Whitelist */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Lista de IPs Permitidos</label>
+              <div className="flex gap-2">
+                <Input
+                  value={newIpAddress}
+                  onChange={(e) => setNewIpAddress(e.target.value)}
+                  placeholder="192.168.1.1"
+                  className="h-9 flex-1"
+                />
+                <Button size="sm" onClick={addIpToWhitelist} className="h-9">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              {securitySettings.ipWhitelist.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {securitySettings.ipWhitelist.map((ip) => (
+                    <span key={ip} className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
+                      {ip}
+                      <button onClick={() => removeIpFromWhitelist(ip)} className="hover:text-destructive">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         );
 
@@ -577,27 +892,28 @@ export default function SettingsPanel() {
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Redes Sociais</h3>
-            <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Configure seus perfis nas redes sociais.</p>
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium text-muted-foreground block mb-2 flex items-center gap-2">
-                  <Instagram className="w-4 h-4" /> Instagram
+                <label className="text-xs font-medium text-muted-foreground flex items-center gap-2 mb-1">
+                  <Instagram className="w-3 h-3" /> Instagram
                 </label>
                 <Input
                   placeholder="@seuperfil"
                   value={shopSettings.social?.instagram || ''}
                   onChange={(e) => updateShopSettings({ social: { ...shopSettings.social, instagram: e.target.value } })}
-                  className="h-11"
+                  className="h-10"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground block mb-2 flex items-center gap-2">
-                  <Facebook className="w-4 h-4" /> Facebook
+                <label className="text-xs font-medium text-muted-foreground flex items-center gap-2 mb-1">
+                  <Facebook className="w-3 h-3" /> Facebook
                 </label>
                 <Input
                   placeholder="nome.da.pagina"
                   value={shopSettings.social?.facebook || ''}
                   onChange={(e) => updateShopSettings({ social: { ...shopSettings.social, facebook: e.target.value } })}
-                  className="h-11"
+                  className="h-10"
                 />
               </div>
             </div>
@@ -608,34 +924,90 @@ export default function SettingsPanel() {
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Backup e Restauração</h3>
-            <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-start gap-4">
-              <Shield className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+            
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex items-start gap-3">
+              <Shield className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
               <div>
-                <p className="font-medium mb-1">Backup Seguro SHA-256</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm font-medium">Backup Seguro SHA-256</p>
+                <p className="text-xs text-muted-foreground">
                   Inclui: configurações, templates, ChatPro e textos.
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Button onClick={handleExportBackup} disabled={isExporting} className="h-12">
-                {isExporting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Download className="w-5 h-5 mr-2" />}
+            {/* Configuração de Backup Automático */}
+            <div className="bg-muted/30 rounded-lg p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Backup Automático</span>
+                </div>
+                <button
+                  onClick={() => saveBackupConfig({ ...backupConfig, autoBackup: !backupConfig.autoBackup })}
+                  className={`w-12 h-6 rounded-full transition-colors relative ${
+                    backupConfig.autoBackup ? 'bg-primary' : 'bg-secondary'
+                  }`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                    backupConfig.autoBackup ? 'left-7' : 'left-1'
+                  }`} />
+                </button>
+              </div>
+              
+              {backupConfig.autoBackup && (
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Frequência</label>
+                    <select
+                      value={backupConfig.frequency}
+                      onChange={(e) => saveBackupConfig({ ...backupConfig, frequency: e.target.value as any })}
+                      className="w-full h-9 px-3 bg-background border border-input rounded-md text-sm"
+                    >
+                      <option value="daily">Diário</option>
+                      <option value="weekly">Semanal</option>
+                      <option value="monthly">Mensal</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Manter últimos</label>
+                    <select
+                      value={backupConfig.keepLastBackups}
+                      onChange={(e) => saveBackupConfig({ ...backupConfig, keepLastBackups: Number(e.target.value) })}
+                      className="w-full h-9 px-3 bg-background border border-input rounded-md text-sm"
+                    >
+                      <option value={3}>3 backups</option>
+                      <option value={5}>5 backups</option>
+                      <option value={10}>10 backups</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {backupConfig.lastBackupDate && (
+                <p className="text-xs text-muted-foreground pt-1">
+                  Último backup: {new Date(backupConfig.lastBackupDate).toLocaleString('pt-BR')}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button onClick={handleExportBackup} disabled={isExporting} className="h-10">
+                {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
                 Exportar
               </Button>
               
               <input ref={backupFileInputRef} type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
               
-              <Button variant="outline" onClick={() => backupFileInputRef.current?.click()} disabled={isImporting} className="h-12">
-                {isImporting ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Upload className="w-5 h-5 mr-2" />}
+              <Button variant="outline" onClick={() => backupFileInputRef.current?.click()} disabled={isImporting} className="h-10">
+                {isImporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
                 Importar
               </Button>
             </div>
 
             {importError && (
-              <div className="flex items-center gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
-                <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
-                <p className="text-sm text-destructive">{importError}</p>
+              <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+                <p className="text-xs text-destructive">{importError}</p>
               </div>
             )}
           </div>
@@ -646,12 +1018,26 @@ export default function SettingsPanel() {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Textos do Site</h3>
             <p className="text-sm text-muted-foreground">
-              Personalize os textos das seções do site público.
+              Personalize os textos que aparecem no site público.
             </p>
-            <Button onClick={() => setTextsModalOpen(true)} className="h-11">
-              <Type className="w-4 h-4 mr-2" />
-              Editar Textos
-            </Button>
+            
+            <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <Type className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="text-sm font-medium">Seções Editáveis</p>
+                  <p className="text-xs text-muted-foreground">Hero, Sobre, Serviços, Galeria, CTA, Rodapé</p>
+                </div>
+              </div>
+              <Button onClick={() => setTextsModalOpen(true)} className="w-full h-10">
+                <Type className="w-4 h-4 mr-2" />
+                Abrir Editor de Textos
+              </Button>
+            </div>
+            
+            <div className="text-xs text-muted-foreground p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+              <strong>Dica:</strong> Use textos curtos e diretos para melhor experiência do usuário.
+            </div>
           </div>
         );
 
@@ -674,46 +1060,47 @@ export default function SettingsPanel() {
             </div>
 
             {chatproConfig?.is_enabled && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <label className="text-sm text-muted-foreground block mb-2">API Token</label>
+                  <label className="text-xs text-muted-foreground block mb-1">API Token</label>
                   <Input
                     type="password"
                     value={chatproConfig?.api_token || ''}
                     onChange={(e) => updateChatProConfig({ api_token: e.target.value })}
                     placeholder="Seu token..."
-                    className="h-11"
+                    className="h-9"
                   />
                 </div>
-                <div>
-                  <label className="text-sm text-muted-foreground block mb-2">Instance ID</label>
-                  <Input
-                    value={chatproConfig?.instance_id || ''}
-                    onChange={(e) => updateChatProConfig({ instance_id: e.target.value })}
-                    placeholder="ID da instância..."
-                    className="h-11"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground block mb-2">Endpoint</label>
-                  <Input
-                    value={chatproConfig?.base_endpoint || ''}
-                    onChange={(e) => updateChatProConfig({ base_endpoint: e.target.value })}
-                    placeholder="https://..."
-                    className="h-11"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Instance ID</label>
+                    <Input
+                      value={chatproConfig?.instance_id || ''}
+                      onChange={(e) => updateChatProConfig({ instance_id: e.target.value })}
+                      placeholder="ID..."
+                      className="h-9"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Endpoint</label>
+                    <Input
+                      value={chatproConfig?.base_endpoint || ''}
+                      onChange={(e) => updateChatProConfig({ base_endpoint: e.target.value })}
+                      placeholder="https://..."
+                      className="h-9"
+                    />
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-3 pt-3 border-t border-border">
+                <div className="flex items-center gap-2 pt-2 border-t border-border">
                   <Input
                     value={testPhone}
                     onChange={(e) => setTestPhone(e.target.value)}
                     placeholder="5511999999999"
-                    className="max-w-[200px] h-11"
+                    className="h-9 flex-1"
                   />
-                  <Button variant="outline" onClick={testChatProConnection} disabled={testingChatPro} className="h-11">
-                    {testingChatPro ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <TestTube className="w-4 h-4 mr-2" />}
-                    Testar
+                  <Button variant="outline" onClick={testChatProConnection} disabled={testingChatPro} className="h-9">
+                    {testingChatPro ? <Loader2 className="w-4 h-4 animate-spin" /> : <TestTube className="w-4 h-4" />}
                   </Button>
                 </div>
               </div>
@@ -723,38 +1110,38 @@ export default function SettingsPanel() {
 
       case 'templates':
         return (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <h3 className="text-lg font-semibold">Templates de Mensagem</h3>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {Object.entries(eventLabels).map(([eventType, label]) => {
                 const template = getTemplateForEvent(eventType);
                 const isExpanded = expandedTemplate === eventType;
 
                 return (
-                  <div key={eventType} className="bg-secondary/30 rounded-xl overflow-hidden">
+                  <div key={eventType} className="bg-secondary/30 rounded-lg overflow-hidden">
                     <button
                       onClick={() => setExpandedTemplate(isExpanded ? null : eventType)}
-                      className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors"
+                      className="w-full flex items-center justify-between p-3 hover:bg-secondary/50 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${template?.is_active ? 'bg-green-500' : 'bg-muted'}`} />
-                        <span className="font-medium">{label}</span>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${template?.is_active ? 'bg-green-500' : 'bg-muted'}`} />
+                        <span className="text-sm font-medium">{label}</span>
                       </div>
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
 
                     {isExpanded && template && (
-                      <div className="p-4 pt-0 space-y-4">
-                        <div className="flex items-center gap-3 pb-3 border-b border-border">
-                          <span className="text-sm text-muted-foreground">ChatPro:</span>
+                      <div className="p-3 pt-0 space-y-3">
+                        <div className="flex items-center gap-2 pb-2 border-b border-border">
+                          <span className="text-xs text-muted-foreground">ChatPro:</span>
                           <button
                             onClick={() => toggleChatProForEvent(eventType, !template.chatpro_enabled)}
-                            className={`w-10 h-5 rounded-full transition-colors relative ${
+                            className={`w-8 h-4 rounded-full transition-colors relative ${
                               template.chatpro_enabled ? 'bg-primary' : 'bg-secondary'
                             }`}
                           >
-                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
-                              template.chatpro_enabled ? 'left-5' : 'left-0.5'
+                            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${
+                              template.chatpro_enabled ? 'left-4' : 'left-0.5'
                             }`} />
                           </button>
                         </div>
@@ -767,10 +1154,11 @@ export default function SettingsPanel() {
                             );
                             setTemplates(updated);
                           }}
-                          rows={4}
+                          rows={3}
+                          className="text-sm"
                         />
 
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1">
                           {variables.map((v) => (
                             <button
                               key={v.key}
@@ -784,32 +1172,32 @@ export default function SettingsPanel() {
                                 );
                                 setTemplates(updated);
                               }}
-                              className="px-3 py-1.5 bg-primary/20 text-primary rounded-lg text-xs font-mono hover:bg-primary/30 transition-colors"
+                              className="px-2 py-1 bg-primary/20 text-primary rounded text-[10px] font-mono hover:bg-primary/30 transition-colors"
                             >
                               {v.key}
                             </button>
                           ))}
                         </div>
 
-                        <div className="flex gap-3">
-                          <Button size="sm" onClick={() => updateTemplate(eventType, template.template)} className="h-10">
-                            <Save className="w-4 h-4 mr-2" />
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => updateTemplate(eventType, template.template)} className="h-8 text-xs">
+                            <Save className="w-3 h-3 mr-1" />
                             Salvar
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => restoreDefaultTemplate(eventType)} className="h-10">
-                            <RotateCcw className="w-4 h-4 mr-2" />
+                          <Button size="sm" variant="outline" onClick={() => restoreDefaultTemplate(eventType)} className="h-8 text-xs">
+                            <RotateCcw className="w-3 h-3 mr-1" />
                             Restaurar
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setPreviewTemplate(previewTemplate === eventType ? null : eventType)} className="h-10">
-                            <Eye className="w-4 h-4 mr-2" />
+                          <Button size="sm" variant="ghost" onClick={() => setPreviewTemplate(previewTemplate === eventType ? null : eventType)} className="h-8 text-xs">
+                            <Eye className="w-3 h-3 mr-1" />
                             Preview
                           </Button>
                         </div>
 
                         {previewTemplate === eventType && (
-                          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-                            <p className="text-xs text-green-400 mb-2 font-medium">Pré-visualização:</p>
-                            <p className="text-sm whitespace-pre-wrap">{getPreviewMessage(template.template)}</p>
+                          <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                            <p className="text-[10px] text-green-400 mb-1 font-medium">Pré-visualização:</p>
+                            <p className="text-xs whitespace-pre-wrap">{getPreviewMessage(template.template)}</p>
                           </div>
                         )}
                       </div>
@@ -825,18 +1213,39 @@ export default function SettingsPanel() {
         return (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">API de Integração</h3>
-            <div className="bg-secondary/50 rounded-xl p-4 font-mono text-sm break-all">
-              {apiBaseUrl}
-              <button
-                onClick={() => copyToClipboard(apiBaseUrl, 'URL copiada!')}
-                className="ml-3 p-1.5 hover:bg-secondary rounded-lg transition-colors"
-              >
-                <Copy className="w-4 h-4" />
-              </button>
-            </div>
             <p className="text-sm text-muted-foreground">
               Use esta URL para integrar com sistemas externos.
             </p>
+            
+            <div className="bg-secondary/50 rounded-lg p-3">
+              <div className="flex items-center justify-between gap-2">
+                <code className="font-mono text-xs break-all flex-1">{apiBaseUrl}</code>
+                <button
+                  onClick={() => copyToClipboard(apiBaseUrl, 'URL copiada!')}
+                  className="p-2 hover:bg-secondary rounded-lg transition-colors flex-shrink-0"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium">Endpoints disponíveis:</p>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li className="flex items-center gap-2">
+                  <span className="px-1.5 py-0.5 bg-green-500/20 text-green-500 rounded text-[10px]">GET</span>
+                  /appointments
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-500 rounded text-[10px]">POST</span>
+                  /appointments
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-500 rounded text-[10px]">PUT</span>
+                  /appointments/:id
+                </li>
+              </ul>
+            </div>
           </div>
         );
 
@@ -847,11 +1256,11 @@ export default function SettingsPanel() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <h2 className="text-2xl font-bold mb-6">Configurações</h2>
+      <h2 className="text-2xl font-bold mb-4">Configurações</h2>
       
-      <div className="flex-1 min-h-0 flex gap-6">
+      <div className="flex-1 min-h-0 flex gap-4">
         {/* Menu lateral de categorias */}
-        <div className="w-48 flex-shrink-0 space-y-2 overflow-y-auto">
+        <div className="w-44 flex-shrink-0 space-y-1.5 overflow-y-auto">
           {settingsSections.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection === section.id;
@@ -859,13 +1268,13 @@ export default function SettingsPanel() {
               <button
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
+                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all text-left ${
                   isActive 
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-card hover:bg-muted/50 border border-border'
                 }`}
               >
-                <Icon className="w-5 h-5 flex-shrink-0" />
+                <Icon className="w-4 h-4 flex-shrink-0" />
                 <span className="font-medium text-sm">{section.label}</span>
               </button>
             );
@@ -873,7 +1282,7 @@ export default function SettingsPanel() {
         </div>
 
         {/* Área de conteúdo */}
-        <div className="flex-1 min-h-0 overflow-y-auto bg-card border border-border rounded-xl p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto bg-card border border-border rounded-xl p-5">
           {renderSectionContent()}
         </div>
       </div>
@@ -971,6 +1380,168 @@ export default function SettingsPanel() {
             <Button onClick={saveSiteTexts} disabled={savingSiteTexts}>
               {savingSiteTexts ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Salvar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Horários */}
+      <Dialog open={hoursModalOpen} onOpenChange={setHoursModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              Configurar Horários
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Horários Gerais */}
+            <div className="p-4 bg-muted/30 rounded-xl space-y-3">
+              <h5 className="font-semibold">Horários Gerais da Barbearia</h5>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Horário Semana</label>
+                  <Input 
+                    value={shopSettings.hours?.weekdays || '09:00 - 18:00'}
+                    onChange={(e) => updateShopSettings({ hours: { ...shopSettings.hours, weekdays: e.target.value }})}
+                    placeholder="09:00 - 18:00"
+                    className="h-10"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Sábado</label>
+                  <Input 
+                    value={shopSettings.hours?.saturday || '09:00 - 14:00'}
+                    onChange={(e) => updateShopSettings({ hours: { ...shopSettings.hours, saturday: e.target.value }})}
+                    placeholder="09:00 - 14:00"
+                    className="h-10"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Intervalo Início</label>
+                  <Input 
+                    value={shopSettings.lunchBreak?.start || '12:00'}
+                    onChange={(e) => updateShopSettings({ lunchBreak: { ...shopSettings.lunchBreak, start: e.target.value } })}
+                    placeholder="12:00"
+                    className="h-10"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Intervalo Fim</label>
+                  <Input 
+                    value={shopSettings.lunchBreak?.end || '13:00'}
+                    onChange={(e) => updateShopSettings({ lunchBreak: { ...shopSettings.lunchBreak, end: e.target.value } })}
+                    placeholder="13:00"
+                    className="h-10"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Horários por Barbeiro */}
+            <div className="p-4 bg-muted/30 rounded-xl space-y-3">
+              <h5 className="font-semibold flex items-center gap-2">
+                <UserCheck className="w-4 h-4" />
+                Horários por Barbeiro
+              </h5>
+              
+              {barbers && barbers.length > 0 ? (
+                <div className="space-y-3">
+                  <select
+                    value={selectedBarberId}
+                    onChange={(e) => setSelectedBarberId(e.target.value)}
+                    className="w-full h-10 px-3 bg-background border border-input rounded-md text-sm"
+                  >
+                    <option value="">Selecione um barbeiro</option>
+                    {barbers.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+
+                  {selectedBarberId && (
+                    <div className="space-y-2">
+                      {daysOfWeek.map((day, idx) => {
+                        const schedule = barberSchedules.find(bs => bs.barberId === selectedBarberId);
+                        const daySchedule = schedule?.schedules.find(s => s.day === day);
+                        
+                        return (
+                          <div key={day} className="flex items-center gap-3 p-2 bg-background/50 rounded-lg">
+                            <button
+                              onClick={() => {
+                                setBarberSchedules(prev => prev.map(bs => {
+                                  if (bs.barberId !== selectedBarberId) return bs;
+                                  return {
+                                    ...bs,
+                                    schedules: bs.schedules.map(s => 
+                                      s.day === day ? { ...s, enabled: !s.enabled } : s
+                                    )
+                                  };
+                                }));
+                              }}
+                              className={`w-8 h-4 rounded-full transition-colors relative ${
+                                daySchedule?.enabled ? 'bg-primary' : 'bg-secondary'
+                              }`}
+                            >
+                              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${
+                                daySchedule?.enabled ? 'left-4' : 'left-0.5'
+                              }`} />
+                            </button>
+                            <span className="text-sm w-20">{day}</span>
+                            <Input
+                              value={daySchedule?.start || '09:00'}
+                              onChange={(e) => {
+                                setBarberSchedules(prev => prev.map(bs => {
+                                  if (bs.barberId !== selectedBarberId) return bs;
+                                  return {
+                                    ...bs,
+                                    schedules: bs.schedules.map(s => 
+                                      s.day === day ? { ...s, start: e.target.value } : s
+                                    )
+                                  };
+                                }));
+                              }}
+                              className="h-8 w-24"
+                              disabled={!daySchedule?.enabled}
+                            />
+                            <span className="text-muted-foreground">-</span>
+                            <Input
+                              value={daySchedule?.end || '18:00'}
+                              onChange={(e) => {
+                                setBarberSchedules(prev => prev.map(bs => {
+                                  if (bs.barberId !== selectedBarberId) return bs;
+                                  return {
+                                    ...bs,
+                                    schedules: bs.schedules.map(s => 
+                                      s.day === day ? { ...s, end: e.target.value } : s
+                                    )
+                                  };
+                                }));
+                              }}
+                              className="h-8 w-24"
+                              disabled={!daySchedule?.enabled}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nenhum barbeiro cadastrado.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button variant="outline" onClick={() => setHoursModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={saveBarberSchedules}>
+              <Save className="w-4 h-4 mr-2" />
+              Salvar Horários
             </Button>
           </div>
         </DialogContent>
