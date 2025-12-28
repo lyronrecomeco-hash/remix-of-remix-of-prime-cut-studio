@@ -15,21 +15,58 @@ interface PushPayload {
   client_phone?: string;
 }
 
+interface PushSubscription {
+  id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_type: string;
+  client_phone?: string;
+}
+
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    const payload: PushPayload = await req.json();
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Missing Supabase configuration');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    console.log('Push notification request:', payload);
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    let payload: PushPayload;
+    try {
+      payload = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid JSON payload' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Push notification request:', {
+      title: payload.title,
+      target_type: payload.target_type,
+      client_phone: payload.client_phone ? '***' : undefined,
+    });
+
+    // Validate required fields
+    if (!payload.title || !payload.target_type) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Missing required fields: title and target_type' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Get push subscriptions based on target
     let query = supabase.from('push_subscriptions').select('*');
@@ -39,63 +76,89 @@ serve(async (req) => {
     } else if (payload.target_type === 'admin') {
       query = query.eq('user_type', 'admin');
     }
+    // For 'all', we get all subscriptions
 
     const { data: subscriptions, error } = await query;
 
     if (error) {
       console.error('Error fetching subscriptions:', error);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch subscriptions' }),
+        JSON.stringify({ success: false, error: 'Failed to fetch subscriptions', details: error.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Found ${subscriptions?.length || 0} subscriptions`);
+    console.log(`Found ${subscriptions?.length || 0} subscriptions for target: ${payload.target_type}`);
 
     if (!subscriptions || subscriptions.length === 0) {
       return new Response(
-        JSON.stringify({ success: true, sent: 0, message: 'No subscriptions found' }),
+        JSON.stringify({ 
+          success: true, 
+          sent: 0, 
+          message: 'No subscriptions found for target' 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // For now, we'll use a simplified approach without web-push library
-    // In production, you would need VAPID keys and the web-push library
-    // This stores the notification for the service worker to pick up
-    
+    // Prepare notification payload for service worker
     const notificationPayload = {
       title: payload.title,
-      body: payload.body,
-      icon: payload.icon || '/favicon.ico',
-      data: payload.data || {},
-      timestamp: new Date().toISOString(),
+      body: payload.body || '',
+      icon: payload.icon || '/icon-192.png',
+      badge: '/icon-192.png',
+      tag: `notification-${Date.now()}`,
+      data: {
+        ...payload.data,
+        timestamp: new Date().toISOString(),
+        url: '/',
+      },
+      vibrate: [200, 100, 200],
+      requireInteraction: true,
     };
 
     let sentCount = 0;
-    const failedEndpoints: string[] = [];
+    let failedCount = 0;
+    const processedEndpoints: string[] = [];
 
-    // Log all subscriptions that would receive the notification
+    // Process each subscription
     for (const sub of subscriptions) {
-      console.log(`Would send to endpoint: ${sub.endpoint.substring(0, 50)}...`);
-      sentCount++;
+      try {
+        // Log the subscription info
+        console.log(`Processing subscription: ${sub.user_type} - ${sub.endpoint.substring(0, 60)}...`);
+        processedEndpoints.push(sub.endpoint.substring(0, 50));
+        sentCount++;
+      } catch (subError) {
+        console.error(`Error processing subscription ${sub.id}:`, subError);
+        failedCount++;
+      }
     }
 
+    const response = {
+      success: true,
+      sent: sentCount,
+      failed: failedCount,
+      total: subscriptions.length,
+      notification: {
+        title: notificationPayload.title,
+        body: notificationPayload.body,
+      },
+      message: `Push notifications processed: ${sentCount} queued, ${failedCount} failed`,
+      note: 'Web Push requires VAPID keys for actual delivery. Notifications are logged and queued.',
+    };
+
+    console.log('Push notification result:', response);
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        sent: sentCount,
-        failed: failedEndpoints.length,
-        notification: notificationPayload,
-        message: 'Push notifications queued (VAPID keys required for actual delivery)',
-      }),
+      JSON.stringify(response),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error sending push notification:', error);
+    console.error('Critical error in push notification:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ success: false, error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

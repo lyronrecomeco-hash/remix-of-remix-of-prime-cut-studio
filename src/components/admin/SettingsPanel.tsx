@@ -788,7 +788,18 @@ Retorne APENAS a mensagem, sem explicações.`;
                 return (
                   <button
                     key={t.id}
-                    onClick={() => setTheme(t.id as any)}
+                    onClick={() => {
+                      setTheme(t.id as any);
+                      // Aplica tema automaticamente
+                      localStorage.setItem('app_theme', t.id);
+                      document.documentElement.className = document.documentElement.className
+                        .split(' ')
+                        .filter(c => !c.startsWith('theme-'))
+                        .join(' ');
+                      if (t.id !== 'gold') {
+                        document.documentElement.classList.add(`theme-${t.id}`);
+                      }
+                    }}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       theme === t.id ? 'border-primary ring-2 ring-primary/30 bg-primary/5' : 'border-border hover:border-primary/50'
                     }`}
@@ -1358,6 +1369,7 @@ Retorne APENAS a mensagem, sem explicações.`;
 
       case 'booking_link':
         const bookingDirectUrl = `${window.location.origin}/agendamento-direto`;
+        const censoredUrl = 'http://••••••••••••••••••••••••';
         return (
           <div className="space-y-5">
             <h3 className="text-xl font-bold">Link de Agendamento Direto</h3>
@@ -1371,8 +1383,8 @@ Retorne APENAS a mensagem, sem explicações.`;
                 <div className="flex-1">
                   <p className="text-base font-medium mb-2">Link para Agendamento</p>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <code className="font-mono text-sm break-all flex-1 p-3 bg-background rounded-lg border border-border">
-                      {bookingDirectUrl}
+                    <code className="font-mono text-sm break-all flex-1 p-3 bg-background rounded-lg border border-border text-muted-foreground">
+                      {censoredUrl}
                     </code>
                     <Button 
                       size="sm" 
@@ -1866,21 +1878,21 @@ Retorne APENAS a mensagem, sem explicações.`;
 
       {/* Modal de Preview do Tema */}
       <Dialog open={themePreviewOpen} onOpenChange={setThemePreviewOpen}>
-        <DialogContent className="max-w-4xl h-[80vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-[95vw] w-full max-h-[95vh] h-[95vh] p-4">
+          <DialogHeader className="pb-2">
             <DialogTitle className="flex items-center gap-2">
               <Monitor className="w-5 h-5 text-primary" />
               Preview do Tema: {allThemes.find(t => t.id === previewTheme)?.label}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 rounded-lg overflow-hidden border border-border">
+          <div className="flex-1 rounded-lg overflow-hidden border border-border h-[calc(95vh-120px)]">
             <iframe
               src={`/?theme=${previewTheme}`}
               className="w-full h-full"
               title="Preview do Tema"
             />
           </div>
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex justify-end gap-3 pt-2">
             <Button variant="outline" onClick={() => setThemePreviewOpen(false)}>
               Fechar
             </Button>

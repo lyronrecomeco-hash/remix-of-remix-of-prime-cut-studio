@@ -42,12 +42,27 @@ export const sendPushNotification = async (
   clientPhone?: string
 ): Promise<boolean> => {
   try {
-    console.log('Sending push notification:', { title, targetType });
+    // Validação de entrada
+    if (!title || typeof title !== 'string') {
+      console.warn('Push notification: título inválido');
+      return false;
+    }
+    
+    if (!targetType || !['client', 'admin', 'all'].includes(targetType)) {
+      console.warn('Push notification: targetType inválido');
+      return false;
+    }
+
+    console.log('Sending push notification:', { 
+      title: title.substring(0, 50), 
+      targetType,
+      hasClientPhone: !!clientPhone 
+    });
     
     const { data: result, error } = await supabase.functions.invoke('send-real-push', {
       body: {
         title,
-        body,
+        body: body || '',
         target_type: targetType,
         client_phone: clientPhone,
       },
@@ -55,12 +70,17 @@ export const sendPushNotification = async (
 
     if (error) {
       console.error('Push notification error:', error.message || error);
-      // Não bloqueia a operação principal
       return false;
     }
 
-    console.log('Push notification result:', result);
-    return result?.success || false;
+    const success = result?.success === true;
+    console.log('Push notification result:', {
+      success,
+      sent: result?.sent || 0,
+      failed: result?.failed || 0,
+    });
+    
+    return success;
   } catch (error) {
     // Captura erro silenciosamente para não travar operações principais
     console.error('Failed to send push notification:', error instanceof Error ? error.message : error);
