@@ -272,30 +272,39 @@ export type Database = {
       }
       message_templates: {
         Row: {
+          button_text: string | null
+          button_url: string | null
           chatpro_enabled: boolean | null
           created_at: string
           event_type: string
           id: string
+          image_url: string | null
           is_active: boolean | null
           template: string
           title: string
           updated_at: string
         }
         Insert: {
+          button_text?: string | null
+          button_url?: string | null
           chatpro_enabled?: boolean | null
           created_at?: string
           event_type: string
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           template: string
           title: string
           updated_at?: string
         }
         Update: {
+          button_text?: string | null
+          button_url?: string | null
           chatpro_enabled?: boolean | null
           created_at?: string
           event_type?: string
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           template?: string
           title?: string

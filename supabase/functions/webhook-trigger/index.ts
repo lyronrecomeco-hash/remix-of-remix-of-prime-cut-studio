@@ -56,6 +56,12 @@ serve(async (req) => {
     message = message.replace(/\{\{data\}\}/g, payload.date || '');
     message = message.replace(/\{\{hora\}\}/g, payload.time || '');
     message = message.replace(/\{\{posição_fila\}\}/g, String(payload.queue_position || ''));
+    message = message.replace(/\{\{protocolo\}\}/g, payload.appointment_id?.split('-')[0] || '');
+
+    // Get button and image from template
+    const buttonText = template?.button_text || null;
+    const buttonUrl = template?.button_url || null;
+    const imageUrl = template?.image_url || null;
 
     // Check ChatPro integration
     const { data: chatproConfig } = await supabase
@@ -89,7 +95,39 @@ serve(async (req) => {
           }
           
           console.log('Sending via ChatPro to:', phone, 'URL:', apiUrl);
+
+          // Build full message with button if configured
+          let fullMessage = message;
+          if (buttonText && buttonUrl) {
+            fullMessage += `\n\n🔗 ${buttonText}: ${buttonUrl}`;
+          }
           
+          // If there's an image, send image first, then message
+          if (imageUrl) {
+            // Send image first via ChatPro
+            const imageApiUrl = apiUrl.replace('send_message', 'send_image');
+            console.log('Sending image via ChatPro:', imageApiUrl);
+            
+            try {
+              const imageResponse = await fetch(imageApiUrl, {
+                method: 'POST',
+                headers: {
+                  'Authorization': chatproConfig.api_token,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  number: phone,
+                  url: imageUrl,
+                  caption: '',
+                }),
+              });
+              console.log('Image send response:', imageResponse.status);
+            } catch (imgErr) {
+              console.error('Error sending image:', imgErr);
+            }
+          }
+
+          // Send text message
           const chatproResponse = await fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -98,7 +136,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               number: phone,
-              message: message,
+              message: fullMessage,
             }),
           });
 
@@ -109,6 +147,8 @@ serve(async (req) => {
             success: chatproResponse.ok,
             status: chatproResponse.status,
             response: responseText,
+            hasImage: !!imageUrl,
+            hasButton: !!(buttonText && buttonUrl),
           };
         } catch (chatproError) {
           console.error('ChatPro error:', chatproError);
@@ -147,6 +187,8 @@ serve(async (req) => {
         shop_name: shopName,
         message: message,
         template_title: template?.title || '',
+        button: buttonText && buttonUrl ? { text: buttonText, url: buttonUrl } : null,
+        image_url: imageUrl,
       };
 
       console.log('Sending webhook to:', webhookConfig.webhook_url);

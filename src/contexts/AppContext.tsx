@@ -119,6 +119,7 @@ interface AppState {
   setMaxQueueSize: (size: number) => void;
   queue: QueueEntry[];
   addToQueue: (appointmentId: string) => Promise<QueueEntry>;
+  removeFromQueue: (appointmentId: string) => Promise<void>;
   callNextInQueue: () => QueueEntry | null;
   callSpecificClient: (appointmentId: string) => void;
   markClientOnWay: (appointmentId: string) => void;
@@ -733,6 +734,40 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return newEntry;
   }, [queue]);
 
+  // Remover cliente da fila manualmente (para clientes já atendidos/concluídos)
+  const removeFromQueue = useCallback(async (appointmentId: string): Promise<void> => {
+    const { error } = await supabase.from('queue').delete().eq('appointment_id', appointmentId);
+    
+    if (error) {
+      console.error('Failed to remove from queue:', error);
+      throw new Error('Falha ao remover da fila');
+    }
+
+    // Atualizar estado local e reordenar posições
+    setQueue(prev => {
+      const filtered = prev.filter(q => q.appointmentId !== appointmentId);
+      const waiting = filtered.filter(q => q.status === 'waiting');
+      const others = filtered.filter(q => q.status !== 'waiting');
+      
+      // Reordenar posições dos que ainda estão esperando
+      const reordered = waiting.map((q, index) => ({
+        ...q,
+        position: index + 1,
+        estimatedWait: (index + 1) * 25,
+      }));
+
+      // Atualizar posições no banco
+      reordered.forEach(q => {
+        supabase.from('queue').update({ 
+          position: q.position, 
+          estimated_wait: q.estimatedWait 
+        }).eq('id', q.id);
+      });
+
+      return [...others, ...reordered];
+    });
+  }, []);
+
   const callNextInQueue = useCallback((): QueueEntry | null => {
     const next = queue.find(q => q.status === 'waiting');
     if (next) {
@@ -1081,6 +1116,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setMaxQueueSize,
     queue,
     addToQueue,
+    removeFromQueue,
     callNextInQueue,
     callSpecificClient,
     markClientOnWay,

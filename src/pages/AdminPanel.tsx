@@ -96,6 +96,7 @@ const AdminPanel = () => {
     maxQueueSize,
     setMaxQueueSize,
     queue,
+    removeFromQueue,
     callNextInQueue,
     services,
     addService,
@@ -690,9 +691,27 @@ const AdminPanel = () => {
                         <p className="text-sm text-muted-foreground">{apt.service.name}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Estimativa</p>
-                      <p className="font-medium">~{q.estimatedWait} min</p>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Estimativa</p>
+                        <p className="font-medium">~{q.estimatedWait} min</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={async () => {
+                          try {
+                            await removeFromQueue(apt.id);
+                            notify.success('Cliente removido da fila');
+                          } catch (e) {
+                            notify.error('Erro ao remover', 'Tente novamente.');
+                          }
+                        }}
+                        className="text-destructive hover:bg-destructive/10 border-destructive/30"
+                        title="Remover da fila"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 );

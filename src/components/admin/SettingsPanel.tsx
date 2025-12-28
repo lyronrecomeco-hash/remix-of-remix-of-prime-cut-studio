@@ -39,6 +39,9 @@ interface MessageTemplate {
   template: string;
   is_active: boolean;
   chatpro_enabled?: boolean;
+  button_text?: string | null;
+  button_url?: string | null;
+  image_url?: string | null;
 }
 
 interface ChatProConfig {
@@ -74,6 +77,7 @@ const variables = [
   { key: '{{data}}', label: 'Data' },
   { key: '{{hora}}', label: 'Hora' },
   { key: '{{posição_fila}}', label: 'Posição na Fila' },
+  { key: '{{protocolo}}', label: 'Protocolo' },
 ];
 
 interface SectionProps {
@@ -203,10 +207,15 @@ export default function SettingsPanel() {
     }
   };
 
-  const updateTemplate = async (eventType: string, template: string) => {
+  const updateTemplate = async (eventType: string, template: string, buttonText?: string | null, buttonUrl?: string | null, imageUrl?: string | null) => {
     const { error } = await supabase
       .from('message_templates')
-      .update({ template })
+      .update({ 
+        template,
+        button_text: buttonText || null,
+        button_url: buttonUrl || null,
+        image_url: imageUrl || null,
+      })
       .eq('event_type', eventType);
 
     if (error) {
@@ -701,20 +710,90 @@ export default function SettingsPanel() {
                           </div>
 
                           {isPreview ? (
-                            <div className="bg-secondary/50 rounded-lg p-3 text-sm whitespace-pre-wrap">
-                              {getPreviewMessage(template?.template || '')}
+                            <div className="space-y-3">
+                              <div className="bg-secondary/50 rounded-lg p-3 text-sm whitespace-pre-wrap">
+                                {getPreviewMessage(template?.template || '')}
+                              </div>
+                              {template?.image_url && (
+                                <div className="bg-secondary/30 rounded-lg p-2">
+                                  <p className="text-xs text-muted-foreground mb-1">Imagem:</p>
+                                  <img src={template.image_url} alt="Preview" className="max-h-32 rounded-lg" />
+                                </div>
+                              )}
+                              {template?.button_text && template?.button_url && (
+                                <div className="bg-primary/20 rounded-lg p-3 text-center">
+                                  <a href={template.button_url} target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">
+                                    🔗 {template.button_text}
+                                  </a>
+                                </div>
+                              )}
                             </div>
                           ) : (
-                            <Textarea
-                              value={template?.template || ''}
-                              onChange={(e) => {
-                                setTemplates(prev => prev.map(t =>
-                                  t.event_type === eventType ? { ...t, template: e.target.value } : t
-                                ));
-                              }}
-                              rows={3}
-                              className="font-mono text-sm"
-                            />
+                            <div className="space-y-3">
+                              <div>
+                                <label className="text-xs text-muted-foreground block mb-1">Mensagem</label>
+                                <Textarea
+                                  value={template?.template || ''}
+                                  onChange={(e) => {
+                                    setTemplates(prev => prev.map(t =>
+                                      t.event_type === eventType ? { ...t, template: e.target.value } : t
+                                    ));
+                                  }}
+                                  rows={3}
+                                  className="font-mono text-sm"
+                                />
+                              </div>
+
+                              {/* Botão clicável */}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-xs text-muted-foreground block mb-1">Texto do Botão (opcional)</label>
+                                  <Input
+                                    placeholder="Ex: Agendar Agora"
+                                    value={template?.button_text || ''}
+                                    onChange={(e) => {
+                                      setTemplates(prev => prev.map(t =>
+                                        t.event_type === eventType ? { ...t, button_text: e.target.value } : t
+                                      ));
+                                    }}
+                                    className="text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-muted-foreground block mb-1">URL do Botão</label>
+                                  <Input
+                                    placeholder="https://..."
+                                    value={template?.button_url || ''}
+                                    onChange={(e) => {
+                                      setTemplates(prev => prev.map(t =>
+                                        t.event_type === eventType ? { ...t, button_url: e.target.value } : t
+                                      ));
+                                    }}
+                                    className="text-sm"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Imagem */}
+                              <div>
+                                <label className="text-xs text-muted-foreground block mb-1">URL da Imagem (opcional)</label>
+                                <Input
+                                  placeholder="https://exemplo.com/imagem.jpg"
+                                  value={template?.image_url || ''}
+                                  onChange={(e) => {
+                                    setTemplates(prev => prev.map(t =>
+                                      t.event_type === eventType ? { ...t, image_url: e.target.value } : t
+                                    ));
+                                  }}
+                                  className="text-sm"
+                                />
+                                {template?.image_url && (
+                                  <div className="mt-2">
+                                    <img src={template.image_url} alt="Preview" className="max-h-20 rounded-lg" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           )}
 
                           <div className="flex flex-wrap gap-1">
@@ -732,7 +811,13 @@ export default function SettingsPanel() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => updateTemplate(eventType, template?.template || '')}
+                            onClick={() => updateTemplate(
+                              eventType, 
+                              template?.template || '',
+                              template?.button_text,
+                              template?.button_url,
+                              template?.image_url
+                            )}
                           >
                             <Save className="w-4 h-4 mr-1" />
                             Salvar
