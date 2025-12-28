@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Check, Calendar as CalendarIcon, Clock, User, Scissors, ChevronLeft, ChevronRight, MapPin, Info, CalendarPlus, Home } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Calendar as CalendarIcon, Clock, User, Scissors, ChevronLeft, ChevronRight, MapPin, Info, CalendarPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import { usePhoneMask } from '@/hooks/usePhoneMask';
@@ -178,12 +177,7 @@ const BookingDirect = () => {
               </div>
               <span className="font-bold">{shopSettings.name}</span>
             </div>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/">
-                <Home className="w-4 h-4" />
-                Ir ao Site
-              </Link>
-            </Button>
+            <div className="text-sm text-muted-foreground">Agendamento Direto</div>
           </div>
         </header>
 
@@ -256,11 +250,6 @@ const BookingDirect = () => {
                   <CalendarPlus className="w-5 h-5" />
                   Adicionar ao Calendário
                 </Button>
-                <Button asChild variant="outline" size="lg" className="w-full">
-                  <Link to="/meus-agendamentos">
-                    Ver Meus Agendamentos
-                  </Link>
-                </Button>
               </div>
 
               <motion.div
@@ -269,9 +258,9 @@ const BookingDirect = () => {
                 transition={{ delay: 0.6 }}
                 className="mt-6 pt-6 border-t border-border"
               >
-                <a 
-                  href={shopSettings.mapsLink} 
-                  target="_blank" 
+                <a
+                  href={shopSettings.mapsLink}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
                 >
@@ -297,12 +286,7 @@ const BookingDirect = () => {
             </div>
             <span className="font-bold">{shopSettings.name}</span>
           </div>
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/">
-              <Home className="w-4 h-4" />
-              Ir ao Site
-            </Link>
-          </Button>
+          <div className="text-sm text-muted-foreground">Agendamento Direto</div>
         </div>
       </header>
       
