@@ -67,6 +67,37 @@ serve(async (req) => {
       );
     }
 
+    // Pre-flight check: Verify ChatPro connection status
+    let baseUrl = chatproConfig.base_endpoint.replace(/\/$/, '');
+    const statusUrl = `${baseUrl}/api/v1/status`;
+    
+    try {
+      const statusResponse = await fetch(statusUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': chatproConfig.api_token,
+        },
+      });
+      
+      const statusData = await statusResponse.json();
+      console.log('ChatPro status:', JSON.stringify(statusData));
+      
+      // Check if WhatsApp is connected
+      if (!statusResponse.ok || statusData?.connected === false || statusData?.status === 'disconnected') {
+        console.error('ChatPro WhatsApp not connected');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'WhatsApp não está conectado no ChatPro. Acesse o painel do ChatPro e escaneie o QR Code.' 
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } catch (statusError) {
+      console.log('Could not check ChatPro status, proceeding anyway:', statusError);
+      // Continue anyway - status check is optional
+    }
+
     // Get pending contacts (limit to 1 in test mode)
     const query = supabase
       .from('marketing_contacts')
@@ -94,14 +125,7 @@ serve(async (req) => {
       .update({ status: 'sending' })
       .eq('id', campaign_id);
 
-    // Build ChatPro API URL - base_endpoint already contains instance_id
-    let baseUrl = chatproConfig.base_endpoint.replace(/\/$/, '');
-    
-    // Remove instance_id if it's duplicated in base_endpoint
-    if (baseUrl.endsWith(chatproConfig.instance_id)) {
-      baseUrl = baseUrl; // Already correct format: https://v5.chatpro.com.br/chatpro-xxx
-    }
-    
+    // Use baseUrl already defined from status check
     const apiUrl = `${baseUrl}/api/v1/send_message`;
     const imageApiUrl = `${baseUrl}/api/v1/send_message_file_from_url`; // Correct endpoint for images with caption
     const delayMs = (settings.delay_between_messages || 3) * 1000;
@@ -201,17 +225,34 @@ serve(async (req) => {
       }
     }
 
+    // Determine final status based on results
+    const allFailed = sentCount === 0 && failedCount > 0;
+    const finalStatus = allFailed ? 'failed' : 'completed';
+    
     // Update campaign status
     await supabase
       .from('marketing_campaigns')
       .update({ 
-        status: 'completed',
+        status: finalStatus,
         completed_at: new Date().toISOString(),
         sent_count: sentCount,
       })
       .eq('id', campaign_id);
 
-    console.log(`Campaign completed. Sent: ${sentCount}, Failed: ${failedCount}`);
+    console.log(`Campaign ${finalStatus}. Sent: ${sentCount}, Failed: ${failedCount}`);
+
+    // Return appropriate response
+    if (allFailed) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Todas as mensagens falharam. Verifique se o WhatsApp está conectado no ChatPro.',
+          sent: sentCount,
+          failed: failedCount,
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     return new Response(
       JSON.stringify({ 
