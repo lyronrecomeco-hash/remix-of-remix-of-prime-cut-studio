@@ -117,51 +117,27 @@ serve(async (req) => {
               console.log('Image send response:', imageResponse.status);
             } catch (imgErr) {
               console.error('Error sending image:', imgErr);
-            }
+          }
           }
 
-          let chatproResponse;
-
-          // If button is configured, send as button message with CTA
+          // Build full message with clickable link if button is configured
+          let fullMessage = message;
           if (buttonText && buttonUrl) {
-            const buttonApiUrl = apiUrl.replace('send_message', 'send_button_list');
-            console.log('Sending button message via ChatPro:', buttonApiUrl);
-            
-            chatproResponse = await fetch(buttonApiUrl, {
-              method: 'POST',
-              headers: {
-                'Authorization': chatproConfig.api_token,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                number: phone,
-                buttonText: buttonText,
-                text: message,
-                title: '',
-                footer: '',
-                buttons: [
-                  {
-                    id: 'btn_1',
-                    text: buttonText,
-                  }
-                ],
-                url: buttonUrl,
-              }),
-            });
-          } else {
-            // Send regular text message
-            chatproResponse = await fetch(apiUrl, {
-              method: 'POST',
-              headers: {
-                'Authorization': chatproConfig.api_token,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                number: phone,
-                message: message,
-              }),
-            });
+            fullMessage += `\n\n━━━━━━━━━━━━━━━\n🔗 *${buttonText}*\n👉 ${buttonUrl}`;
           }
+
+          // Send text message
+          const chatproResponse = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': chatproConfig.api_token,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              number: phone,
+              message: fullMessage,
+            }),
+          });
 
           const responseText = await chatproResponse.text();
           console.log('ChatPro response:', chatproResponse.status, responseText);
