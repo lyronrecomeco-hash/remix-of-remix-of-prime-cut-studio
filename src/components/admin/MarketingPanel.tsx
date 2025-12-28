@@ -22,6 +22,8 @@ import {
   X,
   FileSpreadsheet,
   TestTube,
+  Wand2,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,8 +73,15 @@ export default function MarketingPanel() {
   const [showIntroModal, setShowIntroModal] = useState(false);
   const [showNewCampaign, setShowNewCampaign] = useState(false);
   const [showContactsModal, setShowContactsModal] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
   const [sendingCampaign, setSendingCampaign] = useState<string | null>(null);
   const [testingCampaign, setTestingCampaign] = useState<string | null>(null);
+  
+  // AI state
+  const [aiContext, setAiContext] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState('');
+  const [generatedMessage, setGeneratedMessage] = useState('');
   
   // New campaign form
   const [campaignForm, setCampaignForm] = useState({
@@ -289,6 +298,50 @@ export default function MarketingPanel() {
     setContacts(prev => prev.filter(c => c.phone !== phone));
   };
 
+  // AI Functions
+  const generateWithAI = async (type: 'generate' | 'improve') => {
+    if (type === 'generate' && !aiContext.trim()) {
+      notify.error('Descreva o contexto da campanha');
+      return;
+    }
+
+    setAiGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-marketing-prompt', {
+        body: {
+          type,
+          context: aiContext,
+          currentMessage: generatedMessage || campaignForm.message_template,
+          feedback: aiFeedback,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.message) {
+        setGeneratedMessage(data.message);
+        setAiFeedback('');
+        notify.success(type === 'generate' ? 'Mensagem gerada!' : 'Mensagem melhorada!');
+      } else {
+        throw new Error(data?.error || 'Erro ao gerar');
+      }
+    } catch (error: any) {
+      console.error('AI error:', error);
+      notify.error(error.message || 'Erro ao gerar mensagem');
+    }
+    setAiGenerating(false);
+  };
+
+  const applyGeneratedMessage = () => {
+    if (generatedMessage) {
+      setCampaignForm(prev => ({ ...prev, message_template: generatedMessage }));
+      setShowAIModal(false);
+      setGeneratedMessage('');
+      setAiContext('');
+      notify.success('Mensagem aplicada!');
+    }
+  };
+
   const createCampaign = async () => {
     if (!campaignForm.name.trim() || !campaignForm.message_template.trim()) {
       notify.error('Preencha nome e mensagem');
@@ -333,7 +386,6 @@ export default function MarketingPanel() {
       if (contactsError) throw contactsError;
 
       notify.success('Campanha criada!');
-      notify.info('Nova campanha', `A campanha "${campaignForm.name}" foi criada.`);
       fetchCampaigns();
       resetForm();
     } catch (error) {
@@ -360,14 +412,18 @@ export default function MarketingPanel() {
     setTestingCampaign(campaignId);
     
     try {
-      const { error } = await supabase.functions.invoke('send-marketing', {
+      const { data, error } = await supabase.functions.invoke('send-marketing', {
         body: { campaign_id: campaignId, test_mode: true },
       });
 
       if (error) throw error;
 
-      notify.success('Teste enviado!');
-    } catch (error) {
+      if (data?.success) {
+        notify.success('Teste enviado!');
+      } else {
+        notify.error(data?.error || 'Erro ao testar');
+      }
+    } catch (error: any) {
       console.error('Test campaign error:', error);
       notify.error('Erro ao testar campanha');
     }
@@ -379,16 +435,20 @@ export default function MarketingPanel() {
     setSendingCampaign(campaignId);
     
     try {
-      const { error } = await supabase.functions.invoke('send-marketing', {
+      const { data, error } = await supabase.functions.invoke('send-marketing', {
         body: { campaign_id: campaignId },
       });
 
       if (error) throw error;
 
-      notify.success('Campanha iniciada!');
-      notify.info('Campanha em andamento', 'As mensagens estão sendo enviadas.');
+      if (data?.success) {
+        notify.success(`Campanha concluída! Enviados: ${data.sent}, Falhas: ${data.failed}`);
+      } else {
+        notify.error(data?.error || 'Erro ao enviar');
+      }
+      
       fetchCampaigns();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Campaign start error:', error);
       notify.error('Erro ao iniciar campanha');
     }
@@ -419,7 +479,7 @@ export default function MarketingPanel() {
     };
     const c = config[status] || config.draft;
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${c.color}`}>
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${c.color}`}>
         {c.icon} {c.label}
       </span>
     );
@@ -442,10 +502,9 @@ export default function MarketingPanel() {
             <Megaphone className="w-6 h-6 text-primary" />
             Marketing
           </h2>
-          <p className="text-sm text-muted-foreground">Disparo de mensagens via WhatsApp</p>
+          <p className="text-sm text-muted-foreground">Disparo via WhatsApp</p>
         </div>
         
-        {/* Toggle - só funciona quando desativado */}
         <button
           onClick={toggleMarketing}
           className={`w-14 h-7 rounded-full transition-colors relative ${
@@ -474,45 +533,45 @@ export default function MarketingPanel() {
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
-          {/* Settings */}
+          {/* Settings - Grid compacto */}
           <div className="glass-card rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Settings className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold">Configurações</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-primary" />
+                <h3 className="font-semibold text-sm">Configurações</h3>
+              </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm text-muted-foreground block mb-1">
-                  Máx. contatos/campanha
-                </label>
+                <label className="text-xs text-muted-foreground block mb-1">Máx. contatos</label>
                 <Input
                   type="number"
                   min={10}
                   max={1000}
                   value={settings?.max_contacts || 100}
                   onChange={(e) => updateSettings({ max_contacts: Number(e.target.value) })}
+                  className="h-8 text-sm"
                 />
               </div>
               <div>
-                <label className="text-sm text-muted-foreground block mb-1">
-                  Intervalo (segundos)
-                </label>
+                <label className="text-xs text-muted-foreground block mb-1">Intervalo (seg)</label>
                 <Input
                   type="number"
                   min={1}
                   max={60}
                   value={settings?.delay_between_messages || 3}
                   onChange={(e) => updateSettings({ delay_between_messages: Number(e.target.value) })}
+                  className="h-8 text-sm"
                 />
               </div>
             </div>
           </div>
 
           {/* Warning */}
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-muted-foreground">
-              <strong className="text-yellow-500">Aviso:</strong> Envio em massa pode resultar em bloqueio pelo WhatsApp. Use com responsabilidade.
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground">
+              <strong className="text-yellow-500">Aviso:</strong> Envio em massa pode resultar em bloqueio pelo WhatsApp.
             </p>
           </div>
 
@@ -528,82 +587,82 @@ export default function MarketingPanel() {
           {showNewCampaign && (
             <div className="glass-card rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-primary" />
                   Nova Campanha
                 </h3>
                 <button onClick={resetForm} className="p-1 hover:bg-secondary rounded-lg">
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
               <div>
-                <label className="text-sm text-muted-foreground block mb-1">Nome da Campanha</label>
+                <label className="text-xs text-muted-foreground block mb-1">Nome</label>
                 <Input
                   value={campaignForm.name}
                   onChange={(e) => setCampaignForm(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Ex: Promoção de Natal"
+                  className="h-8 text-sm"
                 />
               </div>
 
               <div>
-                <label className="text-sm text-muted-foreground block mb-1">Mensagem</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-muted-foreground">Mensagem</label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAIModal(true)}
+                    className="h-6 text-xs gap-1 text-primary"
+                  >
+                    <Wand2 className="w-3 h-3" />
+                    Gerar com IA
+                  </Button>
+                </div>
                 <Textarea
                   value={campaignForm.message_template}
                   onChange={(e) => setCampaignForm(prev => ({ ...prev, message_template: e.target.value }))}
                   placeholder="Digite sua mensagem..."
                   rows={3}
+                  className="text-sm"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-[10px] text-muted-foreground mt-1">
                   Use {'{{nome}}'} para personalizar
                 </p>
               </div>
 
               {/* Image Upload */}
               <div>
-                <label className="text-sm text-muted-foreground block mb-1">Imagem (opcional)</label>
+                <label className="text-xs text-muted-foreground block mb-1">Imagem (opcional)</label>
                 <div className="flex gap-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingImage}
-                    className="flex-1"
+                    className="flex-1 h-8"
                   >
-                    {uploadingImage ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Upload className="w-4 h-4" />
-                    )}
+                    {uploadingImage ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
                     {uploadingImage ? 'Enviando...' : 'Upload'}
                   </Button>
                   {campaignForm.image_url && (
                     <button
                       onClick={() => setCampaignForm(prev => ({ ...prev, image_url: '' }))}
-                      className="p-2 bg-destructive/20 text-destructive rounded-lg hover:bg-destructive/30"
+                      className="p-1 bg-destructive/20 text-destructive rounded-lg hover:bg-destructive/30"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>
                 {campaignForm.image_url && (
-                  <img 
-                    src={campaignForm.image_url} 
-                    alt="Preview" 
-                    className="mt-2 w-20 h-20 object-cover rounded-lg"
-                  />
+                  <img src={campaignForm.image_url} alt="Preview" className="mt-2 w-16 h-16 object-cover rounded-lg" />
                 )}
               </div>
 
-              {/* Button - Optional */}
-              <div className="p-3 bg-secondary/20 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+              {/* Button */}
+              <div className="p-2 bg-secondary/20 rounded-lg">
+                <p className="text-[10px] text-muted-foreground mb-2 flex items-center gap-1">
                   <LinkIcon className="w-3 h-3" />
                   Botão clicável (opcional)
                 </p>
@@ -611,83 +670,44 @@ export default function MarketingPanel() {
                   <Input
                     value={campaignForm.button_text}
                     onChange={(e) => setCampaignForm(prev => ({ ...prev, button_text: e.target.value }))}
-                    placeholder="Texto do Botão"
+                    placeholder="Texto"
+                    className="h-7 text-xs"
                   />
                   <Input
                     value={campaignForm.button_url}
                     onChange={(e) => setCampaignForm(prev => ({ ...prev, button_url: e.target.value }))}
                     placeholder="https://..."
+                    className="h-7 text-xs"
                   />
                 </div>
               </div>
 
-              {/* AI Option */}
-              <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
-                <button
-                  onClick={() => setCampaignForm(prev => ({ ...prev, use_ai: !prev.use_ai }))}
-                  className={`w-10 h-5 rounded-full transition-colors relative ${
-                    campaignForm.use_ai ? 'bg-primary' : 'bg-secondary'
-                  }`}
-                >
-                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
-                    campaignForm.use_ai ? 'left-5' : 'left-0.5'
-                  }`} />
-                </button>
-                <div className="flex-1">
-                  <span className="text-sm font-medium flex items-center gap-1">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                    Personalizar com IA
-                  </span>
-                  <p className="text-xs text-muted-foreground">
-                    IA focada em avisos, anúncios e vendas
+              {/* Contacts */}
+              <div className="flex items-center justify-between p-2 bg-secondary/20 rounded-lg">
+                <div>
+                  <span className="text-xs font-medium">Contatos</span>
+                  <p className="text-[10px] text-muted-foreground">
+                    {contacts.length}/{settings?.max_contacts || 100}
                   </p>
                 </div>
-              </div>
-
-              {campaignForm.use_ai && (
-                <div>
-                  <label className="text-sm text-muted-foreground block mb-1">Prompt da IA</label>
-                  <Textarea
-                    value={campaignForm.ai_prompt}
-                    onChange={(e) => setCampaignForm(prev => ({ ...prev, ai_prompt: e.target.value }))}
-                    placeholder="Ex: Crie variações criativas focando em promoções..."
-                    rows={2}
-                  />
-                </div>
-              )}
-
-              {/* Contacts - Button to open modal */}
-              <div className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
-                <div>
-                  <span className="text-sm font-medium">Contatos</span>
-                  <p className="text-xs text-muted-foreground">
-                    {contacts.length}/{settings?.max_contacts || 100} adicionados
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setShowContactsModal(true)}>
-                  <Users className="w-4 h-4" />
+                <Button variant="outline" size="sm" onClick={() => setShowContactsModal(true)} className="h-7 text-xs">
+                  <Users className="w-3 h-3" />
                   Gerenciar
                 </Button>
               </div>
 
-              {/* Show contacts preview */}
               {contacts.length > 0 && (
-                <div className="max-h-24 overflow-y-auto space-y-1">
-                  {contacts.slice(0, 5).map((contact, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 bg-secondary/30 rounded text-sm">
-                      <span className="truncate text-xs">{contact.name} - {contact.phone}</span>
-                      <button
-                        onClick={() => removeContact(contact.phone)}
-                        className="p-1 hover:bg-destructive/20 rounded text-destructive flex-shrink-0"
-                      >
+                <div className="max-h-20 overflow-y-auto space-y-1">
+                  {contacts.slice(0, 3).map((contact, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-1.5 bg-secondary/30 rounded text-xs">
+                      <span className="truncate">{contact.name} - {contact.phone}</span>
+                      <button onClick={() => removeContact(contact.phone)} className="p-0.5 hover:bg-destructive/20 rounded text-destructive">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   ))}
-                  {contacts.length > 5 && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      +{contacts.length - 5} contato(s)
-                    </p>
+                  {contacts.length > 3 && (
+                    <p className="text-[10px] text-muted-foreground text-center">+{contacts.length - 3} contato(s)</p>
                   )}
                 </div>
               )}
@@ -702,19 +722,19 @@ export default function MarketingPanel() {
           {/* Campaigns List */}
           {campaigns.length > 0 && (
             <div className="space-y-3">
-              <h3 className="font-semibold">Campanhas</h3>
+              <h3 className="font-semibold text-sm">Campanhas</h3>
               {campaigns.map((campaign) => (
-                <div key={campaign.id} className="glass-card rounded-xl p-4">
-                  <div className="flex items-start justify-between gap-3">
+                <div key={campaign.id} className="glass-card rounded-xl p-3">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h4 className="font-medium truncate">{campaign.name}</h4>
+                        <h4 className="font-medium text-sm truncate">{campaign.name}</h4>
                         {getStatusBadge(campaign.status)}
                       </div>
-                      <p className="text-sm text-muted-foreground line-clamp-1">
+                      <p className="text-xs text-muted-foreground line-clamp-1">
                         {campaign.message_template}
                       </p>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
+                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1">
                           <Users className="w-3 h-3" />
                           {campaign.sent_count}/{campaign.target_count}
@@ -725,15 +745,9 @@ export default function MarketingPanel() {
                             Imagem
                           </span>
                         )}
-                        {campaign.use_ai && (
-                          <span className="flex items-center gap-1">
-                            <Sparkles className="w-3 h-3" />
-                            IA
-                          </span>
-                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       {campaign.status === 'draft' && (
                         <>
                           <Button
@@ -741,12 +755,12 @@ export default function MarketingPanel() {
                             size="sm"
                             onClick={() => testCampaign(campaign.id)}
                             disabled={testingCampaign === campaign.id}
-                            title="Testar"
+                            className="h-7 w-7 p-0"
                           >
                             {testingCampaign === campaign.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              <TestTube className="w-4 h-4" />
+                              <TestTube className="w-3 h-3" />
                             )}
                           </Button>
                           <Button
@@ -754,18 +768,19 @@ export default function MarketingPanel() {
                             size="sm"
                             onClick={() => startCampaign(campaign.id)}
                             disabled={sendingCampaign === campaign.id}
+                            className="h-7 w-7 p-0"
                           >
                             {sendingCampaign === campaign.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              <Play className="w-4 h-4" />
+                              <Play className="w-3 h-3" />
                             )}
                           </Button>
                           <button
                             onClick={() => deleteCampaign(campaign.id)}
-                            className="p-2 hover:bg-destructive/20 rounded-lg text-destructive"
+                            className="p-1.5 hover:bg-destructive/20 rounded-lg text-destructive"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3 h-3" />
                           </button>
                         </>
                       )}
@@ -780,92 +795,143 @@ export default function MarketingPanel() {
 
       {/* Intro Modal */}
       <Dialog open={showIntroModal} onOpenChange={setShowIntroModal}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Megaphone className="w-6 h-6 text-primary" />
+              <Megaphone className="w-5 h-5 text-primary" />
               Modo Marketing
             </DialogTitle>
-            <DialogDescription>
-              Funcionalidades do módulo de Marketing
-            </DialogDescription>
+            <DialogDescription>Funcionalidades do módulo</DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-3 py-2">
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                <Send className="w-4 h-4 text-primary" />
+          <div className="space-y-2 py-2">
+            {[
+              { icon: Send, title: 'Disparo em Massa', desc: 'Envie para múltiplos contatos' },
+              { icon: FileSpreadsheet, title: 'Importar Contatos', desc: 'Via CSV ou em massa' },
+              { icon: ImageIcon, title: 'Imagens e Botões', desc: 'Adicione mídia às mensagens' },
+              { icon: Sparkles, title: 'IA para Mensagens', desc: 'Gere mensagens persuasivas' },
+            ].map((item, i) => (
+              <div key={i} className="flex gap-2">
+                <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <item.icon className="w-3 h-3 text-primary" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-xs">{item.title}</h4>
+                  <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                </div>
               </div>
-              <div>
-                <h4 className="font-medium text-sm">Disparo em Massa</h4>
-                <p className="text-xs text-muted-foreground">
-                  Envie mensagens para múltiplos contatos via WhatsApp.
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                <FileSpreadsheet className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <h4 className="font-medium text-sm">Importar Contatos</h4>
-                <p className="text-xs text-muted-foreground">
-                  Importe via CSV ou adicione em massa.
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                <ImageIcon className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <h4 className="font-medium text-sm">Imagens e Botões</h4>
-                <p className="text-xs text-muted-foreground">
-                  Adicione mídia e links às mensagens.
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <h4 className="font-medium text-sm">Personalização com IA</h4>
-                <p className="text-xs text-muted-foreground">
-                  IA focada em avisos, anúncios e vendas.
-                </p>
-              </div>
-            </div>
+            ))}
 
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-muted-foreground">
-                <strong className="text-yellow-500">Atenção:</strong> O envio em massa pode resultar em bloqueio pelo WhatsApp.
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2 flex items-start gap-2 mt-2">
+              <AlertTriangle className="w-3 h-3 text-yellow-500 flex-shrink-0 mt-0.5" />
+              <p className="text-[10px] text-muted-foreground">
+                <strong className="text-yellow-500">Atenção:</strong> Envio em massa pode resultar em bloqueio.
               </p>
             </div>
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowIntroModal(false)} className="flex-1">
+            <Button variant="outline" onClick={() => setShowIntroModal(false)} size="sm" className="flex-1">
               Cancelar
             </Button>
-            <Button variant="hero" onClick={confirmEnableMarketing} className="flex-1">
-              <Power className="w-4 h-4" />
+            <Button variant="hero" onClick={confirmEnableMarketing} size="sm" className="flex-1">
+              <Power className="w-3 h-3" />
               Ativar
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Contacts Modal - All contact management in one place */}
-      <Dialog open={showContactsModal} onOpenChange={setShowContactsModal}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      {/* AI Modal */}
+      <Dialog open={showAIModal} onOpenChange={setShowAIModal}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" />
+              <Wand2 className="w-5 h-5 text-primary" />
+              Gerar Mensagem com IA
+            </DialogTitle>
+            <DialogDescription>Crie mensagens de marketing persuasivas</DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3 py-2">
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1">
+                Descreva o objetivo da campanha
+              </label>
+              <Textarea
+                value={aiContext}
+                onChange={(e) => setAiContext(e.target.value)}
+                placeholder="Ex: Promoção de 20% em cortes durante o mês de janeiro, foco em novos clientes..."
+                rows={3}
+                className="text-sm"
+              />
+            </div>
+
+            <Button 
+              onClick={() => generateWithAI('generate')} 
+              disabled={aiGenerating || !aiContext.trim()}
+              className="w-full"
+            >
+              {aiGenerating ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Wand2 className="w-4 h-4 mr-2" />
+              )}
+              Gerar Mensagem
+            </Button>
+
+            {generatedMessage && (
+              <div className="space-y-3 pt-3 border-t border-border">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Mensagem Gerada</label>
+                  <div className="bg-secondary/50 rounded-lg p-3 text-sm whitespace-pre-wrap">
+                    {generatedMessage}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">
+                    Quer melhorar? Descreva o que ajustar
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={aiFeedback}
+                      onChange={(e) => setAiFeedback(e.target.value)}
+                      placeholder="Ex: mais curta, mais urgente, adicionar emoji..."
+                      className="h-8 text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => generateWithAI('improve')}
+                      disabled={aiGenerating}
+                      className="h-8"
+                    >
+                      {aiGenerating ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <Button variant="hero" onClick={applyGeneratedMessage} className="w-full">
+                  <CheckCircle className="w-4 h-4" />
+                  Usar Esta Mensagem
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contacts Modal */}
+      <Dialog open={showContactsModal} onOpenChange={setShowContactsModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
               Gerenciar Contatos
             </DialogTitle>
             <DialogDescription>
@@ -883,7 +949,7 @@ export default function MarketingPanel() {
               <button
                 key={tab.id}
                 onClick={() => setContactsTab(tab.id as any)}
-                className={`flex-1 px-3 py-2 text-sm rounded-md transition-colors ${
+                className={`flex-1 px-2 py-1.5 text-xs rounded-md transition-colors ${
                   contactsTab === tab.id
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
@@ -896,92 +962,72 @@ export default function MarketingPanel() {
 
           <div className="space-y-3 py-2">
             {contactsTab === 'manual' && (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex gap-2">
                   <Input
                     value={contactInput.phone}
                     onChange={(e) => setContactInput(prev => ({ ...prev, phone: e.target.value }))}
                     placeholder="Telefone"
-                    className="flex-1"
+                    className="flex-1 h-8 text-sm"
                   />
                   <Input
                     value={contactInput.name}
                     onChange={(e) => setContactInput(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Nome"
-                    className="flex-1"
+                    className="flex-1 h-8 text-sm"
                   />
                 </div>
-                <Button variant="hero" onClick={addManualContact} className="w-full">
-                  <Plus className="w-4 h-4" />
-                  Adicionar Contato
+                <Button variant="hero" onClick={addManualContact} size="sm" className="w-full">
+                  <Plus className="w-3 h-3" />
+                  Adicionar
                 </Button>
               </div>
             )}
 
             {contactsTab === 'bulk' && (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Textarea
                   value={bulkContacts}
                   onChange={(e) => setBulkContacts(e.target.value)}
-                  placeholder={`5511999999999, João Silva\n5511888888888, Maria\n5511777777777`}
-                  rows={6}
-                  className="font-mono text-sm"
+                  placeholder={`5511999999999, João\n5511888888888, Maria`}
+                  rows={4}
+                  className="font-mono text-xs"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Formato: telefone, nome (opcional) - um por linha
-                </p>
-                <Button variant="hero" onClick={handleBulkAdd} className="w-full">
-                  <Plus className="w-4 h-4" />
+                <p className="text-[10px] text-muted-foreground">telefone, nome - um por linha</p>
+                <Button variant="hero" onClick={handleBulkAdd} size="sm" className="w-full">
+                  <Plus className="w-3 h-3" />
                   Adicionar Todos
                 </Button>
               </div>
             )}
 
             {contactsTab === 'csv' && (
-              <div className="space-y-3">
-                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                  <input
-                    ref={csvInputRef}
-                    type="file"
-                    accept=".csv,.txt"
-                    onChange={handleCSVUpload}
-                    className="hidden"
-                  />
-                  <FileSpreadsheet className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Selecione um arquivo CSV ou TXT
-                  </p>
-                  <Button variant="outline" onClick={() => csvInputRef.current?.click()}>
-                    <Upload className="w-4 h-4" />
-                    Escolher Arquivo
+              <div className="space-y-2">
+                <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+                  <input ref={csvInputRef} type="file" accept=".csv,.txt" onChange={handleCSVUpload} className="hidden" />
+                  <FileSpreadsheet className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-xs text-muted-foreground mb-2">CSV ou TXT</p>
+                  <Button variant="outline" size="sm" onClick={() => csvInputRef.current?.click()}>
+                    <Upload className="w-3 h-3" />
+                    Escolher
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Formato: telefone, nome (opcional) - um por linha
-                </p>
               </div>
             )}
 
-            {/* Current contacts list */}
             {contacts.length > 0 && (
-              <div className="border-t border-border pt-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Contatos adicionados</span>
-                  <button
-                    onClick={() => setContacts([])}
-                    className="text-xs text-destructive hover:underline"
-                  >
-                    Limpar todos
+              <div className="border-t border-border pt-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium">Adicionados</span>
+                  <button onClick={() => setContacts([])} className="text-[10px] text-destructive hover:underline">
+                    Limpar
                   </button>
                 </div>
-                <div className="max-h-40 overflow-y-auto space-y-1">
+                <div className="max-h-32 overflow-y-auto space-y-1">
                   {contacts.map((contact, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 bg-secondary/30 rounded text-sm">
-                      <span className="truncate text-xs">{contact.name} - {contact.phone}</span>
-                      <button
-                        onClick={() => removeContact(contact.phone)}
-                        className="p-1 hover:bg-destructive/20 rounded text-destructive flex-shrink-0"
-                      >
+                    <div key={idx} className="flex items-center justify-between p-1.5 bg-secondary/30 rounded text-xs">
+                      <span className="truncate">{contact.name} - {contact.phone}</span>
+                      <button onClick={() => removeContact(contact.phone)} className="p-0.5 hover:bg-destructive/20 rounded text-destructive">
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
@@ -991,7 +1037,7 @@ export default function MarketingPanel() {
             )}
           </div>
 
-          <Button variant="outline" onClick={() => setShowContactsModal(false)} className="w-full">
+          <Button variant="outline" onClick={() => setShowContactsModal(false)} size="sm" className="w-full">
             Concluído
           </Button>
         </DialogContent>
