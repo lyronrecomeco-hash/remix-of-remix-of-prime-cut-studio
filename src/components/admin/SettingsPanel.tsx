@@ -39,6 +39,8 @@ import {
   Bell,
   BellRing,
   Monitor,
+  PanelLeft,
+  LayoutGrid,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -198,7 +200,7 @@ const defaultBackupConfig: BackupConfig = {
 
 const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
-type SettingsSection = 'theme' | 'shop' | 'security' | 'social' | 'backup' | 'texts' | 'chatpro' | 'templates' | 'api';
+type SettingsSection = 'theme' | 'shop' | 'security' | 'social' | 'backup' | 'texts' | 'chatpro' | 'templates' | 'api' | 'menu';
 
 const settingsSections = [
   { id: 'theme' as SettingsSection, label: 'Tema', icon: Palette },
@@ -210,6 +212,7 @@ const settingsSections = [
   { id: 'chatpro' as SettingsSection, label: 'ChatPro', icon: MessageCircle },
   { id: 'templates' as SettingsSection, label: 'Templates', icon: FileText },
   { id: 'api' as SettingsSection, label: 'API', icon: Webhook },
+  { id: 'menu' as SettingsSection, label: 'Menu Admin', icon: Settings },
 ];
 
 export default function SettingsPanel() {
@@ -1369,6 +1372,84 @@ export default function SettingsPanel() {
           </div>
         );
 
+      case 'menu':
+        const currentMenuStyle = localStorage.getItem('menu_style') || 'sidebar';
+        return (
+          <div className="space-y-5">
+            <h3 className="text-xl font-bold">Estilo do Menu Admin</h3>
+            <p className="text-base text-muted-foreground">
+              Escolha como deseja visualizar o menu do painel administrativo no desktop.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Sidebar Style */}
+              <button
+                onClick={() => {
+                  localStorage.setItem('menu_style', 'sidebar');
+                  notify.success('Estilo de menu alterado! Recarregue a página para ver as mudanças.');
+                }}
+                className={`p-6 rounded-xl border-2 transition-all text-left ${
+                  currentMenuStyle === 'sidebar' 
+                    ? 'border-primary ring-2 ring-primary/30 bg-primary/5' 
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <PanelLeft className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg">Menu Lateral</h4>
+                    <p className="text-sm text-muted-foreground">Padrão</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Menu fixo na lateral esquerda com opção de colapsar para apenas ícones. Ideal para navegação rápida.
+                </p>
+                {currentMenuStyle === 'sidebar' && (
+                  <p className="text-sm text-primary mt-3 font-medium">✓ Estilo atual</p>
+                )}
+              </button>
+
+              {/* Dock Style */}
+              <button
+                onClick={() => {
+                  localStorage.setItem('menu_style', 'dock');
+                  notify.success('Estilo de menu alterado! Recarregue a página para ver as mudanças.');
+                }}
+                className={`p-6 rounded-xl border-2 transition-all text-left ${
+                  currentMenuStyle === 'dock' 
+                    ? 'border-primary ring-2 ring-primary/30 bg-primary/5' 
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <LayoutGrid className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg">Dock (Estilo Mac)</h4>
+                    <p className="text-sm text-muted-foreground">Moderno</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Barra de ícones flutuante na parte inferior com animações suaves. Mais espaço para conteúdo.
+                </p>
+                {currentMenuStyle === 'dock' && (
+                  <p className="text-sm text-primary mt-3 font-medium">✓ Estilo atual</p>
+                )}
+              </button>
+            </div>
+
+            <div className="bg-muted/30 rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">
+                <strong>Nota:</strong> Após alterar o estilo, recarregue a página para aplicar as mudanças. 
+                No mobile, o menu sempre usa o estilo padrão de gaveta lateral.
+              </p>
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -1378,9 +1459,24 @@ export default function SettingsPanel() {
     <div className="flex flex-col h-full min-h-0">
       <h2 className="text-2xl font-bold mb-4">Configurações</h2>
       
-      <div className="flex-1 min-h-0 flex gap-4">
-        {/* Menu lateral de categorias */}
-        <div className="w-44 flex-shrink-0 space-y-1.5 overflow-y-auto">
+      {/* Mobile: Dropdown selector */}
+      <div className="lg:hidden mb-4">
+        <select
+          value={activeSection}
+          onChange={(e) => setActiveSection(e.target.value as SettingsSection)}
+          className="w-full bg-card border border-border rounded-lg px-4 py-3 text-base font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          {settingsSections.map((section) => (
+            <option key={section.id} value={section.id}>
+              {section.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4">
+        {/* Menu lateral de categorias - Desktop only */}
+        <div className="hidden lg:flex w-44 flex-shrink-0 flex-col space-y-1.5 overflow-y-auto">
           {settingsSections.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection === section.id;
@@ -1402,7 +1498,7 @@ export default function SettingsPanel() {
         </div>
 
         {/* Área de conteúdo */}
-        <div className="flex-1 min-h-0 overflow-y-auto bg-card border border-border rounded-xl p-5">
+        <div className="flex-1 min-h-0 overflow-y-auto bg-card border border-border rounded-xl p-4 lg:p-5">
           {renderSectionContent()}
         </div>
       </div>

@@ -38,6 +38,8 @@ import {
   Instagram,
   Facebook,
   Megaphone,
+  PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -84,8 +86,26 @@ const AdminPanel = () => {
   const [agendaDateFilter, setAgendaDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [agendaStatusFilter, setAgendaStatusFilter] = useState<string>('all');
   const [agendaPage, setAgendaPage] = useState(0);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const stored = localStorage.getItem('sidebar_collapsed');
+    return stored === 'true';
+  });
+  const [menuStyle, setMenuStyle] = useState<'sidebar' | 'dock'>(() => {
+    const stored = localStorage.getItem('menu_style');
+    return (stored as 'sidebar' | 'dock') || 'sidebar';
+  });
   const { notify } = useNotification();
   const { signOut, user, isSuperAdmin } = useAuth();
+
+  // Sync sidebar collapsed state
+  useEffect(() => {
+    localStorage.setItem('sidebar_collapsed', String(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
+
+  // Sync menu style
+  useEffect(() => {
+    localStorage.setItem('menu_style', menuStyle);
+  }, [menuStyle]);
   
   // App context
   const {
@@ -1258,52 +1278,117 @@ const AdminPanel = () => {
     <div className="min-h-screen min-h-[100dvh] bg-background flex overflow-hidden relative">
       {/* Interactive Background */}
       <InteractiveBackground />
-      {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex flex-col w-64 bg-sidebar/95 backdrop-blur-sm border-r border-sidebar-border relative z-10 h-screen sticky top-0">
-        <div className="p-6">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Scissors className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="font-bold">Painel Admin</h1>
-              <p className="text-xs text-muted-foreground">{shopSettings.name}</p>
-            </div>
+      
+      {/* Dock Style Menu (Mac style) - Desktop only */}
+      {menuStyle === 'dock' && (
+        <div className="hidden lg:flex fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <div className="flex items-center gap-1 px-3 py-2 bg-sidebar/95 backdrop-blur-md border border-sidebar-border rounded-2xl shadow-2xl">
+            {menuItems.map((item) => (
+              <div key={item.id} className="relative group">
+                <button
+                  onClick={() => setActiveTab(item.id)}
+                  className={`p-3 rounded-xl transition-all duration-200 hover:scale-110 hover:-translate-y-1 ${
+                    activeTab === item.id
+                      ? 'bg-primary text-primary-foreground scale-105'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.id === 'feedbacks' && newFeedbacksCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
+                      {newFeedbacksCount}
+                    </span>
+                  )}
+                </button>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-background border border-border rounded-lg text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                  {item.label}
+                </div>
+              </div>
+            ))}
+            <div className="w-px h-8 bg-border mx-1" />
+            <button
+              onClick={() => signOut()}
+              className="p-3 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 hover:scale-110 hover:-translate-y-1"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
           </div>
         </div>
+      )}
 
-        <nav className="flex-1 px-4 overflow-y-auto admin-scroll-container">
-          {menuItems.map((item) => (
+      {/* Sidebar Desktop */}
+      {menuStyle === 'sidebar' && (
+        <aside className={`hidden lg:flex flex-col bg-sidebar/95 backdrop-blur-sm border-r border-sidebar-border relative z-10 h-screen sticky top-0 transition-all duration-300 ${
+          isSidebarCollapsed ? 'w-[68px]' : 'w-64'
+        }`}>
+          <div className={`p-4 ${isSidebarCollapsed ? 'px-3' : 'p-6'}`}>
+            <div className="flex items-center gap-2 justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Scissors className="w-5 h-5 text-primary" />
+                </div>
+                {!isSidebarCollapsed && (
+                  <div>
+                    <h1 className="font-bold">Painel Admin</h1>
+                    <p className="text-xs text-muted-foreground truncate max-w-[120px]">{shopSettings.name}</p>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="p-2 rounded-lg hover:bg-sidebar-accent/50 text-muted-foreground hover:text-foreground transition-colors"
+                title={isSidebarCollapsed ? 'Expandir menu' : 'Colapsar menu'}
+              >
+                {isSidebarCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <nav className={`flex-1 overflow-y-auto admin-scroll-container ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
+            {menuItems.map((item) => (
+              <div key={item.id} className="relative group">
+                <button
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center gap-3 rounded-xl mb-1 transition-all relative touch-manipulation ${
+                    isSidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'
+                  } ${
+                    activeTab === item.id
+                      ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                  }`}
+                >
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  {!isSidebarCollapsed && <span>{item.label}</span>}
+                  {item.id === 'feedbacks' && newFeedbacksCount > 0 && (
+                    <span className={`px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full ${
+                      isSidebarCollapsed ? 'absolute -top-1 -right-1 w-4 h-4 p-0 flex items-center justify-center text-[10px]' : 'absolute right-4'
+                    }`}>
+                      {newFeedbacksCount}
+                    </span>
+                  )}
+                </button>
+                {isSidebarCollapsed && (
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 bg-background border border-border rounded-lg text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                    {item.label}
+                  </div>
+                )}
+              </div>
+            ))}
+          </nav>
+
+          <div className={`border-t border-sidebar-border ${isSidebarCollapsed ? 'p-2' : 'p-4'}`}>
             <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all relative touch-manipulation ${
-                activeTab === item.id
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+              onClick={() => signOut()}
+              className={`flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors w-full touch-manipulation ${
+                isSidebarCollapsed ? 'px-3 py-3 justify-center rounded-xl hover:bg-sidebar-accent/50' : 'px-4 py-3'
               }`}
             >
-              <item.icon className="w-5 h-5" />
-              {item.label}
-              {item.id === 'feedbacks' && newFeedbacksCount > 0 && (
-                <span className="absolute right-4 px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
-                  {newFeedbacksCount}
-                </span>
-              )}
+              <LogOut className="w-5 h-5" />
+              {!isSidebarCollapsed && <span>Sair</span>}
             </button>
-          ))}
-        </nav>
-
-        <div className="p-4 border-t border-sidebar-border">
-          <button
-            onClick={() => signOut()}
-            className="flex items-center gap-3 px-4 py-3 text-muted-foreground hover:text-foreground transition-colors w-full touch-manipulation"
-          >
-            <LogOut className="w-5 h-5" />
-            Sair
-          </button>
-        </div>
-      </aside>
+          </div>
+        </aside>
+      )}
 
       {/* Mobile Sidebar */}
       <AnimatePresence>

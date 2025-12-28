@@ -24,6 +24,8 @@ import {
   TestTube,
   Wand2,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,6 +79,8 @@ export default function MarketingPanel() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [sendingCampaign, setSendingCampaign] = useState<string | null>(null);
   const [testingCampaign, setTestingCampaign] = useState<string | null>(null);
+  const [campaignPage, setCampaignPage] = useState(0);
+  const CAMPAIGNS_PER_PAGE = 5;
   
   // AI state
   const [aiContext, setAiContext] = useState('');
@@ -99,6 +103,13 @@ export default function MarketingPanel() {
   const [bulkContacts, setBulkContacts] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [contactsTab, setContactsTab] = useState<'manual' | 'bulk' | 'csv'>('manual');
+
+  // Pagination calculations
+  const totalCampaignPages = Math.ceil(campaigns.length / CAMPAIGNS_PER_PAGE);
+  const paginatedCampaigns = campaigns.slice(
+    campaignPage * CAMPAIGNS_PER_PAGE,
+    (campaignPage + 1) * CAMPAIGNS_PER_PAGE
+  );
 
   useEffect(() => {
     fetchSettings();
@@ -574,10 +585,37 @@ export default function MarketingPanel() {
           {/* Campaigns List */}
           {campaigns.length > 0 && (
             <div className="space-y-4">
-              <h3 className="font-semibold text-lg">Campanhas</h3>
-              {campaigns.map((campaign) => (
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-lg">Campanhas ({campaigns.length})</h3>
+                {totalCampaignPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCampaignPage(Math.max(0, campaignPage - 1))}
+                      disabled={campaignPage === 0}
+                      className="h-8 px-2"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      {campaignPage + 1} / {totalCampaignPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCampaignPage(Math.min(totalCampaignPages - 1, campaignPage + 1))}
+                      disabled={campaignPage >= totalCampaignPages - 1}
+                      className="h-8 px-2"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {paginatedCampaigns.map((campaign) => (
                 <div key={campaign.id} className="glass-card rounded-xl p-5">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h4 className="font-semibold text-lg truncate">{campaign.name}</h4>
@@ -605,7 +643,7 @@ export default function MarketingPanel() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-start">
                       {campaign.status === 'draft' && (
                         <>
                           <Button
@@ -681,6 +719,35 @@ export default function MarketingPanel() {
                   </div>
                 </div>
               ))}
+              
+              {/* Bottom pagination for better mobile UX */}
+              {totalCampaignPages > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCampaignPage(Math.max(0, campaignPage - 1))}
+                    disabled={campaignPage === 0}
+                    className="h-9"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Anterior
+                  </Button>
+                  <span className="text-sm text-muted-foreground px-3">
+                    Página {campaignPage + 1} de {totalCampaignPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCampaignPage(Math.min(totalCampaignPages - 1, campaignPage + 1))}
+                    disabled={campaignPage >= totalCampaignPages - 1}
+                    className="h-9"
+                  >
+                    Próxima
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
