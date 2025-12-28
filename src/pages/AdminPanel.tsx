@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar,
@@ -37,6 +37,7 @@ import {
   AlertTriangle,
   Instagram,
   Facebook,
+  Megaphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +46,7 @@ import { Link } from 'react-router-dom';
 import { useApp, Appointment } from '@/contexts/AppContext';
 import { useFeedback, Feedback } from '@/contexts/FeedbackContext';
 import { useGallery } from '@/contexts/GalleryContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useNotification } from '@/contexts/NotificationContext';
 
 import Dashboard from '@/components/admin/Dashboard';
@@ -54,6 +56,7 @@ import NotificationsPanel from '@/components/admin/NotificationsPanel';
 import OverloadAlertModal from '@/components/admin/OverloadAlertModal';
 import InteractiveBackground from '@/components/admin/InteractiveBackground';
 import SettingsPanel from '@/components/admin/SettingsPanel';
+import MarketingPanel from '@/components/admin/MarketingPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import { DollarSign } from 'lucide-react';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
@@ -68,8 +71,9 @@ const menuItems = [
   { id: 'servicos', label: 'Serviços', icon: Scissors },
   { id: 'galeria', label: 'Galeria', icon: Image },
   { id: 'feedbacks', label: 'Feedbacks', icon: MessageSquare },
-  { id: 'usuarios', label: 'Usuários', icon: Lock },
   { id: 'config', label: 'Configurações', icon: Settings },
+  { id: 'marketing', label: 'Marketing', icon: Megaphone },
+  { id: 'usuarios', label: 'Usuários', icon: Lock },
 ];
 
 const AdminPanel = () => {
@@ -159,6 +163,8 @@ const AdminPanel = () => {
   // New image URL
   const [newImageUrl, setNewImageUrl] = useState('');
   const [newImageTitle, setNewImageTitle] = useState('');
+  const [uploadingGalleryImage, setUploadingGalleryImage] = useState(false);
+  const galleryFileInputRef = useRef<HTMLInputElement>(null);
 
   // Barber availability management
   const [selectedBarberForAvailability, setSelectedBarberForAvailability] = useState(barbers[0]?.id || '');
@@ -277,6 +283,41 @@ const AdminPanel = () => {
     setNewImageUrl('');
     setNewImageTitle('');
     notify.success('Imagem adicionada à galeria');
+  };
+
+  const handleGalleryFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      notify.error('Imagem muito grande (máx 5MB)');
+      return;
+    }
+
+    setUploadingGalleryImage(true);
+    try {
+      const fileName = `gallery-${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      const { error: uploadError } = await supabase.storage
+        .from('gallery-images')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('gallery-images')
+        .getPublicUrl(fileName);
+
+      addImage({
+        url: publicUrl,
+        title: newImageTitle || undefined,
+      });
+      setNewImageTitle('');
+      notify.success('Imagem enviada e adicionada à galeria!');
+    } catch (error) {
+      console.error('Upload error:', error);
+      notify.error('Erro ao enviar imagem');
+    }
+    setUploadingGalleryImage(false);
   };
 
   const handleCopyFeedbackLink = () => {
@@ -1010,19 +1051,41 @@ const AdminPanel = () => {
               </h3>
               <div className="space-y-4">
                 <Input
-                  placeholder="URL da imagem"
-                  value={newImageUrl}
-                  onChange={(e) => setNewImageUrl(e.target.value)}
-                />
-                <Input
                   placeholder="Título (opcional)"
                   value={newImageTitle}
                   onChange={(e) => setNewImageTitle(e.target.value)}
                 />
-                <Button variant="hero" onClick={handleAddGalleryImage} className="w-full">
-                  <Upload className="w-4 h-4" />
-                  Adicionar à Galeria
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <input
+                      ref={galleryFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleGalleryFileUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      variant="hero"
+                      onClick={() => galleryFileInputRef.current?.click()}
+                      disabled={uploadingGalleryImage}
+                      className="w-full"
+                    >
+                      <Upload className="w-4 h-4" />
+                      {uploadingGalleryImage ? 'Enviando...' : 'Upload do Dispositivo'}
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Ou cole URL da imagem"
+                      value={newImageUrl}
+                      onChange={(e) => setNewImageUrl(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button variant="outline" onClick={handleAddGalleryImage} disabled={!newImageUrl.trim()}>
+                      Adicionar
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1138,6 +1201,9 @@ const AdminPanel = () => {
 
       case 'config':
         return <SettingsPanel />;
+
+      case 'marketing':
+        return <MarketingPanel />;
 
       default:
         return null;
