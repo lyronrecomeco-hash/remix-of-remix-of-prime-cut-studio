@@ -400,28 +400,67 @@ export type Database = {
       }
       marketing_settings: {
         Row: {
+          allowed_end_hour: number
+          allowed_start_hour: number
+          consecutive_errors: number
           created_at: string
+          daily_limit: number
           delay_between_messages: number
           id: string
           is_enabled: boolean
+          last_reset_date: string | null
+          max_consecutive_errors: number
           max_contacts: number
+          max_delay_seconds: number
+          messages_sent_today: number
+          min_delay_seconds: number
+          pause_duration_seconds: number
+          pause_every_n_messages: number
           updated_at: string
+          warmup_day: number
+          warmup_enabled: boolean
         }
         Insert: {
+          allowed_end_hour?: number
+          allowed_start_hour?: number
+          consecutive_errors?: number
           created_at?: string
+          daily_limit?: number
           delay_between_messages?: number
           id?: string
           is_enabled?: boolean
+          last_reset_date?: string | null
+          max_consecutive_errors?: number
           max_contacts?: number
+          max_delay_seconds?: number
+          messages_sent_today?: number
+          min_delay_seconds?: number
+          pause_duration_seconds?: number
+          pause_every_n_messages?: number
           updated_at?: string
+          warmup_day?: number
+          warmup_enabled?: boolean
         }
         Update: {
+          allowed_end_hour?: number
+          allowed_start_hour?: number
+          consecutive_errors?: number
           created_at?: string
+          daily_limit?: number
           delay_between_messages?: number
           id?: string
           is_enabled?: boolean
+          last_reset_date?: string | null
+          max_consecutive_errors?: number
           max_contacts?: number
+          max_delay_seconds?: number
+          messages_sent_today?: number
+          min_delay_seconds?: number
+          pause_duration_seconds?: number
+          pause_every_n_messages?: number
           updated_at?: string
+          warmup_day?: number
+          warmup_enabled?: boolean
         }
         Relationships: []
       }
