@@ -60,6 +60,7 @@ import OverloadAlertModal from '@/components/admin/OverloadAlertModal';
 import InteractiveBackground from '@/components/admin/InteractiveBackground';
 import SettingsPanel from '@/components/admin/SettingsPanel';
 import MarketingPanel from '@/components/admin/MarketingPanel';
+import AuditLogsSection from '@/components/admin/AuditLogsSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { DollarSign } from 'lucide-react';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
@@ -893,12 +894,13 @@ const AdminPanel = () => {
                     className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
                     onClick={() => setShowAvailabilityModal(false)}
                   />
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="fixed inset-4 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-2xl md:w-full bg-card border border-border rounded-2xl p-6 z-50 max-h-[90vh] overflow-y-auto"
-                  >
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="w-full max-w-2xl bg-card border border-border rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
+                    >
                     <div className="flex items-center justify-between mb-6">
                       <h3 className="text-xl font-bold">Disponibilidade do Profissional</h3>
                       <button onClick={() => setShowAvailabilityModal(false)} className="p-2 hover:bg-secondary rounded-lg">
@@ -958,6 +960,7 @@ const AdminPanel = () => {
                       </Button>
                     </div>
                   </motion.div>
+                </div>
                 </>
               )}
             </AnimatePresence>
@@ -973,12 +976,13 @@ const AdminPanel = () => {
                     className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
                     onClick={() => setShowBlockModal(false)}
                   />
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="fixed inset-4 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-lg md:w-full bg-card border border-border rounded-2xl p-6 z-50"
-                  >
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="w-full max-w-lg bg-card border border-border rounded-2xl p-6"
+                    >
                     <div className="flex items-center justify-between mb-6">
                       <h3 className="text-xl font-bold">Bloquear Horários</h3>
                       <button onClick={() => setShowBlockModal(false)} className="p-2 hover:bg-secondary rounded-lg">
@@ -1029,6 +1033,7 @@ const AdminPanel = () => {
                       </Button>
                     </div>
                   </motion.div>
+                </div>
                 </>
               )}
             </AnimatePresence>
@@ -1329,123 +1334,7 @@ const AdminPanel = () => {
         return <MarketingPanel />;
 
       case 'logs':
-        // Fetch audit logs when tab opens
-        const fetchAuditLogs = async () => {
-          setAuditLogsLoading(true);
-          try {
-            const { data, error } = await supabase
-              .from('audit_logs')
-              .select('*')
-              .order('created_at', { ascending: false })
-              .range(auditLogsPage * AUDIT_LOGS_PER_PAGE, (auditLogsPage + 1) * AUDIT_LOGS_PER_PAGE - 1);
-            
-            if (!error && data) {
-              setAuditLogs(data);
-            }
-          } catch (e) {
-            console.error('Error fetching audit logs:', e);
-          }
-          setAuditLogsLoading(false);
-        };
-
-        // Security settings check
-        const securitySettingsStored = localStorage.getItem('security_settings');
-        const securitySettingsParsed = securitySettingsStored ? JSON.parse(securitySettingsStored) : { auditLog: true };
-        const auditLogEnabled = securitySettingsParsed?.auditLog ?? true;
-
-        if (!auditLogEnabled) {
-          return (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8">
-              <AlertTriangle className="w-16 h-16 text-muted-foreground mb-4" />
-              <h2 className="text-2xl font-bold mb-2">Logs de Auditoria Desativado</h2>
-              <p className="text-muted-foreground mb-4">
-                Ative os logs de auditoria nas configurações de segurança para visualizar o histórico de ações.
-              </p>
-              <Button onClick={() => setActiveTab('config')} variant="hero">
-                Ir para Configurações
-              </Button>
-            </div>
-          );
-        }
-
-        return (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Logs de Auditoria</h2>
-              <Button variant="outline" onClick={fetchAuditLogs} disabled={auditLogsLoading}>
-                {auditLogsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Atualizar'}
-              </Button>
-            </div>
-            
-            <div className="glass-card rounded-xl p-4 mb-4">
-              <p className="text-sm text-muted-foreground">
-                Registro de todas as ações administrativas realizadas no sistema.
-              </p>
-            </div>
-
-            {auditLogs.length === 0 ? (
-              <div className="glass-card rounded-xl p-8 text-center">
-                <AlertTriangle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">Nenhum log de auditoria encontrado.</p>
-                <Button variant="hero" className="mt-4" onClick={fetchAuditLogs}>
-                  Carregar Logs
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {auditLogs.map((log) => (
-                  <div key={log.id} className="glass-card rounded-xl p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                            log.action === 'create' ? 'bg-green-500/20 text-green-400' :
-                            log.action === 'update' ? 'bg-blue-500/20 text-blue-400' :
-                            log.action === 'delete' ? 'bg-destructive/20 text-destructive' :
-                            'bg-secondary text-muted-foreground'
-                          }`}>
-                            {log.action?.toUpperCase() || 'ACTION'}
-                          </span>
-                          <span className="font-medium">{log.entity_type}</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {log.details ? JSON.stringify(log.details).substring(0, 100) : 'Sem detalhes'}
-                        </p>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(log.created_at).toLocaleString('pt-BR')}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-                
-                {/* Pagination */}
-                <div className="flex items-center justify-center gap-2 pt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setAuditLogsPage(p => Math.max(0, p - 1))}
-                    disabled={auditLogsPage === 0}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <span className="text-sm text-muted-foreground">Página {auditLogsPage + 1}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setAuditLogsPage(p => p + 1);
-                      fetchAuditLogs();
-                    }}
-                    disabled={auditLogs.length < AUDIT_LOGS_PER_PAGE}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        );
+        return <AuditLogsSection />;
 
       default:
         return null;

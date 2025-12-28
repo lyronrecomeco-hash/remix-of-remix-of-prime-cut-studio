@@ -13,6 +13,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Booking from "./pages/Booking";
+import BookingDirect from "./pages/BookingDirect";
 import MyAppointments from "./pages/MyAppointments";
 import AdminPanel from "./pages/AdminPanel";
 import AdminLogin from "./pages/AdminLogin";
@@ -88,6 +89,7 @@ const AppContent = () => {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/agendar" element={<Booking />} />
+          <Route path="/agendamento-direto" element={<BookingDirect />} />
           <Route path="/meus-agendamentos" element={<MyAppointments />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={
