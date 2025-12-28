@@ -11,6 +11,31 @@ const AuditLogsSection = () => {
   const [auditLogsLoading, setAuditLogsLoading] = useState(false);
   const [auditLogsPage, setAuditLogsPage] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [auditLogEnabled, setAuditLogEnabled] = useState(true);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+
+  // Load security settings from database
+  useEffect(() => {
+    const loadSecuritySettings = async () => {
+      try {
+        const { data } = await supabase
+          .from('admin_settings')
+          .select('settings')
+          .eq('setting_type', 'security')
+          .single();
+        
+        if (data?.settings) {
+          const settings = data.settings as unknown as { auditLog?: boolean };
+          setAuditLogEnabled(settings.auditLog ?? true);
+        }
+      } catch (e) {
+        console.error('Error loading security settings:', e);
+      }
+      setSettingsLoading(false);
+    };
+    
+    loadSecuritySettings();
+  }, []);
 
   const fetchAuditLogs = useCallback(async () => {
     setAuditLogsLoading(true);
@@ -33,19 +58,24 @@ const AuditLogsSection = () => {
 
   // Initial fetch and auto-refresh every 1 minute
   useEffect(() => {
-    fetchAuditLogs();
-    
-    const interval = setInterval(() => {
+    if (auditLogEnabled && !settingsLoading) {
       fetchAuditLogs();
-    }, AUTO_REFRESH_INTERVAL);
-    
-    return () => clearInterval(interval);
-  }, [fetchAuditLogs]);
+      
+      const interval = setInterval(() => {
+        fetchAuditLogs();
+      }, AUTO_REFRESH_INTERVAL);
+      
+      return () => clearInterval(interval);
+    }
+  }, [fetchAuditLogs, auditLogEnabled, settingsLoading]);
 
-  // Security settings check
-  const securitySettingsStored = localStorage.getItem('security_settings');
-  const securitySettingsParsed = securitySettingsStored ? JSON.parse(securitySettingsStored) : { auditLog: true };
-  const auditLogEnabled = securitySettingsParsed?.auditLog ?? true;
+  if (settingsLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!auditLogEnabled) {
     return (

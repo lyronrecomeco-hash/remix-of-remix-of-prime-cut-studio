@@ -10,15 +10,49 @@ export interface AuditLogEntry {
   details?: Record<string, any>;
 }
 
+// Cache for security settings to avoid multiple DB calls
+let cachedSecuritySettings: { auditLog: boolean } | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 60000; // 1 minute cache
+
+const getSecuritySettings = async (): Promise<{ auditLog: boolean }> => {
+  const now = Date.now();
+  
+  // Return cached value if still valid
+  if (cachedSecuritySettings && (now - cacheTimestamp) < CACHE_TTL) {
+    return cachedSecuritySettings;
+  }
+  
+  try {
+    const { data } = await supabase
+      .from('admin_settings')
+      .select('settings')
+      .eq('setting_type', 'security')
+      .single();
+    
+    if (data?.settings) {
+      const settings = data.settings as unknown as { auditLog?: boolean };
+      cachedSecuritySettings = { auditLog: settings.auditLog ?? true };
+    } else {
+      cachedSecuritySettings = { auditLog: true };
+    }
+    
+    cacheTimestamp = now;
+    return cachedSecuritySettings;
+  } catch (e) {
+    // Default to enabled if can't fetch settings
+    return { auditLog: true };
+  }
+};
+
 /**
  * Creates an audit log entry in the database
  * This function is safe to call - it won't throw errors on failure
  */
 export const createAuditLog = async (entry: AuditLogEntry): Promise<void> => {
   try {
-    // Check if audit logging is enabled
-    const securitySettings = localStorage.getItem('security_settings');
-    const settings = securitySettings ? JSON.parse(securitySettings) : { auditLog: true };
+    // Check if audit logging is enabled from database
+    const settings = await getSecuritySettings();
     
     if (!settings.auditLog) {
       return;
@@ -37,6 +71,12 @@ export const createAuditLog = async (entry: AuditLogEntry): Promise<void> => {
     console.error('[AuditLog] Failed to create audit log:', error);
     // Don't throw - audit logs should never break the app
   }
+};
+
+// Invalidate cache when settings are updated
+export const invalidateSecuritySettingsCache = () => {
+  cachedSecuritySettings = null;
+  cacheTimestamp = 0;
 };
 
 /**

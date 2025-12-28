@@ -286,67 +286,212 @@ export default function SettingsPanel() {
     loadBarberSchedules();
   }, [barbers]);
 
-  const loadSecuritySettings = () => {
-    const stored = localStorage.getItem('security_settings');
-    if (stored) {
-      try {
-        setSecuritySettings(JSON.parse(stored));
-      } catch (e) {
-        console.error('Error loading security settings:', e);
+  const loadSecuritySettings = async () => {
+    try {
+      const { data } = await supabase
+        .from('admin_settings')
+        .select('settings')
+        .eq('setting_type', 'security')
+        .single();
+      
+      if (data?.settings) {
+        setSecuritySettings(data.settings as unknown as SecuritySettings);
       }
+    } catch (e) {
+      console.error('Error loading security settings:', e);
     }
   };
 
-  const loadBackupConfig = () => {
-    const stored = localStorage.getItem('backup_config');
-    if (stored) {
-      try {
-        setBackupConfig(JSON.parse(stored));
-      } catch (e) {
-        console.error('Error loading backup config:', e);
+  const loadBackupConfig = async () => {
+    try {
+      const { data } = await supabase
+        .from('admin_settings')
+        .select('settings')
+        .eq('setting_type', 'backup')
+        .single();
+      
+      if (data?.settings) {
+        setBackupConfig(data.settings as unknown as BackupConfig);
       }
+    } catch (e) {
+      console.error('Error loading backup config:', e);
     }
   };
 
-  const loadBarberSchedules = () => {
-    const stored = localStorage.getItem('barber_schedules');
-    if (stored) {
-      try {
-        setBarberSchedules(JSON.parse(stored));
-      } catch (e) {
-        console.error('Error loading barber schedules:', e);
+  const loadBarberSchedules = async () => {
+    try {
+      const { data } = await supabase
+        .from('barber_schedules')
+        .select('*');
+      
+      if (data && data.length > 0) {
+        // Group by barber
+        const scheduleMap = new Map<string, BarberSchedule>();
+        
+        for (const item of data) {
+          const barber = barbers.find(b => b.id === item.barber_id);
+          if (!barber) continue;
+          
+          if (!scheduleMap.has(item.barber_id)) {
+            scheduleMap.set(item.barber_id, {
+              barberId: item.barber_id,
+              barberName: barber.name,
+              schedules: daysOfWeek.map((day, idx) => ({
+                day,
+                start: '09:00',
+                end: '18:00',
+                enabled: idx < 6,
+              })),
+            });
+          }
+          
+          const schedule = scheduleMap.get(item.barber_id)!;
+          if (item.day_of_week >= 0 && item.day_of_week < 7) {
+            schedule.schedules[item.day_of_week] = {
+              day: daysOfWeek[item.day_of_week],
+              start: item.start_time,
+              end: item.end_time,
+              enabled: item.is_enabled,
+            };
+          }
+        }
+        
+        setBarberSchedules(Array.from(scheduleMap.values()));
+      } else if (barbers && barbers.length > 0) {
+        const initialSchedules: BarberSchedule[] = barbers.map(b => ({
+          barberId: b.id,
+          barberName: b.name,
+          schedules: daysOfWeek.map((day, idx) => ({
+            day,
+            start: '09:00',
+            end: '18:00',
+            enabled: idx < 6,
+          })),
+        }));
+        setBarberSchedules(initialSchedules);
       }
-    } else if (barbers && barbers.length > 0) {
-      const initialSchedules: BarberSchedule[] = barbers.map(b => ({
-        barberId: b.id,
-        barberName: b.name,
-        schedules: daysOfWeek.map((day, idx) => ({
-          day,
-          start: '09:00',
-          end: '18:00',
-          enabled: idx < 6,
-        })),
-      }));
-      setBarberSchedules(initialSchedules);
+    } catch (e) {
+      console.error('Error loading barber schedules:', e);
     }
   };
 
-  const saveSecuritySettings = (settings: SecuritySettings) => {
+  const saveSecuritySettings = async (settings: SecuritySettings) => {
     setSecuritySettings(settings);
-    localStorage.setItem('security_settings', JSON.stringify(settings));
-    notify.success('Configurações de segurança salvas!');
+    
+    try {
+      // First check if record exists
+      const { data: existing } = await supabase
+        .from('admin_settings')
+        .select('id')
+        .eq('setting_type', 'security')
+        .single();
+      
+      // Convert to JSON-compatible format
+      const jsonSettings = JSON.parse(JSON.stringify(settings));
+      
+      if (existing) {
+        const { error } = await supabase
+          .from('admin_settings')
+          .update({ settings: jsonSettings })
+          .eq('setting_type', 'security');
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('admin_settings')
+          .insert([{ 
+            setting_type: 'security', 
+            settings: jsonSettings
+          }]);
+        if (error) throw error;
+      }
+      
+      notify.success('Configurações de segurança salvas!');
+    } catch (e) {
+      console.error('Error saving security settings:', e);
+      notify.error('Erro ao salvar configurações');
+    }
   };
 
-  const saveBackupConfig = (config: BackupConfig) => {
+  const saveBackupConfig = async (config: BackupConfig) => {
     setBackupConfig(config);
-    localStorage.setItem('backup_config', JSON.stringify(config));
-    notify.success('Configuração de backup salva!');
+    
+    try {
+      // First check if record exists
+      const { data: existing } = await supabase
+        .from('admin_settings')
+        .select('id')
+        .eq('setting_type', 'backup')
+        .single();
+      
+      // Convert to JSON-compatible format
+      const jsonConfig = JSON.parse(JSON.stringify(config));
+      
+      if (existing) {
+        const { error } = await supabase
+          .from('admin_settings')
+          .update({ settings: jsonConfig })
+          .eq('setting_type', 'backup');
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('admin_settings')
+          .insert([{ 
+            setting_type: 'backup', 
+            settings: jsonConfig
+          }]);
+        if (error) throw error;
+      }
+      
+      notify.success('Configuração de backup salva!');
+    } catch (e) {
+      console.error('Error saving backup config:', e);
+      notify.error('Erro ao salvar configuração');
+    }
   };
 
-  const saveBarberSchedules = () => {
-    localStorage.setItem('barber_schedules', JSON.stringify(barberSchedules));
-    notify.success('Horários salvos!');
-    setHoursModalOpen(false);
+  const saveBarberSchedules = async () => {
+    try {
+      // Prepare upsert data for all schedules
+      const upsertData: Array<{
+        barber_id: string;
+        day_of_week: number;
+        start_time: string;
+        end_time: string;
+        is_enabled: boolean;
+      }> = [];
+      
+      for (const barberSchedule of barberSchedules) {
+        barberSchedule.schedules.forEach((schedule, idx) => {
+          upsertData.push({
+            barber_id: barberSchedule.barberId,
+            day_of_week: idx,
+            start_time: schedule.start,
+            end_time: schedule.end,
+            is_enabled: schedule.enabled,
+          });
+        });
+      }
+      
+      // Delete existing and insert new
+      for (const barberSchedule of barberSchedules) {
+        await supabase
+          .from('barber_schedules')
+          .delete()
+          .eq('barber_id', barberSchedule.barberId);
+      }
+      
+      const { error } = await supabase
+        .from('barber_schedules')
+        .insert(upsertData);
+      
+      if (error) throw error;
+      
+      notify.success('Horários salvos!');
+      setHoursModalOpen(false);
+    } catch (e) {
+      console.error('Error saving barber schedules:', e);
+      notify.error('Erro ao salvar horários');
+    }
   };
 
   const fetchTemplates = async () => {
