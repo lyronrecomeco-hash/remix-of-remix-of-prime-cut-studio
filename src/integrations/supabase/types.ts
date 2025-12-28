@@ -196,6 +196,131 @@ export type Database = {
           },
         ]
       }
+      barber_leaves: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          barber_id: string
+          created_at: string
+          end_date: string
+          id: string
+          leave_type: string
+          reason: string | null
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          barber_id: string
+          created_at?: string
+          end_date: string
+          id?: string
+          leave_type?: string
+          reason?: string | null
+          start_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          barber_id?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          leave_type?: string
+          reason?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "barber_leaves_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      barber_performance: {
+        Row: {
+          avg_rating: number | null
+          avg_service_time: number | null
+          barber_id: string
+          cancelled_appointments: number
+          completed_appointments: number
+          created_at: string
+          id: string
+          most_popular_service_id: string | null
+          new_clients: number
+          no_show_appointments: number
+          period_end: string
+          period_start: string
+          period_type: string
+          returning_clients: number
+          total_appointments: number
+          total_revenue: number
+          updated_at: string
+        }
+        Insert: {
+          avg_rating?: number | null
+          avg_service_time?: number | null
+          barber_id: string
+          cancelled_appointments?: number
+          completed_appointments?: number
+          created_at?: string
+          id?: string
+          most_popular_service_id?: string | null
+          new_clients?: number
+          no_show_appointments?: number
+          period_end: string
+          period_start: string
+          period_type?: string
+          returning_clients?: number
+          total_appointments?: number
+          total_revenue?: number
+          updated_at?: string
+        }
+        Update: {
+          avg_rating?: number | null
+          avg_service_time?: number | null
+          barber_id?: string
+          cancelled_appointments?: number
+          completed_appointments?: number
+          created_at?: string
+          id?: string
+          most_popular_service_id?: string | null
+          new_clients?: number
+          no_show_appointments?: number
+          period_end?: string
+          period_start?: string
+          period_type?: string
+          returning_clients?: number
+          total_appointments?: number
+          total_revenue?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "barber_performance_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "barber_performance_most_popular_service_id_fkey"
+            columns: ["most_popular_service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       barber_schedules: {
         Row: {
           barber_id: string
@@ -570,6 +695,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      monthly_goals: {
+        Row: {
+          barber_id: string | null
+          bonus_amount: number | null
+          created_at: string
+          current_value: number
+          goal_type: string
+          id: string
+          is_active: boolean
+          month: number
+          target_value: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          barber_id?: string | null
+          bonus_amount?: number | null
+          created_at?: string
+          current_value?: number
+          goal_type?: string
+          id?: string
+          is_active?: boolean
+          month: number
+          target_value: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          barber_id?: string | null
+          bonus_amount?: number | null
+          created_at?: string
+          current_value?: number
+          goal_type?: string
+          id?: string
+          is_active?: boolean
+          month?: number
+          target_value?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_goals_barber_id_fkey"
+            columns: ["barber_id"]
+            isOneToOne: false
+            referencedRelation: "barbers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {
