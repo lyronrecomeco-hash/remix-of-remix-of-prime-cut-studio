@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { triggerWebhook, sendPushNotification } from '@/lib/webhooks';
+import { auditLog } from '@/lib/auditLog';
 
 // Types
 export interface Service {
@@ -457,6 +458,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         icon: data.icon || 'Scissors',
         visible: data.visible,
       }]);
+      
+      // Audit log
+      auditLog.service.create(data.id, { name: service.name, price: service.price });
     }
   }, []);
 
@@ -471,12 +475,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }).eq('id', id);
     
     setServices(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+    
+    // Audit log
+    auditLog.service.update(id, updates);
   }, []);
 
   const deleteService = useCallback(async (id: string) => {
+    const service = services.find(s => s.id === id);
     await supabase.from('services').delete().eq('id', id);
     setServices(prev => prev.filter(s => s.id !== id));
-  }, []);
+    
+    // Audit log
+    auditLog.service.delete(id, { name: service?.name });
+  }, [services]);
 
   const toggleServiceVisibility = useCallback(async (id: string) => {
     const service = services.find(s => s.id === id);
@@ -487,7 +498,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [services]);
 
-  // Barbers
   const updateBarber = useCallback(async (id: string, updates: Partial<Barber>) => {
     await supabase.from('barbers').update({
       name: updates.name,
@@ -499,6 +509,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }).eq('id', id);
     
     setBarbers(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+    
+    // Audit log
+    auditLog.barber.update(id, updates);
   }, []);
 
   const toggleBarberAvailability = useCallback(async (id: string) => {
@@ -538,6 +551,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     setAppointments(prev => [...prev, newAppointment]);
 
+    // Audit log
+    auditLog.appointment.create(data.id, { 
+      clientName: appointment.clientName, 
+      service: appointment.service.name,
+      barber: appointment.barber.name,
+      date: appointment.date,
+      time: appointment.time,
+    });
+
     // Trigger webhook for appointment created
     triggerWebhook({
       event_type: 'appointment_created',
@@ -571,12 +593,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const cancelAppointment = useCallback(async (id: string) => {
+    const apt = appointments.find(a => a.id === id);
     await supabase.from('appointments').update({ status: 'cancelled' }).eq('id', id);
     await supabase.from('queue').delete().eq('appointment_id', id);
     
     setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'cancelled' } : a));
     setQueue(prev => prev.filter(q => q.appointmentId !== id));
-  }, []);
+    
+    // Audit log
+    auditLog.appointment.cancel(id, { clientName: apt?.clientName });
+  }, [appointments]);
 
   const completeAppointment = useCallback(async (id: string) => {
     const apt = appointments.find(a => a.id === id);
@@ -602,6 +628,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const filtered = prev.filter(q => q.appointmentId !== id);
       return filtered.map((q, index) => ({ ...q, position: index + 1 }));
     });
+
+    // Audit log
+    auditLog.appointment.complete(id, { clientName: apt?.clientName });
 
     // Trigger webhook for appointment completed
     if (apt) {
@@ -673,6 +702,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
       }
     }
+
+    // Audit log
+    auditLog.appointment.confirm(id, { clientName: apt?.clientName });
 
     // Trigger webhook for appointment confirmed
     if (apt) {

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
@@ -18,7 +17,9 @@ import {
   VolumeX,
   RefreshCw,
   Info,
-  ClipboardList,
+  AlertCircle,
+  CheckCircle2,
+  PhoneCall,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -252,8 +253,57 @@ const BookingDirect = () => {
 
     setIsLoading(true);
     const dateStr = selectedDate.toISOString().split('T')[0];
+    const cleanPhone = phoneMask.rawValue;
 
     try {
+      // Security check: verify if this phone already has an active appointment
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      
+      const { data: existingAppointments, error: checkError } = await supabase
+        .from('appointments')
+        .select('id, status, date, time, created_at')
+        .eq('client_phone', phoneMask.value)
+        .in('status', ['pending', 'confirmed', 'inqueue', 'called', 'onway']);
+      
+      if (checkError) {
+        console.error('Error checking existing appointments:', checkError);
+      }
+      
+      // Check if there's any active appointment
+      if (existingAppointments && existingAppointments.length > 0) {
+        notify.error(
+          'Agendamento existente',
+          'Você já possui um agendamento ativo. Aguarde a conclusão ou cancelamento para agendar novamente.'
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      // Check for recently completed appointments (within 1 week)
+      const { data: recentCompleted, error: recentError } = await supabase
+        .from('appointments')
+        .select('id, status, updated_at')
+        .eq('client_phone', phoneMask.value)
+        .eq('status', 'completed')
+        .gte('updated_at', oneWeekAgo.toISOString())
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      
+      if (!recentError && recentCompleted && recentCompleted.length > 0) {
+        const completedDate = new Date(recentCompleted[0].updated_at);
+        const daysRemaining = Math.ceil((completedDate.getTime() + 7 * 24 * 60 * 60 * 1000 - Date.now()) / (24 * 60 * 60 * 1000));
+        
+        if (daysRemaining > 0) {
+          notify.error(
+            'Aguarde para novo agendamento',
+            `Você poderá agendar novamente em ${daysRemaining} dia(s).`
+          );
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const newAppointment = await addAppointment({
         clientName,
         clientPhone: phoneMask.value,
@@ -452,12 +502,6 @@ const BookingDirect = () => {
                     <CalendarPlus className="w-5 h-5" />
                     Adicionar ao Calendário
                   </Button>
-                  <Button asChild variant="outline" size="lg" className="w-full">
-                    <Link to="/meus-agendamentos">
-                      <ClipboardList className="w-5 h-5" />
-                      Ver Meus Agendamentos
-                    </Link>
-                  </Button>
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-border">
@@ -555,12 +599,6 @@ const BookingDirect = () => {
                     <CalendarPlus className="w-5 h-5" />
                     Adicionar ao Calendário
                   </Button>
-                  <Button asChild variant="outline" size="lg" className="w-full">
-                    <Link to="/meus-agendamentos">
-                      <ClipboardList className="w-5 h-5" />
-                      Ver Meus Agendamentos
-                    </Link>
-                  </Button>
                 </div>
 
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="mt-6 pt-6 border-t border-border">
@@ -598,24 +636,27 @@ const BookingDirect = () => {
 
       <div className="pt-24 pb-32 md:pb-12 px-4">
         <div className="max-w-2xl mx-auto">
-          {/* Progress Steps */}
-          <div className="flex items-center justify-between mb-8 overflow-x-auto">
+          {/* Progress Steps - sem scroll, apenas indicador de etapa atual */}
+          <div className="flex items-center justify-center gap-2 mb-6">
             {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center shrink-0">
-                <motion.div
-                  initial={false}
-                  animate={{
-                    scale: currentStep === step.id ? 1.1 : 1,
-                  }}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-                    currentStep >= step.id ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
-                  }`}
-                >
-                  {currentStep > step.id ? <Check className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
-                </motion.div>
-                {index < steps.length - 1 && <div className={`hidden sm:block w-12 h-0.5 mx-2 transition-all ${currentStep > step.id ? 'bg-primary' : 'bg-secondary'}`} />}
+              <div key={step.id} className="flex items-center">
+                <div
+                  className={`w-2.5 h-2.5 rounded-full transition-all ${
+                    currentStep >= step.id ? 'bg-primary' : 'bg-secondary'
+                  } ${currentStep === step.id ? 'w-8' : ''}`}
+                />
+                {index < steps.length - 1 && (
+                  <div className={`w-4 h-0.5 transition-all ${currentStep > step.id ? 'bg-primary' : 'bg-secondary'}`} />
+                )}
               </div>
             ))}
+          </div>
+          
+          {/* Current step title */}
+          <div className="text-center mb-6">
+            <p className="text-sm text-muted-foreground">
+              Etapa {currentStep} de {steps.length}
+            </p>
           </div>
 
           {/* Step Content */}
