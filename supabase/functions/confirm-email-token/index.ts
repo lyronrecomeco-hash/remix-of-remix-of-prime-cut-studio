@@ -54,48 +54,69 @@ serve(async (req) => {
       );
     }
 
-    // Check if already confirmed
-    if (tokenData.confirmed_at) {
+    const alreadyConfirmed = !!tokenData.confirmed_at;
+
+    if (alreadyConfirmed) {
       console.log("Token already confirmed");
-      return new Response(
-        JSON.stringify({ success: true, message: "Email já foi confirmado anteriormente" }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    } else {
+      // Check if token expired
+      const expiresAt = new Date(tokenData.expires_at);
+      if (expiresAt < new Date()) {
+        console.log("Token expired");
+        return new Response(
+          JSON.stringify({ error: "Token expirado. Solicite um novo email de confirmação." }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Mark token as confirmed
+      const { error: updateTokenError } = await supabaseAdmin
+        .from("email_confirmation_tokens")
+        .update({ confirmed_at: new Date().toISOString() })
+        .eq("id", tokenData.id);
+
+      if (updateTokenError) {
+        console.log("Error updating token:", updateTokenError.message);
+        throw updateTokenError;
+      }
+
+      // Update auth.users to mark email as confirmed using admin API
+      const { error: updateUserError } = await supabaseAdmin.auth.admin.updateUserById(
+        tokenData.user_id,
+        { email_confirm: true }
       );
-    }
 
-    // Check if token expired
-    const expiresAt = new Date(tokenData.expires_at);
-    if (expiresAt < new Date()) {
-      console.log("Token expired");
-      return new Response(
-        JSON.stringify({ error: "Token expirado. Solicite um novo email de confirmação." }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
-    // Mark token as confirmed
-    const { error: updateTokenError } = await supabaseAdmin
-      .from("email_confirmation_tokens")
-      .update({ confirmed_at: new Date().toISOString() })
-      .eq("id", tokenData.id);
-
-    if (updateTokenError) {
-      console.log("Error updating token:", updateTokenError.message);
-      throw updateTokenError;
-    }
-
-    // Update auth.users to mark email as confirmed using admin API
-    const { error: updateUserError } = await supabaseAdmin.auth.admin.updateUserById(
-      tokenData.user_id,
-      { email_confirm: true }
-    );
-
-    if (updateUserError) {
-      console.log("Error updating user:", updateUserError.message);
-      // Don't fail - the token is already confirmed
+      if (updateUserError) {
+        console.log("Error updating user:", updateUserError.message);
+        // Don't fail - the token is already confirmed
+      }
     }
 
     console.log("Email confirmed successfully for:", tokenData.email);
+
+    // Ensure user has initial admin role so they can access /admin
+    try {
+      const { data: existingRole } = await supabaseAdmin
+        .from("user_roles")
+        .select("id")
+        .eq("user_id", tokenData.user_id)
+        .limit(1)
+        .maybeSingle();
+
+      if (!existingRole) {
+        const { error: roleInsertError } = await supabaseAdmin
+          .from("user_roles")
+          .insert({ user_id: tokenData.user_id, role: "admin" });
+
+        if (roleInsertError) {
+          console.log("Error creating user role:", roleInsertError.message);
+        } else {
+          console.log("Admin role assigned to user");
+        }
+      }
+    } catch (roleError) {
+      console.log("Role setup failed:", roleError);
+    }
 
     // Get user data from auth (name and phone are in user_metadata)
     let userName = "Cliente";

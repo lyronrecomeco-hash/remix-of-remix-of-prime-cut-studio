@@ -1,6 +1,6 @@
-const CACHE_NAME = 'barbershop-v3';
-const STATIC_CACHE = 'barbershop-static-v3';
-const DYNAMIC_CACHE = 'barbershop-dynamic-v3';
+const CACHE_NAME = 'barbershop-v4';
+const STATIC_CACHE = 'barbershop-static-v4';
+const DYNAMIC_CACHE = 'barbershop-dynamic-v4';
 
 const urlsToCache = [
   '/',
