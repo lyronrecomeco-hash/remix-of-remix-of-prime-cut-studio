@@ -1258,6 +1258,7 @@ Retorne APENAS a mensagem, sem explicações.`;
                   }`} />
                 </button>
               </div>
+            </div>
 
             {/* IP Whitelist */}
             <div>
