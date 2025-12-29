@@ -1750,11 +1750,9 @@ Retorne APENAS a mensagem, sem explicações.`;
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden">
-      <h2 className="text-2xl font-bold mb-4">Configurações</h2>
-      
+    <div className="flex h-full min-h-0 overflow-hidden gap-4">
       {/* Mobile: Dropdown selector */}
-      <div className="lg:hidden mb-4">
+      <div className="lg:hidden absolute top-0 left-0 right-0 p-4 bg-background z-10">
         <select
           value={activeSection}
           onChange={(e) => setActiveSection(e.target.value as SettingsSection)}
@@ -1768,35 +1766,33 @@ Retorne APENAS a mensagem, sem explicações.`;
         </select>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 overflow-hidden">
-        {/* Menu lateral de categorias - Desktop only */}
-        <div className="hidden lg:flex w-52 flex-shrink-0 flex-col space-y-2">
-          {settingsSections.map((section) => {
-            const Icon = section.icon;
-            const isActive = activeSection === section.id;
-            return (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
-                  isActive 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-card hover:bg-muted/50 border border-border'
-                }`}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="font-medium text-base">{section.label}</span>
-              </button>
-            );
-          })}
-        </div>
+      {/* Menu lateral de categorias - Desktop only - FIXO */}
+      <div className="hidden lg:flex w-52 flex-shrink-0 flex-col space-y-2 overflow-hidden">
+        {settingsSections.map((section) => {
+          const Icon = section.icon;
+          const isActive = activeSection === section.id;
+          return (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
+                isActive 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-card hover:bg-muted/50 border border-border'
+              }`}
+            >
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              <span className="font-medium text-base">{section.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
-        {/* Área de conteúdo */}
-        <div className={`flex-1 min-h-0 bg-card border border-border rounded-xl ${
-          activeSection === 'docs' ? 'overflow-hidden p-0' : 'overflow-y-auto p-5 lg:p-6'
-        }`}>
-          {renderSectionContent()}
-        </div>
+      {/* Área de conteúdo */}
+      <div className={`flex-1 min-h-0 bg-card border border-border rounded-xl ${
+        activeSection === 'docs' ? 'overflow-hidden p-0' : 'overflow-y-auto p-5 lg:p-6'
+      }`}>
+        {renderSectionContent()}
       </div>
 
       {/* Modal de Textos do Site */}
