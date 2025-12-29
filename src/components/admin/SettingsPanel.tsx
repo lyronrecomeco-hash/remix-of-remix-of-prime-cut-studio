@@ -1750,7 +1750,7 @@ Retorne APENAS a mensagem, sem explicações.`;
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden">
       <h2 className="text-2xl font-bold mb-4">Configurações</h2>
       
       {/* Mobile: Dropdown selector */}
@@ -1768,7 +1768,7 @@ Retorne APENAS a mensagem, sem explicações.`;
         </select>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 overflow-hidden">
         {/* Menu lateral de categorias - Desktop only */}
         <div className="hidden lg:flex w-52 flex-shrink-0 flex-col space-y-2">
           {settingsSections.map((section) => {

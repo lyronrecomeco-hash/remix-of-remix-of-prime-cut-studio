@@ -1413,7 +1413,7 @@ const AdminPanel = () => {
   };
 
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-background flex overflow-hidden relative">
+    <div className="h-[100dvh] w-full bg-background flex overflow-hidden relative">
       {/* Interactive Background */}
       <InteractiveBackground />
       
@@ -1653,7 +1653,7 @@ const AdminPanel = () => {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen min-h-[100dvh] overflow-hidden relative z-10">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative z-10">
         {/* Top Bar */}
         <header className="h-14 sm:h-16 border-b border-border bg-background/80 backdrop-blur-sm flex items-center justify-between px-3 sm:px-4 lg:px-8 shrink-0 sticky top-0 z-20">
           <button
