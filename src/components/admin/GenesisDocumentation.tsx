@@ -21,7 +21,9 @@ import {
   Calendar,
   MessageSquare,
   FileText,
-  Send
+  Send,
+  Menu,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -917,6 +919,7 @@ const documentationSections: DocSection[] = [
 export default function GenesisDocumentation() {
   const [activeSection, setActiveSection] = useState('primeiros-passos');
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const filteredSections = searchQuery
     ? documentationSections.filter(s => 
@@ -945,9 +948,33 @@ export default function GenesisDocumentation() {
   };
 
   return (
-    <div className="flex h-full overflow-hidden">
-      {/* Sidebar fixa da documentação - SEM SCROLL */}
-      <div className="w-64 flex-shrink-0 flex flex-col border-r border-border bg-card/50 overflow-hidden">
+    <div className="flex h-full overflow-hidden relative">
+      {/* Botão de menu mobile */}
+      <button
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-card border border-border shadow-lg"
+      >
+        {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
+
+      {/* Overlay mobile */}
+      {mobileMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-30"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar fixa da documentação - responsiva */}
+      <div className={`
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
+        md:translate-x-0
+        fixed md:relative
+        z-40 md:z-auto
+        w-64 flex-shrink-0 flex flex-col border-r border-border bg-card overflow-hidden
+        h-full
+        transition-transform duration-200 ease-in-out
+      `}>
         <div className="p-4 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-3 mb-4">
             <Book className="w-6 h-6 text-primary" />
@@ -978,6 +1005,7 @@ export default function GenesisDocumentation() {
                   onClick={() => {
                     setActiveSection(section.id);
                     setSearchQuery('');
+                    setMobileMenuOpen(false);
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
                     activeSection === section.id
@@ -998,19 +1026,20 @@ export default function GenesisDocumentation() {
       </div>
 
       {/* Área de conteúdo */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden w-full">
         {/* Header fixo da seção */}
-        <div className="flex items-center gap-3 p-6 pb-4 border-b border-border flex-shrink-0 bg-card/30">
+        <div className="flex items-center gap-3 p-4 md:p-6 pb-3 md:pb-4 border-b border-border flex-shrink-0 bg-card/30">
+          <div className="w-10 md:hidden" /> {/* Espaço para o botão de menu */}
           {currentSection && (() => {
             const Icon = currentSection.icon;
-            return <Icon className="w-6 h-6 text-primary" />;
+            return <Icon className="w-5 h-5 md:w-6 md:h-6 text-primary" />;
           })()}
-          <h3 className="text-xl font-bold">{currentSection?.title}</h3>
+          <h3 className="text-lg md:text-xl font-bold truncate">{currentSection?.title}</h3>
         </div>
 
         {/* Conteúdo com scroll */}
         <ScrollArea className="flex-1">
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {currentSection && (
               <div className="space-y-6">
                 {currentSection.content.map((content, idx) => (
