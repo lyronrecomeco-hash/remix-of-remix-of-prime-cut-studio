@@ -48,6 +48,7 @@ import {
   Info,
   List,
   Timer,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,6 +57,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import { supabase } from '@/integrations/supabase/client';
 import OverloadAlertModal from './OverloadAlertModal';
+import GenesisDocumentation from './GenesisDocumentation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { sendPushNotification } from '@/lib/webhooks';
 
@@ -230,7 +232,7 @@ const defaultBackupConfig: BackupConfig = {
 
 const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
-type SettingsSection = 'theme' | 'shop' | 'security' | 'social' | 'backup' | 'texts' | 'chatpro' | 'templates' | 'api' | 'menu' | 'booking_link';
+type SettingsSection = 'theme' | 'shop' | 'security' | 'social' | 'backup' | 'texts' | 'chatpro' | 'templates' | 'api' | 'menu' | 'booking_link' | 'docs';
 
 const settingsSections = [
   { id: 'theme' as SettingsSection, label: 'Tema', icon: Palette },
@@ -244,6 +246,7 @@ const settingsSections = [
   { id: 'templates' as SettingsSection, label: 'Templates', icon: FileText },
   { id: 'api' as SettingsSection, label: 'API', icon: Webhook },
   { id: 'menu' as SettingsSection, label: 'Menu Admin', icon: Settings },
+  { id: 'docs' as SettingsSection, label: 'Documentação Genesis', icon: BookOpen },
 ];
 
 export default function SettingsPanel() {
@@ -1255,33 +1258,6 @@ Retorne APENAS a mensagem, sem explicações.`;
                   }`} />
                 </button>
               </div>
-            </div>
-
-            {/* Timeout de Sessão */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground block mb-2">Timeout Sessão (min)</label>
-                <Input
-                  type="number"
-                  value={securitySettings.sessionTimeout}
-                  onChange={(e) => saveSecuritySettings({ ...securitySettings, sessionTimeout: Number(e.target.value) })}
-                  min={5}
-                  max={120}
-                  className="h-11"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-muted-foreground block mb-2">Limite Tentativas Login</label>
-                <Input
-                  type="number"
-                  value={securitySettings.loginAttemptLimit}
-                  onChange={(e) => saveSecuritySettings({ ...securitySettings, loginAttemptLimit: Number(e.target.value) })}
-                  min={3}
-                  max={10}
-                  className="h-11"
-                />
-              </div>
-            </div>
 
             {/* IP Whitelist */}
             <div>
@@ -1763,6 +1739,9 @@ Retorne APENAS a mensagem, sem explicações.`;
             </div>
           </div>
         );
+
+      case 'docs':
+        return <GenesisDocumentation />;
 
       default:
         return null;
@@ -2344,14 +2323,37 @@ Retorne APENAS a mensagem, sem explicações.`;
               </div>
             </div>
 
+
             {/* Configurações Avançadas */}
-            <div className="space-y-3 pt-3 border-t border-border">
+            <div className="space-y-4 pt-3 border-t border-border">
               <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <Timer className="w-4 h-4" />
-                Configurações Avançadas
+                Timeout • Limite • Lista
               </p>
-              
+
               <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1.5">Timeout Sessão (min)</label>
+                  <Input
+                    type="number"
+                    value={securitySettings.sessionTimeout}
+                    onChange={(e) => saveSecuritySettings({ ...securitySettings, sessionTimeout: Number(e.target.value) })}
+                    min={5}
+                    max={120}
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1.5">Limite Tentativas Login</label>
+                  <Input
+                    type="number"
+                    value={securitySettings.loginAttemptLimit}
+                    onChange={(e) => saveSecuritySettings({ ...securitySettings, loginAttemptLimit: Number(e.target.value) })}
+                    min={3}
+                    max={10}
+                    className="h-9"
+                  />
+                </div>
                 <div>
                   <label className="text-xs text-muted-foreground block mb-1.5">Retenção (dias)</label>
                   <Input
@@ -2375,11 +2377,18 @@ Retorne APENAS a mensagem, sem explicações.`;
                   />
                 </div>
               </div>
-            </div>
 
-            <div className="text-xs text-muted-foreground flex items-center gap-2">
-              <List className="w-3.5 h-3.5" />
-              Os logs podem ser visualizados na seção "Logs de Auditoria" do menu lateral.
+              <Button
+                variant="outline"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('genesis:navigate', { detail: { tab: 'logs' } }));
+                  setAuditLogModalOpen(false);
+                }}
+                className="w-full justify-center gap-2"
+              >
+                <List className="w-4 h-4" />
+                Abrir Lista de Logs
+              </Button>
             </div>
           </div>
 

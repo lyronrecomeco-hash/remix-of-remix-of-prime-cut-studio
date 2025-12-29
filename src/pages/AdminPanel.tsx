@@ -65,9 +65,8 @@ import AuditLogsSection from '@/components/admin/AuditLogsSection';
 import BarberPerformance from '@/components/admin/BarberPerformance';
 import LeaveManagement from '@/components/admin/LeaveManagement';
 import MonthlyGoals from '@/components/admin/MonthlyGoals';
-import GenesisDocumentation from '@/components/admin/GenesisDocumentation';
 import { useAuth } from '@/contexts/AuthContext';
-import { DollarSign, BarChart3, Palmtree, Target, BookOpen } from 'lucide-react';
+import { DollarSign, BarChart3, Palmtree, Target } from 'lucide-react';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/admin/PullToRefreshIndicator';
 import { useContext } from 'react';
@@ -88,7 +87,6 @@ const menuItems = [
   { id: 'logs', label: 'Logs de Auditoria', icon: AlertTriangle },
   { id: 'usuarios', label: 'Usuários', icon: Lock },
   { id: 'config', label: 'Configurações', icon: Settings },
-  { id: 'docs', label: 'Documentação Genesis', icon: BookOpen },
 ];
 
 const AdminPanel = () => {
@@ -129,6 +127,18 @@ const AdminPanel = () => {
   useEffect(() => {
     localStorage.setItem('sidebar_collapsed', String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
+
+  // Cross-panel navigation (ex: open logs from settings modal)
+  useEffect(() => {
+    const onNavigate = (e: Event) => {
+      const ce = e as CustomEvent<{ tab?: string }>;
+      const tab = ce.detail?.tab;
+      if (tab) setActiveTab(tab);
+    };
+
+    window.addEventListener('genesis:navigate', onNavigate as EventListener);
+    return () => window.removeEventListener('genesis:navigate', onNavigate as EventListener);
+  }, []);
 
   // Sync menu style
   useEffect(() => {
@@ -1396,9 +1406,6 @@ const AdminPanel = () => {
 
       case 'metas':
         return <MonthlyGoals />;
-
-      case 'docs':
-        return <GenesisDocumentation />;
 
       default:
         return null;
