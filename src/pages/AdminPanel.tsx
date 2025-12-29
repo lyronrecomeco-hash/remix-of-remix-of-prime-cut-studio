@@ -1664,12 +1664,8 @@ const AdminPanel = () => {
           </button>
 
           <div className="hidden lg:block">
-            <h2 className="font-semibold">
-              {activeTab === 'config' ? 'Configurações' : 'Painel Administrativo'}
-            </h2>
-            {activeTab !== 'config' && (
-              <p className="text-sm text-muted-foreground">Gerencie sua barbearia</p>
-            )}
+            <h2 className="font-semibold">Painel Administrativo</h2>
+            <p className="text-sm text-muted-foreground">Gerencie sua barbearia</p>
           </div>
 
           {/* Mobile title */}
