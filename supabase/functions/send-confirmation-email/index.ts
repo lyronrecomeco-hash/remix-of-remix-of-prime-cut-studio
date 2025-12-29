@@ -36,19 +36,25 @@ serve(async (req) => {
 
     const { email, name, confirmationUrl }: ConfirmationEmailRequest = await req.json();
     console.log("Sending confirmation to:", email);
+    console.log("Confirmation URL:", confirmationUrl);
 
     // Get custom template from database
     let htmlContent = "";
     let subject = "Confirme seu email - Barber Studio";
 
-    const { data: template } = await supabaseAdmin
+    const { data: template, error: templateError } = await supabaseAdmin
       .from("email_templates")
       .select("*")
       .eq("template_type", "auth_confirm")
       .eq("is_active", true)
       .single();
 
+    if (templateError) {
+      console.log("No custom template found, using default:", templateError.message);
+    }
+
     if (template) {
+      console.log("Using custom template:", template.name);
       subject = template.subject;
       htmlContent = template.html_content
         .replace(/\{\{confirmation_url\}\}/g, confirmationUrl || "#")
@@ -56,8 +62,8 @@ serve(async (req) => {
         .replace(/\{\{name\}\}/g, name);
     } else {
       // Default template
-      htmlContent = `
-<!DOCTYPE html>
+      console.log("Using default template");
+      htmlContent = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -72,8 +78,12 @@ serve(async (req) => {
     .content h2 { color: #ffffff; margin-top: 0; font-size: 22px; }
     .content p { color: #a0a0a0; line-height: 1.8; font-size: 15px; }
     .button-container { text-align: center; margin: 30px 0; }
-    .button { display: inline-block; background: linear-gradient(135deg, #c9a227 0%, #d4af37 100%); color: #1a1a1a; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; }
+    .button { display: inline-block; background: linear-gradient(135deg, #c9a227 0%, #d4af37 100%); color: #1a1a1a; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(201, 162, 39, 0.3); }
+    .link-box { background-color: #252525; border-radius: 8px; padding: 15px; margin: 20px 0; word-break: break-all; }
+    .link-box p { color: #666; font-size: 11px; margin: 0; }
     .footer { background-color: #0f0f0f; color: #666; padding: 25px; text-align: center; font-size: 12px; }
+    .footer p { margin: 5px 0; }
+    .divider { height: 1px; background: linear-gradient(90deg, transparent, #333, transparent); margin: 25px 0; }
   </style>
 </head>
 <body>
@@ -88,11 +98,17 @@ serve(async (req) => {
       <div class="button-container">
         <a href="${confirmationUrl}" class="button">Confirmar Email</a>
       </div>
+      <div class="divider"></div>
+      <p style="font-size: 13px;">Ou copie e cole este link no seu navegador:</p>
+      <div class="link-box">
+        <p>${confirmationUrl}</p>
+      </div>
       <p style="color: #c9a227; font-size: 13px;"><strong>⏱ Este link expira em 24 horas.</strong></p>
     </div>
     <div class="footer">
       <p><strong>Barber Studio</strong> - Tradição e Estilo</p>
       <p>Se você não solicitou este email, pode ignorá-lo.</p>
+      <p>© ${new Date().getFullYear()} Todos os direitos reservados</p>
     </div>
   </div>
 </body>
@@ -100,6 +116,7 @@ serve(async (req) => {
     }
 
     // Send email via Resend
+    console.log("Sending email via Resend...");
     const emailResponse = await resend.emails.send({
       from: "Barber Studio <onboarding@resend.dev>",
       to: [email],
@@ -118,7 +135,7 @@ serve(async (req) => {
       status: "sent",
     });
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, emailResponse }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
