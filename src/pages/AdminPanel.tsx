@@ -66,6 +66,9 @@ import BarberPerformance from '@/components/admin/BarberPerformance';
 import LeaveManagement from '@/components/admin/LeaveManagement';
 import MonthlyGoals from '@/components/admin/MonthlyGoals';
 import FeatureLock from '@/components/subscription/FeatureLock';
+import ProfileMenu from '@/components/admin/ProfileMenu';
+import ProfileModal from '@/components/admin/ProfileModal';
+import AccountModal from '@/components/admin/AccountModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { DollarSign, BarChart3, Palmtree, Target } from 'lucide-react';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
@@ -98,6 +101,8 @@ const AdminPanel = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [showOverloadModal, setShowOverloadModal] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [agendaDateFilter, setAgendaDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [agendaStatusFilter, setAgendaStatusFilter] = useState<string>('all');
   const [agendaPage, setAgendaPage] = useState(0);
@@ -1710,8 +1715,15 @@ const AdminPanel = () => {
                 onClose={() => setIsNotificationsOpen(false)} 
               />
             </div>
+            <ProfileMenu
+              onOpenProfile={() => setIsProfileModalOpen(true)}
+              onOpenAccount={() => setIsAccountModalOpen(true)}
+            />
           </div>
         </header>
+
+        <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
+        <AccountModal isOpen={isAccountModalOpen} onClose={() => setIsAccountModalOpen(false)} />
 
         {/* Content with Pull-to-Refresh */}
         <div 

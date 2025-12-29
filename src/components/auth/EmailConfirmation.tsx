@@ -23,7 +23,7 @@ const EmailConfirmation = ({ email, onBackToLogin }: EmailConfirmationProps) => 
         type: 'signup',
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/admin`,
+          emailRedirectTo: `${window.location.origin}/email-confirmado`,
         },
       });
 

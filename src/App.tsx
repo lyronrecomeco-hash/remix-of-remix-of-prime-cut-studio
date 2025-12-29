@@ -21,6 +21,7 @@ import AdminPanel from "./pages/AdminPanel";
 import AdminLogin from "./pages/AdminLogin";
 import FeedbackPage from "./pages/FeedbackPage";
 import OwnerPanel from "./pages/OwnerPanel";
+import EmailConfirmed from "./pages/EmailConfirmed";
 import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 
@@ -103,6 +104,7 @@ const AppContent = () => {
           } />
           <Route path="/avaliar" element={<FeedbackPage />} />
           <Route path="/owner" element={<OwnerPanel />} />
+          <Route path="/email-confirmado" element={<EmailConfirmed />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <MobileBottomNav />
