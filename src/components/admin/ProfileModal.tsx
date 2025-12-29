@@ -14,23 +14,27 @@ interface ProfileModalProps {
   onAvatarUpdate?: (avatarUrl: string | null) => void;
 }
 
-// Professional avatars - more realistic style
+// Professional avatars - Lorelei style (more realistic and elegant)
 const maleAvatars = [
-  'https://api.dicebear.com/9.x/notionists/svg?seed=Liam&backgroundColor=c0aede',
-  'https://api.dicebear.com/9.x/notionists/svg?seed=Oliver&backgroundColor=b6e3f4',
-  'https://api.dicebear.com/9.x/notionists/svg?seed=James&backgroundColor=ffd5dc',
-  'https://api.dicebear.com/9.x/notionists/svg?seed=William&backgroundColor=d1d4f9',
-  'https://api.dicebear.com/9.x/notionists/svg?seed=Noah&backgroundColor=ffdfbf',
-  'https://api.dicebear.com/9.x/notionists/svg?seed=Benjamin&backgroundColor=c0aede',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Felix&backgroundColor=c0aede&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Oliver&backgroundColor=b6e3f4&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=James&backgroundColor=d1d4f9&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=William&backgroundColor=ffd5dc&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Benjamin&backgroundColor=ffdfbf&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Alexander&backgroundColor=c0aede&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Daniel&backgroundColor=b6e3f4&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Matthew&backgroundColor=d1d4f9&backgroundType=gradientLinear',
 ];
 
 const femaleAvatars = [
-  'https://api.dicebear.com/9.x/notionists/svg?seed=Emma&backgroundColor=ffd5dc',
-  'https://api.dicebear.com/9.x/notionists/svg?seed=Sophia&backgroundColor=c0aede',
-  'https://api.dicebear.com/9.x/notionists/svg?seed=Isabella&backgroundColor=b6e3f4',
-  'https://api.dicebear.com/9.x/notionists/svg?seed=Mia&backgroundColor=ffdfbf',
-  'https://api.dicebear.com/9.x/notionists/svg?seed=Charlotte&backgroundColor=d1d4f9',
-  'https://api.dicebear.com/9.x/notionists/svg?seed=Amelia&backgroundColor=ffd5dc',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Emma&backgroundColor=ffd5dc&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Sophia&backgroundColor=c0aede&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Isabella&backgroundColor=b6e3f4&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Mia&backgroundColor=ffdfbf&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Charlotte&backgroundColor=d1d4f9&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Amelia&backgroundColor=ffd5dc&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Harper&backgroundColor=c0aede&backgroundType=gradientLinear',
+  'https://api.dicebear.com/9.x/lorelei/svg?seed=Evelyn&backgroundColor=b6e3f4&backgroundType=gradientLinear',
 ];
 
 const ProfileModal = ({ isOpen, onClose, onAvatarUpdate }: ProfileModalProps) => {
@@ -191,33 +195,33 @@ const ProfileModal = ({ isOpen, onClose, onAvatarUpdate }: ProfileModalProps) =>
           </Button>
         </div>
 
-        {/* Avatar Grid - 6 avatars in 2 rows */}
+        {/* Avatar Grid - 8 avatars in 2 rows */}
         <div>
           <p className="text-xs font-medium text-muted-foreground mb-2">Avatares disponíveis</p>
-          <div className="grid grid-cols-6 gap-2">
+          <div className="grid grid-cols-4 gap-3">
             {currentAvatars.map((avatar, idx) => (
               <motion.button
                 key={idx}
-                whileHover={{ scale: 1.08 }}
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
                   setSelectedAvatar(avatar);
                   setCustomAvatarUrl(null);
                 }}
-                className={`relative p-1 rounded-lg border-2 transition-all aspect-square ${
+                className={`relative p-1.5 rounded-xl border-2 transition-all aspect-square ${
                   selectedAvatar === avatar
-                    ? 'border-primary bg-primary/10 shadow-md'
-                    : 'border-border hover:border-primary/50'
+                    ? 'border-primary bg-primary/10 shadow-lg ring-2 ring-primary/20'
+                    : 'border-border hover:border-primary/50 hover:bg-secondary/50'
                 }`}
               >
                 <img
                   src={avatar}
                   alt={`Avatar ${idx + 1}`}
-                  className="w-full h-full rounded-md"
+                  className="w-full h-full rounded-lg"
                 />
                 {selectedAvatar === avatar && (
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                    <Check className="w-2.5 h-2.5 text-primary-foreground" />
+                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow-md">
+                    <Check className="w-3 h-3 text-primary-foreground" />
                   </div>
                 )}
               </motion.button>

@@ -466,6 +466,36 @@ export type Database = {
         }
         Relationships: []
       }
+      email_confirmation_tokens: {
+        Row: {
+          confirmed_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          created_at?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_logs: {
         Row: {
           error_message: string | null
@@ -535,6 +565,33 @@ export type Database = {
           template_type?: string
           updated_at?: string
           variables?: Json | null
+        }
+        Relationships: []
+      }
+      email_webhook_events: {
+        Row: {
+          created_at: string | null
+          email_id: string | null
+          event_type: string
+          id: string
+          payload: Json
+          recipient_email: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email_id?: string | null
+          event_type: string
+          id?: string
+          payload?: Json
+          recipient_email?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email_id?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          recipient_email?: string | null
         }
         Relationships: []
       }

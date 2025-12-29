@@ -99,6 +99,24 @@ const EmailTemplatesManager = () => {
 
   const fetchWebhookEvents = async () => {
     try {
+      // First try to fetch from email_webhook_events (real webhook events)
+      const { data: webhookData, error: webhookError } = await supabase
+        .from('email_webhook_events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (!webhookError && webhookData && webhookData.length > 0) {
+        setWebhookEvents(webhookData.map(event => ({
+          id: event.id,
+          type: event.event_type,
+          created_at: event.created_at,
+          data: { email: event.recipient_email, ...(event.payload as Record<string, unknown>) }
+        })));
+        return;
+      }
+
+      // Fallback to email_logs if no webhook events
       const { data, error } = await supabase
         .from('email_logs')
         .select('*')

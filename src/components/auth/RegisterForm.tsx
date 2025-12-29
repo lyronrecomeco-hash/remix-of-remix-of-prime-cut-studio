@@ -112,7 +112,7 @@ const RegisterForm = ({ onSuccess, onBackToLogin }: RegisterFormProps) => {
         return;
       }
 
-      // Create user in Supabase Auth
+      // Create user in Supabase Auth (with auto-confirm disabled so we use our custom flow)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -190,6 +190,33 @@ const RegisterForm = ({ onSuccess, onBackToLogin }: RegisterFormProps) => {
         appointments_count: 0,
         clients_count: 0,
       });
+
+      // Generate custom confirmation token
+      const confirmationToken = crypto.randomUUID();
+      
+      // Save token in database
+      await supabase.from('email_confirmation_tokens').insert({
+        user_id: authData.user.id,
+        email: formData.email,
+        token: confirmationToken,
+      });
+
+      // Build confirmation URL
+      const confirmationUrl = `${window.location.origin}/confirmar-email?token=${confirmationToken}`;
+
+      // Send confirmation email via Resend using Owner's custom template
+      const { error: emailError } = await supabase.functions.invoke('send-confirmation-email', {
+        body: {
+          email: formData.email,
+          name: formData.firstName,
+          confirmationUrl: confirmationUrl,
+        },
+      });
+
+      if (emailError) {
+        console.error('Error sending confirmation email:', emailError);
+        // Don't fail registration, just log the error
+      }
 
       onSuccess(formData.email);
     } catch (err) {

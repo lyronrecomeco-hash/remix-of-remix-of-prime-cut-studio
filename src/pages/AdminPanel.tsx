@@ -151,6 +151,23 @@ const AdminPanel = () => {
   useEffect(() => {
     localStorage.setItem('menu_style', menuStyle);
   }, [menuStyle]);
+
+  // Load avatar from database on mount
+  useEffect(() => {
+    const loadAvatar = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('avatar_url')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (data?.avatar_url) {
+        setCurrentAvatarUrl(data.avatar_url);
+      }
+    };
+    loadAvatar();
+  }, [user]);
   
   // App context (now safe to destructure)
   const {
