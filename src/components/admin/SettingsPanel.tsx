@@ -55,6 +55,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/contexts/AppContext';
 import { useNotification } from '@/contexts/NotificationContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import OverloadAlertModal from './OverloadAlertModal';
 import GenesisDocumentation from './GenesisDocumentation';
@@ -251,9 +252,13 @@ const settingsSections = [
   { id: 'docs' as SettingsSection, label: 'Documentação Genesis', icon: BookOpen },
 ];
 
+const ALLOWED_THEME_EMAIL = 'lyronrp@gmail.com';
+
 export default function SettingsPanel() {
   const { notify } = useNotification();
+  const { user } = useAuth();
   const { shopSettings, updateShopSettings, theme, setTheme, services, barbers } = useApp();
+  const [themeDevModalOpen, setThemeDevModalOpen] = useState(false);
   const [showOverloadModal, setShowOverloadModal] = useState(false);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
@@ -971,6 +976,38 @@ Retorne APENAS a mensagem, sem explicações.`;
   const renderSectionContent = () => {
     switch (activeSection) {
       case 'theme':
+        // Verifica se o usuário tem permissão para ver a seção de temas
+        const isThemeUnlocked = user?.email === ALLOWED_THEME_EMAIL;
+        
+        if (!isThemeUnlocked) {
+          return (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-muted-foreground" />
+                  Tema Visual
+                </h3>
+                <span className="px-3 py-1 text-xs font-medium bg-amber-500/10 text-amber-600 border border-amber-500/30 rounded-full">
+                  Em desenvolvimento
+                </span>
+              </div>
+              
+              <div 
+                onClick={() => setThemeDevModalOpen(true)}
+                className="cursor-pointer p-8 rounded-xl border-2 border-dashed border-border bg-secondary/20 hover:bg-secondary/30 transition-all flex flex-col items-center justify-center gap-4"
+              >
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Lock className="w-8 h-8 text-primary" />
+                </div>
+                <div className="text-center">
+                  <h4 className="font-semibold text-lg mb-1">Funcionalidade Bloqueada</h4>
+                  <p className="text-sm text-muted-foreground">Clique para saber mais sobre este recurso</p>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        
         return (
           <div className="space-y-5">
             <div className="flex items-center justify-between">
@@ -2410,6 +2447,74 @@ Retorne APENAS a mensagem, sem explicações.`;
           <div className="flex justify-end gap-2 pt-2 border-t border-border">
             <Button variant="outline" onClick={() => setAuditLogModalOpen(false)}>
               Fechar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Desenvolvimento do Tema */}
+      <Dialog open={themeDevModalOpen} onOpenChange={setThemeDevModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="w-5 h-5 text-amber-500" />
+              Recurso em Desenvolvimento
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Informações sobre o recurso de temas em desenvolvimento.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                  <Palette className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-amber-700 dark:text-amber-400">Sistema de Temas Avançado</h4>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Estamos desenvolvendo um sistema completo de personalização visual.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h5 className="font-medium flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                O que está por vir:
+              </h5>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                  <span><strong>Temas Masculinos:</strong> Black & Gold, Dark Elegante, Aço Moderno, e mais</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-pink-500 mt-1.5 flex-shrink-0" />
+                  <span><strong>Temas Femininos:</strong> Rosé, Lavanda, Coral Beauty, Blush Salon</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0" />
+                  <span><strong>Preview em tempo real:</strong> Visualize as mudanças antes de aplicar</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                  <span><strong>Personalização avançada:</strong> Cores, fontes e estilos customizáveis</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="p-3 bg-secondary/50 rounded-lg border border-border">
+              <p className="text-xs text-muted-foreground text-center">
+                🚀 Previsão de lançamento: Em breve
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex justify-end">
+            <Button onClick={() => setThemeDevModalOpen(false)}>
+              Entendi
             </Button>
           </div>
         </DialogContent>
