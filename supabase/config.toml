@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.send-welcome-whatsapp]
 verify_jwt = false
+
+[functions.generate-email-template]
+verify_jwt = false

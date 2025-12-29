@@ -349,9 +349,13 @@ const EmailTemplatesManager = () => {
     if (!editingTemplate) return;
 
     try {
+      // Generate HTML from the current config
       const html = generateHtmlFromConfig(templateConfig);
       
-      const { error } = await supabase
+      console.log('Saving template with config:', templateConfig);
+      console.log('Generated HTML length:', html.length);
+      
+      const { data, error } = await supabase
         .from('email_templates')
         .update({
           name: editingTemplate.name,
@@ -360,13 +364,23 @@ const EmailTemplatesManager = () => {
           is_active: editingTemplate.is_active,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', editingTemplate.id);
+        .eq('id', editingTemplate.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
+      console.log('Template saved successfully:', data);
+      
       toast.success('Template salvo com sucesso!');
+      
+      // Refresh templates list
+      await fetchTemplates();
+      
+      // Close modal
       setEditingTemplate(null);
-      fetchTemplates();
     } catch (error) {
       console.error('Error saving template:', error);
       toast.error('Erro ao salvar template');
@@ -399,50 +413,46 @@ const EmailTemplatesManager = () => {
 
     setIsGeneratingAI(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-marketing-prompt', {
+      const { data, error } = await supabase.functions.invoke('generate-email-template', {
         body: {
-          prompt: aiPrompt || `Gere um texto profissional para email de ${getTemplateTypeLabel(editingTemplate.template_type)} de uma barbearia moderna e sofisticada chamada Barber Studio. O texto deve ser acolhedor, profissional e incentivar o usuário a clicar no botão.`,
-          type: 'email_template'
+          prompt: aiPrompt || `Crie um template profissional e moderno para email de ${getTemplateTypeLabel(editingTemplate.template_type)} de uma barbearia sofisticada. Use cores elegantes e texto acolhedor.`,
+          templateType: editingTemplate.template_type,
+          currentConfig: {
+            headerTitle: templateConfig.headerTitle,
+            contentTitle: templateConfig.contentTitle,
+            contentText: templateConfig.contentText,
+            buttonText: templateConfig.buttonText,
+            headerBgColor: templateConfig.headerBgColor,
+            buttonBgColor: templateConfig.buttonBgColor,
+          }
         }
       });
 
       if (error) throw error;
 
-      const generatedText = data?.generatedText || data?.text || '';
-      
-      if (generatedText) {
-        // Parse AI response to extract title and content
-        const lines = generatedText.split('\n').filter((l: string) => l.trim());
-        const title = lines[0]?.replace(/^#+\s*/, '').trim() || templateConfig.contentTitle;
-        const content = lines.slice(1).join(' ').trim() || generatedText;
-
+      if (data?.success && data?.config) {
+        const aiConfig = data.config;
+        
+        // Apply AI generated config
         setTemplateConfig(prev => ({
           ...prev,
-          contentTitle: title.length > 50 ? templateConfig.contentTitle : title,
-          contentText: content.substring(0, 500),
+          headerTitle: aiConfig.headerTitle || prev.headerTitle,
+          headerIcon: aiConfig.headerIcon || prev.headerIcon,
+          contentTitle: aiConfig.contentTitle || prev.contentTitle,
+          contentText: aiConfig.contentText || prev.contentText,
+          buttonText: aiConfig.buttonText || prev.buttonText,
+          headerBgColor: aiConfig.headerBgColor || prev.headerBgColor,
+          buttonBgColor: aiConfig.buttonBgColor || prev.buttonBgColor,
+          footerText: aiConfig.footerText || prev.footerText,
         }));
 
-        toast.success('Texto gerado com IA!');
+        toast.success('Template personalizado com IA!');
       } else {
-        // Fallback to default generation
-        const defaults = getDefaultConfig(editingTemplate.template_type);
-        setTemplateConfig(prev => ({
-          ...prev,
-          contentTitle: defaults.contentTitle || prev.contentTitle,
-          contentText: defaults.contentText || prev.contentText,
-        }));
-        toast.success('Template gerado!');
+        throw new Error(data?.error || 'Erro ao gerar template');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('AI generation error:', error);
-      // Fallback to defaults
-      const defaults = getDefaultConfig(editingTemplate.template_type);
-      setTemplateConfig(prev => ({
-        ...prev,
-        contentTitle: defaults.contentTitle || prev.contentTitle,
-        contentText: defaults.contentText || prev.contentText,
-      }));
-      toast.success('Template gerado com configurações padrão');
+      toast.error(error.message || 'Erro ao gerar com IA');
     } finally {
       setIsGeneratingAI(false);
     }
