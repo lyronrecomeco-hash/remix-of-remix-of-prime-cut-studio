@@ -18,6 +18,7 @@ import MyAppointments from "./pages/MyAppointments";
 import AdminPanel from "./pages/AdminPanel";
 import AdminLogin from "./pages/AdminLogin";
 import FeedbackPage from "./pages/FeedbackPage";
+import OwnerPanel from "./pages/OwnerPanel";
 import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 
@@ -98,6 +99,7 @@ const AppContent = () => {
             </ProtectedRoute>
           } />
           <Route path="/avaliar" element={<FeedbackPage />} />
+          <Route path="/owner" element={<OwnerPanel />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <MobileBottomNav />
