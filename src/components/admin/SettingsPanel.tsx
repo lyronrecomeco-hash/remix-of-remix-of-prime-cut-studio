@@ -2097,6 +2097,7 @@ Retorne APENAS a mensagem, sem explicações.`;
               style={{ width: '360px', height: '540px' }}
             >
               <iframe
+                key={previewTheme}
                 src={`/?theme=${previewTheme}`}
                 className="w-full h-full"
                 title="Preview do Tema"
