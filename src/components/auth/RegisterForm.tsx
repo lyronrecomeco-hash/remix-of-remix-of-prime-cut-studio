@@ -117,7 +117,7 @@ const RegisterForm = ({ onSuccess, onBackToLogin }: RegisterFormProps) => {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/admin`,
+          emailRedirectTo: `${window.location.origin}/email-confirmado`,
           data: {
             first_name: formData.firstName,
             last_name: formData.lastName,
