@@ -23,6 +23,7 @@ import {
   Cell
 } from 'recharts';
 import { useApp } from '@/contexts/AppContext';
+import UsageProgress from '@/components/subscription/UsageProgress';
 
 interface DashboardProps {
   onNavigate?: (tab: string) => void;
@@ -119,6 +120,9 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
 
   return (
     <div className="space-y-6">
+      {/* Usage Progress - subscription tracking */}
+      <UsageProgress showUpgradeButton />
+      
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat, index) => (
