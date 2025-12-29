@@ -538,6 +538,42 @@ export type Database = {
         }
         Relationships: []
       }
+      fraud_protection: {
+        Row: {
+          attempt_type: string
+          created_at: string
+          email: string
+          fingerprint: string | null
+          id: string
+          ip_address: string
+          is_blocked: boolean
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempt_type?: string
+          created_at?: string
+          email: string
+          fingerprint?: string | null
+          id?: string
+          ip_address: string
+          is_blocked?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempt_type?: string
+          created_at?: string
+          email?: string
+          fingerprint?: string | null
+          id?: string
+          ip_address?: string
+          is_blocked?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       login_attempts: {
         Row: {
           attempted_at: string
@@ -1033,6 +1069,53 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_subscriptions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          notes: string | null
+          payment_method: string | null
+          plan_id: string
+          starts_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          plan_id: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          plan_id?: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_analytics: {
         Row: {
           created_at: string
@@ -1057,6 +1140,45 @@ export type Database = {
           page?: string
           unique_visitors?: number
           visits?: number
+        }
+        Relationships: []
+      }
+      subscription_plans: {
+        Row: {
+          billing_cycle: string
+          created_at: string
+          display_name: string
+          features: Json
+          id: string
+          is_active: boolean
+          limits: Json
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          billing_cycle?: string
+          created_at?: string
+          display_name: string
+          features?: Json
+          id?: string
+          is_active?: boolean
+          limits?: Json
+          name: string
+          price?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_cycle?: string
+          created_at?: string
+          display_name?: string
+          features?: Json
+          id?: string
+          is_active?: boolean
+          limits?: Json
+          name?: string
+          price?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1090,6 +1212,39 @@ export type Database = {
           severity?: string
           source?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      usage_metrics: {
+        Row: {
+          appointments_count: number
+          clients_count: number
+          created_at: string
+          id: string
+          month: number
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          appointments_count?: number
+          clients_count?: number
+          created_at?: string
+          id?: string
+          month: number
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          appointments_count?: number
+          clients_count?: number
+          created_at?: string
+          id?: string
+          month?: number
+          updated_at?: string
+          user_id?: string
+          year?: number
         }
         Relationships: []
       }
@@ -1149,6 +1304,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_ip_fraud: { Args: { check_ip: string }; Returns: boolean }
+      get_user_plan: { Args: { check_user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1157,6 +1314,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_feature_allowed: {
+        Args: { check_user_id: string; feature_name: string }
+        Returns: boolean
+      }
       is_owner: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
