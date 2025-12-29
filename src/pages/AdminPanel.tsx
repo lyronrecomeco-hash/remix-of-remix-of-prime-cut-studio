@@ -1697,7 +1697,9 @@ const AdminPanel = () => {
         {/* Content with Pull-to-Refresh */}
         <div 
           ref={containerRef}
-          className="flex-1 min-h-0 p-3 sm:p-4 lg:p-8 overflow-y-auto admin-scroll-container relative z-10"
+          className={`flex-1 min-h-0 p-3 sm:p-4 lg:p-8 admin-scroll-container relative z-10 ${
+            activeTab === 'config' ? 'overflow-hidden' : 'overflow-y-auto'
+          }`}
           style={{ 
             paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
             WebkitOverflowScrolling: 'touch'
