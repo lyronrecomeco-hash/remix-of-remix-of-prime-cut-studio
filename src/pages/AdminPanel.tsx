@@ -1356,6 +1356,7 @@ const AdminPanel = () => {
 
       case 'feedbacks':
         return (
+          <FeatureLock feature="feedbacks">
           <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Gerenciar Feedbacks</h2>
@@ -1431,6 +1432,7 @@ const AdminPanel = () => {
               )}
             </div>
           </div>
+          </FeatureLock>
         );
 
       case 'usuarios':

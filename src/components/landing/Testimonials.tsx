@@ -1,14 +1,44 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Star, Quote, User, UserCircle } from 'lucide-react';
-import { useFeedback } from '@/contexts/FeedbackContext';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Feedback {
+  id: string;
+  name: string;
+  rating: number;
+  text: string;
+  avatar_type: string;
+  avatar_url?: string;
+  is_anonymous: boolean;
+}
 
 const Testimonials = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
-  const { getPublishedFeedbacks } = useFeedback();
-  const publishedFeedbacks = getPublishedFeedbacks();
+  const [publishedFeedbacks, setPublishedFeedbacks] = useState<Feedback[]>([]);
+
+  useEffect(() => {
+    const fetchPublishedFeedbacks = async () => {
+      const { data, error } = await supabase
+        .from('feedbacks')
+        .select('id, name, rating, text, avatar_type, avatar_url, is_anonymous')
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      if (!error && data) {
+        setPublishedFeedbacks(data);
+      }
+    };
+
+    fetchPublishedFeedbacks();
+  }, []);
+
+  if (publishedFeedbacks.length === 0) {
+    return null;
+  }
 
   return (
     <section className="section-padding bg-secondary/30" ref={ref}>
@@ -33,7 +63,7 @@ const Testimonials = () => {
         </motion.div>
 
         <div className="grid md:grid-cols-3 gap-6">
-          {publishedFeedbacks.slice(0, 6).map((feedback, index) => (
+          {publishedFeedbacks.map((feedback, index) => (
             <motion.div
               key={feedback.id}
               initial={{ opacity: 0, y: 30 }}
@@ -52,13 +82,13 @@ const Testimonials = () => {
               </p>
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center overflow-hidden border-2 border-primary/20">
-                  {feedback.avatarUrl ? (
+                  {feedback.avatar_url ? (
                     <img
-                      src={feedback.avatarUrl}
+                      src={feedback.avatar_url}
                       alt={feedback.name}
                       className="w-full h-full object-cover"
                     />
-                  ) : feedback.avatarType === 'female' ? (
+                  ) : feedback.avatar_type === 'female' ? (
                     <UserCircle className="w-6 h-6 text-muted-foreground" />
                   ) : (
                     <User className="w-6 h-6 text-muted-foreground" />
@@ -66,7 +96,7 @@ const Testimonials = () => {
                 </div>
                 <div>
                   <div className="font-semibold">
-                    {feedback.isAnonymous ? 'Cliente anônimo' : feedback.name}
+                    {feedback.is_anonymous ? 'Cliente anônimo' : feedback.name}
                   </div>
                   <div className="text-sm text-muted-foreground">Cliente</div>
                 </div>

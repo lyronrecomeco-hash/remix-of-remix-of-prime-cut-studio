@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, User, UserCircle, Upload, Check, X, Scissors } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useFeedback, AvatarType } from '@/contexts/FeedbackContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
+
+type AvatarType = 'male' | 'female' | 'custom';
 
 // Basic profanity filter
 const badWords = ['merda', 'porra', 'caralho', 'foda', 'puta', 'idiota', 'burro'];
@@ -15,7 +17,8 @@ const containsProfanity = (text: string): boolean => {
 };
 
 const FeedbackPage = () => {
-  const { addFeedback } = useFeedback();
+  const [shopOwnerId, setShopOwnerId] = useState<string | null>(null);
+  const [shopName, setShopName] = useState('Barber Studio');
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [name, setName] = useState('');
@@ -26,6 +29,41 @@ const FeedbackPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+
+  // Fetch shop info on mount
+  useEffect(() => {
+    const fetchShopInfo = async () => {
+      // Get shop settings to find the owner
+      const { data: shopData } = await supabase
+        .from('shop_settings')
+        .select('name, user_id')
+        .limit(1)
+        .maybeSingle();
+
+      if (shopData) {
+        setShopName(shopData.name || 'Barber Studio');
+        if (shopData.user_id) {
+          setShopOwnerId(shopData.user_id);
+        }
+      }
+
+      // If no user_id in shop_settings, try to find an admin
+      if (!shopData?.user_id) {
+        const { data: adminData } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .in('role', ['super_admin', 'admin'])
+          .limit(1)
+          .single();
+
+        if (adminData) {
+          setShopOwnerId(adminData.user_id);
+        }
+      }
+    };
+
+    fetchShopInfo();
+  }, []);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,23 +104,41 @@ const FeedbackPage = () => {
     e.preventDefault();
 
     if (!validateForm()) return;
+    if (!shopOwnerId) {
+      setErrors(['Erro ao identificar a barbearia. Tente novamente mais tarde.']);
+      return;
+    }
 
     setIsSubmitting(true);
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const { error } = await supabase
+        .from('feedbacks')
+        .insert({
+          user_id: shopOwnerId,
+          name: isAnonymous ? 'Anônimo' : name.trim(),
+          rating,
+          text: feedbackText.trim(),
+          avatar_type: isAnonymous ? 'male' : avatarType,
+          avatar_url: avatarType === 'custom' ? avatarUrl : null,
+          is_anonymous: isAnonymous,
+          status: 'new',
+        });
 
-    addFeedback({
-      name: isAnonymous ? 'Anônimo' : name.trim(),
-      rating,
-      text: feedbackText.trim(),
-      avatarType: isAnonymous ? 'male' : avatarType,
-      avatarUrl: avatarType === 'custom' ? avatarUrl : undefined,
-      isAnonymous,
-    });
+      if (error) {
+        console.error('Error submitting feedback:', error);
+        setErrors(['Erro ao enviar avaliação. Tente novamente.']);
+        setIsSubmitting(false);
+        return;
+      }
 
-    setIsSubmitting(false);
-    setIsSuccess(true);
+      setIsSubmitting(false);
+      setIsSuccess(true);
+    } catch (err) {
+      console.error('Error submitting feedback:', err);
+      setErrors(['Erro ao enviar avaliação. Tente novamente.']);
+      setIsSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -105,7 +161,7 @@ const FeedbackPage = () => {
             <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
               <Scissors className="w-4 h-4 text-primary" />
             </div>
-            <span className="text-lg font-bold">Barber Studio</span>
+            <span className="text-lg font-bold">{shopName}</span>
           </Link>
         </div>
       </header>
@@ -292,7 +348,7 @@ const FeedbackPage = () => {
                   variant="hero"
                   size="lg"
                   className="w-full"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !shopOwnerId}
                 >
                   {isSubmitting ? (
                     <motion.div

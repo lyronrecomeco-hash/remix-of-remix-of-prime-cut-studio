@@ -56,10 +56,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/contexts/AppContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
 import OverloadAlertModal from './OverloadAlertModal';
 import GenesisDocumentation from './GenesisDocumentation';
 import ThemePreviewClone from './ThemePreviewClone';
+import FeatureLock from '@/components/subscription/FeatureLock';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { sendPushNotification } from '@/lib/webhooks';
 
@@ -1488,6 +1490,7 @@ Retorne APENAS a mensagem, sem explicações.`;
 
       case 'chatpro':
         return (
+          <FeatureLock feature="chatpro">
           <div className="space-y-5">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold">Integração ChatPro</h3>
@@ -1551,10 +1554,12 @@ Retorne APENAS a mensagem, sem explicações.`;
               </div>
             )}
           </div>
+          </FeatureLock>
         );
 
       case 'templates':
         return (
+          <FeatureLock feature="advanced_templates">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -1597,6 +1602,7 @@ Retorne APENAS a mensagem, sem explicações.`;
               })}
             </div>
           </div>
+          </FeatureLock>
         );
 
       case 'booking_link':

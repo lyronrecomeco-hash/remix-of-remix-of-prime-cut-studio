@@ -65,6 +65,11 @@ export interface UsageMetrics {
 
 // Feature blocking info with persuasive messages
 export const FEATURE_BLOCKING_INFO: Record<string, { title: string; stat: string; description: string }> = {
+  feedbacks: {
+    title: 'Gestão de Feedbacks',
+    stat: 'Avaliações aumentam confiança em 65%!',
+    description: 'Gerencie avaliações dos clientes e publique depoimentos no seu site.'
+  },
   marketing: {
     title: 'Marketing Automático',
     stat: 'Barbearias que usam Marketing faturam 40% mais!',
@@ -361,7 +366,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     
     // No plan = no access (except basic features)
     if (!currentPlan) {
-      const basicFeatures: FeatureName[] = ['dashboard', 'agenda', 'schedules', 'feedbacks', 'direct_booking', 'basic_templates', 'users_view', 'audit_logs'];
+      const basicFeatures: FeatureName[] = ['dashboard', 'agenda', 'schedules', 'direct_booking', 'basic_templates', 'users_view', 'audit_logs'];
       return basicFeatures.includes(feature);
     }
 

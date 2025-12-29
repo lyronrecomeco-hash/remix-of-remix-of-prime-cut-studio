@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type AvatarType = 'male' | 'female' | 'custom';
 
@@ -16,95 +18,151 @@ export interface Feedback {
 
 interface FeedbackContextType {
   feedbacks: Feedback[];
-  addFeedback: (feedback: Omit<Feedback, 'id' | 'createdAt' | 'status'>) => void;
-  updateFeedbackStatus: (id: string, status: Feedback['status']) => void;
+  addFeedback: (feedback: Omit<Feedback, 'id' | 'createdAt' | 'status'>, targetUserId?: string) => Promise<void>;
+  updateFeedbackStatus: (id: string, status: Feedback['status']) => Promise<void>;
   getPublishedFeedbacks: () => Feedback[];
   getNewFeedbacksCount: () => number;
-  deleteFeedback: (id: string) => void;
+  deleteFeedback: (id: string) => Promise<void>;
+  isLoading: boolean;
+  refreshFeedbacks: () => Promise<void>;
 }
 
 const FeedbackContext = createContext<FeedbackContextType | undefined>(undefined);
 
-const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
-
-const loadFromStorage = <T,>(key: string, defaultValue: T): T => {
-  try {
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : defaultValue;
-  } catch {
-    return defaultValue;
-  }
-};
-
-const saveToStorage = <T,>(key: string, value: T): void => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {
-    console.error('Failed to save to localStorage:', e);
-  }
-};
-
-// Default published feedbacks for demo
-const defaultFeedbacks: Feedback[] = [
-  {
-    id: '1',
-    name: 'João Paulo',
-    rating: 5,
-    text: 'Ambiente impecável e atendimento nota 10. O Ricardo entende exatamente o que você quer e entrega ainda melhor.',
-    createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
-    avatarType: 'male',
-    status: 'published',
-    isAnonymous: false,
-  },
-  {
-    id: '2',
-    name: 'Marcelo Santos',
-    rating: 5,
-    text: 'Finalmente encontrei uma barbearia onde posso relaxar. O combo corte + barba é uma experiência única.',
-    createdAt: new Date(Date.now() - 86400000 * 20).toISOString(),
-    avatarType: 'male',
-    status: 'published',
-    isAnonymous: false,
-  },
-  {
-    id: '3',
-    name: 'Fernando Lima',
-    rating: 5,
-    text: 'Agendamento fácil, zero espera e resultado sempre consistente. Virei cliente fiel há 2 anos.',
-    createdAt: new Date(Date.now() - 86400000 * 10).toISOString(),
-    avatarType: 'male',
-    status: 'published',
-    isAnonymous: false,
-  },
-];
-
 export const FeedbackProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>(() =>
-    loadFromStorage('barbershop-feedbacks', defaultFeedbacks)
-  );
+  const { user } = useAuth();
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const refreshFeedbacks = useCallback(async () => {
+    if (!user) {
+      setFeedbacks([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('feedbacks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching feedbacks:', error);
+        setFeedbacks([]);
+      } else if (data) {
+        setFeedbacks(data.map(f => ({
+          id: f.id,
+          name: f.name,
+          rating: f.rating,
+          text: f.text,
+          createdAt: f.created_at,
+          avatarType: f.avatar_type as AvatarType,
+          avatarUrl: f.avatar_url || undefined,
+          status: f.status as Feedback['status'],
+          isAnonymous: f.is_anonymous,
+        })));
+      }
+    } catch (e) {
+      console.error('Error refreshing feedbacks:', e);
+      setFeedbacks([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
-    saveToStorage('barbershop-feedbacks', feedbacks);
-  }, [feedbacks]);
+    refreshFeedbacks();
+  }, [refreshFeedbacks]);
 
-  const addFeedback = useCallback((feedback: Omit<Feedback, 'id' | 'createdAt' | 'status'>) => {
-    const newFeedback: Feedback = {
-      ...feedback,
-      id: generateId(),
-      createdAt: new Date().toISOString(),
-      status: 'new',
-    };
-    setFeedbacks(prev => [newFeedback, ...prev]);
+  const addFeedback = useCallback(async (
+    feedback: Omit<Feedback, 'id' | 'createdAt' | 'status'>,
+    targetUserId?: string
+  ) => {
+    const userId = targetUserId || user?.id;
+    if (!userId) {
+      console.error('No user ID available for feedback');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('feedbacks')
+        .insert({
+          user_id: userId,
+          name: feedback.name,
+          rating: feedback.rating,
+          text: feedback.text,
+          avatar_type: feedback.avatarType,
+          avatar_url: feedback.avatarUrl || null,
+          is_anonymous: feedback.isAnonymous,
+          status: 'new',
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding feedback:', error);
+        return;
+      }
+
+      if (data && user?.id === userId) {
+        const newFeedback: Feedback = {
+          id: data.id,
+          name: data.name,
+          rating: data.rating,
+          text: data.text,
+          createdAt: data.created_at,
+          avatarType: data.avatar_type as AvatarType,
+          avatarUrl: data.avatar_url || undefined,
+          status: data.status as Feedback['status'],
+          isAnonymous: data.is_anonymous,
+        };
+        setFeedbacks(prev => [newFeedback, ...prev]);
+      }
+    } catch (e) {
+      console.error('Error adding feedback:', e);
+    }
+  }, [user]);
+
+  const updateFeedbackStatus = useCallback(async (id: string, status: Feedback['status']) => {
+    try {
+      const { error } = await supabase
+        .from('feedbacks')
+        .update({ status })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error updating feedback status:', error);
+        return;
+      }
+
+      setFeedbacks(prev =>
+        prev.map(f => (f.id === id ? { ...f, status } : f))
+      );
+    } catch (e) {
+      console.error('Error updating feedback status:', e);
+    }
   }, []);
 
-  const updateFeedbackStatus = useCallback((id: string, status: Feedback['status']) => {
-    setFeedbacks(prev =>
-      prev.map(f => (f.id === id ? { ...f, status } : f))
-    );
-  }, []);
+  const deleteFeedback = useCallback(async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('feedbacks')
+        .delete()
+        .eq('id', id);
 
-  const deleteFeedback = useCallback((id: string) => {
-    setFeedbacks(prev => prev.filter(f => f.id !== id));
+      if (error) {
+        console.error('Error deleting feedback:', error);
+        return;
+      }
+
+      setFeedbacks(prev => prev.filter(f => f.id !== id));
+    } catch (e) {
+      console.error('Error deleting feedback:', e);
+    }
   }, []);
 
   const getPublishedFeedbacks = useCallback(() => {
@@ -124,6 +182,8 @@ export const FeedbackProvider: React.FC<{ children: ReactNode }> = ({ children }
         getPublishedFeedbacks,
         getNewFeedbacksCount,
         deleteFeedback,
+        isLoading,
+        refreshFeedbacks,
       }}
     >
       {children}
