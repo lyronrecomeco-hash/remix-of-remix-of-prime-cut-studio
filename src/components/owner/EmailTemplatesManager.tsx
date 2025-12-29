@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Mail, Edit, Save, X, Eye, Sparkles, Loader2, ShieldCheck, Key, Link2, UserPlus, AlertTriangle, Image, Type, FileText, MousePointer, Palette } from 'lucide-react';
+import { Mail, Edit, Save, X, Eye, Sparkles, Loader2, ShieldCheck, Key, Link2, UserPlus, AlertTriangle, Image, Type, FileText, MousePointer, Copy, Check, Webhook, ExternalLink, Palette } from 'lucide-react';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -39,6 +39,13 @@ interface TemplateConfig {
   footerSubtext: string;
 }
 
+interface WebhookEvent {
+  id: string;
+  type: string;
+  created_at: string;
+  data: Record<string, unknown>;
+}
+
 const EmailTemplatesManager = () => {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,6 +54,9 @@ const EmailTemplatesManager = () => {
   const [previewHtml, setPreviewHtml] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [copiedWebhook, setCopiedWebhook] = useState(false);
+  const [webhookEvents, setWebhookEvents] = useState<WebhookEvent[]>([]);
   const [templateConfig, setTemplateConfig] = useState<TemplateConfig>({
     logoUrl: '',
     headerIcon: '✨',
@@ -64,7 +74,49 @@ const EmailTemplatesManager = () => {
 
   useEffect(() => {
     fetchTemplates();
+    generateWebhookUrl();
+    fetchWebhookEvents();
   }, []);
+
+  const generateWebhookUrl = () => {
+    // Get current domain automatically
+    const domain = window.location.origin;
+    const projectId = 'wvnszzrvrrueuycrpgyc';
+    const webhookEndpoint = `https://${projectId}.supabase.co/functions/v1/resend-webhook`;
+    setWebhookUrl(webhookEndpoint);
+  };
+
+  const copyWebhookUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(webhookUrl);
+      setCopiedWebhook(true);
+      toast.success('URL copiada!');
+      setTimeout(() => setCopiedWebhook(false), 2000);
+    } catch {
+      toast.error('Erro ao copiar');
+    }
+  };
+
+  const fetchWebhookEvents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('email_logs')
+        .select('*')
+        .order('sent_at', { ascending: false })
+        .limit(10);
+
+      if (!error && data) {
+        setWebhookEvents(data.map(log => ({
+          id: log.id,
+          type: log.status === 'sent' ? 'email.sent' : log.status === 'delivered' ? 'email.delivered' : 'email.bounced',
+          created_at: log.sent_at,
+          data: { email: log.recipient_email, template: log.template_type }
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching webhook events:', error);
+    }
+  };
 
   const fetchTemplates = async () => {
     try {
@@ -410,6 +462,91 @@ const EmailTemplatesManager = () => {
                 O link de confirmação <code className="text-xs bg-muted px-1 rounded">{'{{confirmation_url}}'}</code> é inserido automaticamente.
               </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Webhooks Section */}
+      <Card className="border-border">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Webhook className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Webhooks Resend</CardTitle>
+              <CardDescription>Receba eventos de email em tempo real</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">URL do Webhook</Label>
+            <div className="flex gap-2">
+              <div className="flex-1 p-3 bg-secondary/50 rounded-lg border border-border font-mono text-sm break-all">
+                {webhookUrl}
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={copyWebhookUrl}
+                className="flex-shrink-0"
+              >
+                {copiedWebhook ? (
+                  <Check className="w-4 h-4 text-green-500" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Copie esta URL e adicione no painel do Resend em{' '}
+              <a 
+                href="https://resend.com/webhooks" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary hover:underline inline-flex items-center gap-1"
+              >
+                resend.com/webhooks
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Eventos Suportados</Label>
+            <div className="flex flex-wrap gap-2">
+              {['email.sent', 'email.delivered', 'email.bounced', 'email.complained', 'email.opened', 'email.clicked'].map((event) => (
+                <Badge key={event} variant="outline" className="text-xs">
+                  {event}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Eventos Recentes</Label>
+            {webhookEvents.length > 0 ? (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {webhookEvents.map((event) => (
+                  <div key={event.id} className="flex items-center justify-between p-2 bg-secondary/30 rounded-lg text-sm">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={event.type.includes('delivered') || event.type.includes('sent') ? 'default' : 'destructive'} className="text-xs">
+                        {event.type}
+                      </Badge>
+                      <span className="text-muted-foreground">{(event.data as any).email}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(event.created_at).toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Nenhum evento registrado ainda
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

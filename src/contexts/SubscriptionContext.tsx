@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-
+import { differenceInDays } from 'date-fns';
 // Feature names for blocking
 export type FeatureName = 
   | 'dashboard' 
@@ -153,6 +153,8 @@ interface SubscriptionContextType {
   isFeatureAllowed: (feature: FeatureName) => boolean;
   getRemainingAppointments: () => number;
   isLimitReached: () => boolean;
+  isTrialExpired: () => boolean;
+  getTrialDaysRemaining: () => number;
   
   // Actions
   showUpgradeModal: (feature: FeatureName) => void;
@@ -332,6 +334,26 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     setUsage(prev => prev ? { ...prev, appointments_count: prev.appointments_count + 1 } : null);
   }, [user, usage]);
 
+  // Check if trial is expired (for free plan)
+  const isTrialExpired = useCallback((): boolean => {
+    if (!subscription || !currentPlan) return false;
+    if (currentPlan.name !== 'free') return false;
+    
+    const startDate = new Date(subscription.starts_at);
+    const daysUsed = differenceInDays(new Date(), startDate);
+    return daysUsed >= 7;
+  }, [subscription, currentPlan]);
+
+  // Get trial days remaining
+  const getTrialDaysRemaining = useCallback((): number => {
+    if (!subscription || !currentPlan) return 0;
+    if (currentPlan.name !== 'free') return Infinity;
+    
+    const startDate = new Date(subscription.starts_at);
+    const daysUsed = differenceInDays(new Date(), startDate);
+    return Math.max(0, 7 - daysUsed);
+  }, [subscription, currentPlan]);
+
   // Check if feature is allowed
   const isFeatureAllowed = useCallback((feature: FeatureName): boolean => {
     // Super admin (owner) has access to everything
@@ -346,9 +368,15 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     // Premium/Lifetime has all features
     if (currentPlan.features.includes('all')) return true;
 
+    // Check if trial expired for free plan
+    if (currentPlan.name === 'free' && isTrialExpired()) {
+      // Only dashboard access when trial expired
+      return feature === 'dashboard';
+    }
+
     // Check specific feature
     return currentPlan.features.includes(feature);
-  }, [currentPlan, isSuperAdmin]);
+  }, [currentPlan, isSuperAdmin, isTrialExpired]);
 
   // Get remaining appointments for the month
   const getRemainingAppointments = useCallback((): number => {
@@ -403,6 +431,8 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
         isFeatureAllowed,
         getRemainingAppointments,
         isLimitReached,
+        isTrialExpired,
+        getTrialDaysRemaining,
         showUpgradeModal,
         hideUpgradeModal,
         refreshSubscription,

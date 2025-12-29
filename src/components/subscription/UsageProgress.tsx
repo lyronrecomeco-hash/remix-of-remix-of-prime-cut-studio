@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
-import { TrendingUp, AlertTriangle, Crown } from 'lucide-react';
+import { Clock, AlertTriangle, Crown } from 'lucide-react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { cn } from '@/lib/utils';
+import { differenceInDays, differenceInHours } from 'date-fns';
 
 interface UsageProgressProps {
   compact?: boolean;
@@ -9,7 +10,7 @@ interface UsageProgressProps {
 }
 
 const UsageProgress = ({ compact = false, showUpgradeButton = true }: UsageProgressProps) => {
-  const { currentPlan, usage, getRemainingAppointments, isLimitReached, showUpgradeModal } = useSubscription();
+  const { currentPlan, subscription, showUpgradeModal } = useSubscription();
 
   // Premium/Lifetime users don't need to see usage
   if (currentPlan?.features.includes('all')) {
@@ -19,31 +20,39 @@ const UsageProgress = ({ compact = false, showUpgradeButton = true }: UsageProgr
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20">
         <Crown className="w-4 h-4 text-primary" />
         <span className="text-sm text-primary font-medium">{currentPlan.display_name}</span>
-        <span className="text-xs text-muted-foreground">• Agendamentos ilimitados</span>
+        <span className="text-xs text-muted-foreground">• Acesso ilimitado</span>
       </div>
     );
   }
 
-  if (!usage || !currentPlan) return null;
+  if (!subscription || !currentPlan) return null;
 
-  const limit = currentPlan.limits.appointments_per_month;
-  const used = usage.appointments_count;
-  const remaining = getRemainingAppointments();
-  const percentage = limit > 0 ? (used / limit) * 100 : 0;
-  const limitReached = isLimitReached();
+  // Calculate trial days
+  const startDate = new Date(subscription.starts_at);
+  const now = new Date();
+  const daysUsed = differenceInDays(now, startDate);
+  const hoursUsed = differenceInHours(now, startDate);
+  const totalDays = 7;
+  const daysRemaining = Math.max(0, totalDays - daysUsed);
+  const hoursRemaining = Math.max(0, (totalDays * 24) - hoursUsed);
+  const percentage = Math.min((daysUsed / totalDays) * 100, 100);
+  const isExpired = daysRemaining === 0;
+  const isExpiringSoon = daysRemaining <= 2 && !isExpired;
 
-  // Color based on percentage
+  // Color based on remaining time
   const getColor = () => {
-    if (percentage >= 100) return 'bg-destructive';
-    if (percentage >= 80) return 'bg-amber-500';
-    if (percentage >= 60) return 'bg-yellow-500';
+    if (isExpired) return 'bg-destructive';
+    if (daysRemaining <= 1) return 'bg-destructive';
+    if (daysRemaining <= 2) return 'bg-amber-500';
+    if (daysRemaining <= 4) return 'bg-yellow-500';
     return 'bg-primary';
   };
 
   const getTextColor = () => {
-    if (percentage >= 100) return 'text-destructive';
-    if (percentage >= 80) return 'text-amber-500';
-    if (percentage >= 60) return 'text-yellow-500';
+    if (isExpired) return 'text-destructive';
+    if (daysRemaining <= 1) return 'text-destructive';
+    if (daysRemaining <= 2) return 'text-amber-500';
+    if (daysRemaining <= 4) return 'text-yellow-500';
     return 'text-primary';
   };
 
@@ -52,22 +61,22 @@ const UsageProgress = ({ compact = false, showUpgradeButton = true }: UsageProgr
       <div 
         className={cn(
           "flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors",
-          limitReached ? "bg-destructive/10 border border-destructive/20" : "bg-secondary/50 hover:bg-secondary"
+          isExpired ? "bg-destructive/10 border border-destructive/20" : "bg-secondary/50 hover:bg-secondary"
         )}
-        onClick={() => limitReached && showUpgradeModal('dashboard')}
+        onClick={() => isExpired && showUpgradeModal('dashboard')}
       >
-        {limitReached ? (
+        {isExpired ? (
           <AlertTriangle className="w-4 h-4 text-destructive" />
         ) : (
-          <TrendingUp className={cn("w-4 h-4", getTextColor())} />
+          <Clock className={cn("w-4 h-4", getTextColor())} />
         )}
-        <span className={cn("text-sm font-medium", limitReached ? "text-destructive" : getTextColor())}>
-          {used}/{limit}
+        <span className={cn("text-sm font-medium", isExpired ? "text-destructive" : getTextColor())}>
+          {isExpired ? 'Expirado' : `${daysRemaining}d`}
         </span>
         <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
-            animate={{ width: `${Math.min(percentage, 100)}%` }}
+            animate={{ width: `${percentage}%` }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
             className={cn("h-full rounded-full", getColor())}
           />
@@ -79,19 +88,19 @@ const UsageProgress = ({ compact = false, showUpgradeButton = true }: UsageProgr
   return (
     <div className={cn(
       "p-4 rounded-xl border",
-      limitReached ? "bg-destructive/10 border-destructive/30" : "bg-card border-border"
+      isExpired ? "bg-destructive/10 border-destructive/30" : "bg-card border-border"
     )}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          {limitReached ? (
+          {isExpired ? (
             <AlertTriangle className="w-5 h-5 text-destructive" />
           ) : (
-            <TrendingUp className={cn("w-5 h-5", getTextColor())} />
+            <Clock className={cn("w-5 h-5", getTextColor())} />
           )}
-          <span className="font-medium text-foreground">Agendamentos do Mês</span>
+          <span className="font-medium text-foreground">Período de Teste</span>
         </div>
         <div className={cn("text-sm font-semibold", getTextColor())}>
-          {used}/{limit}
+          {isExpired ? 'Expirado' : `${daysRemaining} dias restantes`}
         </div>
       </div>
 
@@ -99,7 +108,7 @@ const UsageProgress = ({ compact = false, showUpgradeButton = true }: UsageProgr
       <div className="h-3 bg-secondary rounded-full overflow-hidden mb-3">
         <motion.div
           initial={{ width: 0 }}
-          animate={{ width: `${Math.min(percentage, 100)}%` }}
+          animate={{ width: `${percentage}%` }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
           className={cn("h-full rounded-full", getColor())}
         />
@@ -108,16 +117,20 @@ const UsageProgress = ({ compact = false, showUpgradeButton = true }: UsageProgr
       {/* Status message */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          {limitReached ? (
-            <span className="text-destructive font-medium">Limite atingido! Novos agendamentos estão ocultos.</span>
-          ) : remaining <= 10 ? (
-            <span className="text-amber-500 font-medium">Apenas {remaining} agendamentos restantes!</span>
+          {isExpired ? (
+            <span className="text-destructive font-medium">Seu período de teste expirou!</span>
+          ) : isExpiringSoon ? (
+            <span className="text-amber-500 font-medium">
+              {daysRemaining === 1 
+                ? `Expira em ${hoursRemaining} horas!` 
+                : `Apenas ${daysRemaining} dias restantes!`}
+            </span>
           ) : (
-            <span>{remaining} agendamentos restantes este mês</span>
+            <span>Aproveite {daysRemaining} dias de acesso completo</span>
           )}
         </div>
         
-        {showUpgradeButton && (percentage >= 60 || limitReached) && (
+        {showUpgradeButton && (percentage >= 50 || isExpired) && (
           <button
             onClick={() => showUpgradeModal('dashboard')}
             className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
@@ -127,8 +140,8 @@ const UsageProgress = ({ compact = false, showUpgradeButton = true }: UsageProgr
         )}
       </div>
 
-      {/* Limit reached warning */}
-      {limitReached && (
+      {/* Expired warning */}
+      {isExpired && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -137,9 +150,9 @@ const UsageProgress = ({ compact = false, showUpgradeButton = true }: UsageProgr
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium text-destructive mb-1">Você está bombando! 🔥</p>
+              <p className="font-medium text-destructive mb-1">Teste encerrado!</p>
               <p className="text-sm text-muted-foreground">
-                Clientes tentando agendar não estão conseguindo! Libere agendamentos ilimitados para não perder receita.
+                Faça upgrade agora para continuar usando todas as funcionalidades do Barber Studio.
               </p>
             </div>
           </div>
