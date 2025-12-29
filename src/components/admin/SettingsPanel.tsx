@@ -58,6 +58,7 @@ import { useNotification } from '@/contexts/NotificationContext';
 import { supabase } from '@/integrations/supabase/client';
 import OverloadAlertModal from './OverloadAlertModal';
 import GenesisDocumentation from './GenesisDocumentation';
+import ThemePreview from './ThemePreview';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { sendPushNotification } from '@/lib/webhooks';
 
@@ -975,7 +976,7 @@ Retorne APENAS a mensagem, sem explicações.`;
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold">Tema Visual</h3>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => handlePreviewTheme(theme)} size="default">
+                <Button variant="outline" onClick={() => handlePreviewTheme(previewTheme || theme)} size="default">
                   <Monitor className="w-4 h-4 mr-2" />
                   Preview Site
                 </Button>
@@ -1005,10 +1006,8 @@ Retorne APENAS a mensagem, sem explicações.`;
                         document.documentElement.classList.add(`theme-${t.id}`);
                       }
 
-                      // Se o modal de preview estiver aberto, atualiza o preview imediatamente
-                      if (themePreviewOpen) {
-                        setPreviewTheme(t.id);
-                      }
+                      // Mantém o tema selecionado pronto para abrir o preview
+                      setPreviewTheme(t.id);
                     }}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       theme === t.id ? 'border-primary ring-2 ring-primary/30 bg-primary/5' : 'border-border hover:border-primary/50'
@@ -2092,17 +2091,11 @@ Retorne APENAS a mensagem, sem explicações.`;
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center">
-            <div 
+            <div
               className="rounded-lg overflow-hidden border border-border shadow-lg"
               style={{ width: '360px', height: '540px' }}
             >
-              <iframe
-                key={previewTheme}
-                src={`/?theme=${previewTheme}`}
-                className="w-full h-full"
-                title="Preview do Tema"
-                style={{ transform: 'scale(0.5)', transformOrigin: 'top left', width: '200%', height: '200%' }}
-              />
+              <ThemePreview themeId={previewTheme} />
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">

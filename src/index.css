@@ -67,6 +67,63 @@
     --sidebar-ring: 43 74% 49%;
   }
 
+  /* Default (Black & Gold) Theme - for isolated previews */
+  .theme-gold {
+    --background: 0 0% 4%;
+    --foreground: 45 20% 95%;
+
+    --card: 0 0% 7%;
+    --card-foreground: 45 20% 95%;
+
+    --popover: 0 0% 7%;
+    --popover-foreground: 45 20% 95%;
+
+    --primary: 43 74% 49%;
+    --primary-foreground: 0 0% 5%;
+
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 45 20% 95%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 45 10% 55%;
+
+    --accent: 43 74% 49%;
+    --accent-foreground: 0 0% 5%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 43 30% 18%;
+    --input: 0 0% 18%;
+    --ring: 43 74% 49%;
+
+    --radius: 0.75rem;
+
+    --gold: 43 74% 49%;
+    --gold-light: 43 80% 60%;
+    --gold-dark: 43 70% 35%;
+    --gold-foreground: 0 0% 5%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(43 74% 49%) 0%, hsl(43 70% 35%) 100%);
+    --gradient-gold-shine: linear-gradient(135deg, hsl(43 80% 60%) 0%, hsl(43 74% 49%) 50%, hsl(43 70% 35%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(0 0% 7%) 0%, hsl(0 0% 4%) 100%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(43 74% 49% / 0.15) 0%, transparent 70%);
+
+    --shadow-soft: 0 4px 20px -4px hsl(0 0% 0% / 0.5);
+    --shadow-glow: 0 0 40px hsl(43 74% 49% / 0.25);
+    --shadow-gold: 0 4px 30px hsl(43 74% 49% / 0.2);
+    --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.6);
+
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 45 20% 95%;
+    --sidebar-primary: 43 74% 49%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 45 20% 95%;
+    --sidebar-border: 43 30% 15%;
+    --sidebar-ring: 43 74% 49%;
+  }
+
   /* Shiny Gold Theme - Configurable */
   .theme-gold-shine {
     --primary: 43 85% 55%;
