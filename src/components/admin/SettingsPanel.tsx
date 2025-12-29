@@ -1768,7 +1768,7 @@ Retorne APENAS a mensagem, sem explicações.`;
         </select>
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row lg:items-start gap-4 overflow-hidden">
         {/* Menu lateral de categorias - Desktop only */}
         <div className="hidden lg:flex w-52 flex-shrink-0 flex-col space-y-2">
           {settingsSections.map((section) => {
@@ -1792,8 +1792,10 @@ Retorne APENAS a mensagem, sem explicações.`;
         </div>
 
         {/* Área de conteúdo */}
-        <div className={`bg-card border border-border rounded-xl ${
-          activeSection === 'docs' ? 'flex-1 min-h-0 overflow-hidden p-0' : 'overflow-y-auto p-5 lg:p-6'
+        <div className={`flex-1 bg-card border border-border rounded-xl ${
+          activeSection === 'docs'
+            ? 'min-h-0 overflow-hidden p-0 self-stretch'
+            : 'lg:self-start overflow-y-auto p-5 lg:p-6'
         }`}>
           {renderSectionContent()}
         </div>
