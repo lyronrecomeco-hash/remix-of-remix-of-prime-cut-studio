@@ -426,10 +426,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   }, [refreshData]);
 
-  // Apply theme
+  // Apply theme (supports preview via ?theme=...)
   useEffect(() => {
-    document.documentElement.classList.remove('theme-dark', 'theme-light', 'theme-gold');
-    document.documentElement.classList.add(`theme-${theme}`);
+    const urlTheme = new URLSearchParams(window.location.search).get('theme');
+    const effectiveTheme = (urlTheme || theme) as string;
+
+    document.documentElement.className = document.documentElement.className
+      .split(' ')
+      .filter((c) => !c.startsWith('theme-'))
+      .join(' ');
+
+    if (effectiveTheme && effectiveTheme !== 'gold') {
+      document.documentElement.classList.add(`theme-${effectiveTheme}`);
+    }
   }, [theme]);
 
   const setTheme = useCallback(async (newTheme: ThemeType) => {

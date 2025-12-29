@@ -58,7 +58,7 @@ import { useNotification } from '@/contexts/NotificationContext';
 import { supabase } from '@/integrations/supabase/client';
 import OverloadAlertModal from './OverloadAlertModal';
 import GenesisDocumentation from './GenesisDocumentation';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { sendPushNotification } from '@/lib/webhooks';
 
 interface MessageTemplate {
@@ -994,6 +994,7 @@ Retorne APENAS a mensagem, sem explicações.`;
                     key={t.id}
                     onClick={() => {
                       setTheme(t.id as any);
+
                       // Aplica tema automaticamente
                       localStorage.setItem('app_theme', t.id);
                       document.documentElement.className = document.documentElement.className
@@ -1002,6 +1003,11 @@ Retorne APENAS a mensagem, sem explicações.`;
                         .join(' ');
                       if (t.id !== 'gold') {
                         document.documentElement.classList.add(`theme-${t.id}`);
+                      }
+
+                      // Se o modal de preview estiver aberto, atualiza o preview imediatamente
+                      if (themePreviewOpen) {
+                        setPreviewTheme(t.id);
                       }
                     }}
                     className={`p-4 rounded-xl border-2 transition-all ${
@@ -2081,6 +2087,9 @@ Retorne APENAS a mensagem, sem explicações.`;
               <Monitor className="w-5 h-5 text-primary" />
               Preview do Tema: {allThemes.find(t => t.id === previewTheme)?.label}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Pré-visualização do site com o tema selecionado.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center">
             <div 
