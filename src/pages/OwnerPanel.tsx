@@ -14,23 +14,37 @@ const OWNER_EMAIL = 'lyronrp@gmail.com';
 
 const OwnerPanel = () => {
   const navigate = useNavigate();
-  const { user, isLoading: authLoading, isSuperAdmin } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [isOwner, setIsOwner] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
     const verifyOwner = async () => {
-      // Wait for auth to finish loading
       if (authLoading) return;
 
-      // Get current user email
+      // Must be logged in
+      if (!user) {
+        navigate('/', { replace: true });
+        return;
+      }
+
+      // Confirm email
       const { data: userData } = await supabase.auth.getUser();
       const userEmail = userData?.user?.email;
+      if (userEmail !== OWNER_EMAIL) {
+        navigate('/', { replace: true });
+        return;
+      }
 
-      // Must be logged in, be super_admin, and have the correct email
-      if (!user || !isSuperAdmin || userEmail !== OWNER_EMAIL) {
-        // Silently redirect - user should never know this page exists
+      // Confirm role directly (avoid timing issues with context role loading)
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (roleError || !roleData || roleData.role !== 'super_admin') {
         navigate('/', { replace: true });
         return;
       }
@@ -40,7 +54,7 @@ const OwnerPanel = () => {
     };
 
     verifyOwner();
-  }, [user, authLoading, isSuperAdmin, navigate]);
+  }, [user, authLoading, navigate]);
 
   if (authLoading || isVerifying) {
     return (
