@@ -46,6 +46,8 @@ import {
   ExternalLink,
   Edit,
   Info,
+  List,
+  Timer,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,6 +130,9 @@ interface SecuritySettings {
   auditLogAppointments: boolean;
   auditLogServices: boolean;
   auditLogQueue: boolean;
+  // Audit log advanced settings
+  auditLogRetentionDays: number;
+  auditLogDisplayLimit: number;
 }
 
 interface BarberSchedule {
@@ -212,6 +217,9 @@ const defaultSecuritySettings: SecuritySettings = {
   auditLogAppointments: true,
   auditLogServices: true,
   auditLogQueue: true,
+  // Audit log advanced settings
+  auditLogRetentionDays: 30,
+  auditLogDisplayLimit: 100,
 };
 
 const defaultBackupConfig: BackupConfig = {
@@ -2336,7 +2344,41 @@ Retorne APENAS a mensagem, sem explicações.`;
               </div>
             </div>
 
-            <div className="text-xs text-muted-foreground">
+            {/* Configurações Avançadas */}
+            <div className="space-y-3 pt-3 border-t border-border">
+              <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Timer className="w-4 h-4" />
+                Configurações Avançadas
+              </p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1.5">Retenção (dias)</label>
+                  <Input
+                    type="number"
+                    value={securitySettings.auditLogRetentionDays}
+                    onChange={(e) => saveSecuritySettings({ ...securitySettings, auditLogRetentionDays: Number(e.target.value) })}
+                    min={7}
+                    max={365}
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1.5">Limite exibição</label>
+                  <Input
+                    type="number"
+                    value={securitySettings.auditLogDisplayLimit}
+                    onChange={(e) => saveSecuritySettings({ ...securitySettings, auditLogDisplayLimit: Number(e.target.value) })}
+                    min={10}
+                    max={500}
+                    className="h-9"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
+              <List className="w-3.5 h-3.5" />
               Os logs podem ser visualizados na seção "Logs de Auditoria" do menu lateral.
             </div>
           </div>
