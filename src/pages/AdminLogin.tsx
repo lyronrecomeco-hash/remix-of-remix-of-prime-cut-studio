@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Mail, Eye, EyeOff, AlertCircle, Loader2, Scissors, UserPlus, LogIn } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, AlertCircle, Loader2, Scissors, UserPlus, LogIn, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,7 +24,7 @@ interface Particle {
   opacity: number;
 }
 
-type ViewMode = 'login' | 'register' | 'confirmation';
+type ViewMode = 'login' | 'register' | 'confirmation' | 'forgot';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -319,6 +319,15 @@ const AdminLogin = () => {
                           {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                       </div>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setViewMode('forgot' as ViewMode)}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Esqueci minha senha
+                        </button>
+                      </div>
                     </div>
 
                     {/* Submit Button */}
@@ -390,6 +399,66 @@ const AdminLogin = () => {
                     email={registeredEmail}
                     onBackToLogin={() => setViewMode('login')}
                   />
+                </motion.div>
+              )}
+
+              {viewMode === 'forgot' && (
+                <motion.div
+                  key="forgot"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="text-center mb-4">
+                    <Key className="w-12 h-12 text-primary mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Digite seu email para receber o link de recuperação</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Email</label>
+                    <div className="relative group">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        type="email"
+                        placeholder="seu@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-12 h-12 bg-secondary/50"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    variant="hero"
+                    className="w-full h-12"
+                    disabled={isLoading || !email}
+                    onClick={async () => {
+                      setIsLoading(true);
+                      try {
+                        const { supabase } = await import('@/integrations/supabase/client');
+                        const { error } = await supabase.functions.invoke('send-password-reset', {
+                          body: { email }
+                        });
+                        if (error) throw error;
+                        setError('');
+                        setViewMode('login');
+                        const { toast } = await import('sonner');
+                        toast.success('Email de recuperação enviado!');
+                      } catch (err: any) {
+                        setError(err.message || 'Erro ao enviar email');
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                  >
+                    {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Enviar Link'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => setViewMode('login')}
+                  >
+                    Voltar ao Login
+                  </Button>
                 </motion.div>
               )}
             </AnimatePresence>

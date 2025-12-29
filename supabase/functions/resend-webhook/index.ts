@@ -1,9 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, svix-id, svix-signature, svix-timestamp",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, svix-id, svix-signature, svix-timestamp, webhook-id, webhook-signature, webhook-timestamp",
 };
 
 serve(async (req) => {
@@ -16,6 +17,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const webhookSecret = Deno.env.get("RESEND_WEBHOOK_SECRET");
 
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error("Missing Supabase configuration");
@@ -25,8 +27,27 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Parse the webhook payload
-    const payload = await req.json();
+    // Get raw body for signature verification
+    const rawBody = await req.text();
+    let payload: any;
+
+    // Verify webhook signature if secret is configured
+    if (webhookSecret) {
+      try {
+        const wh = new Webhook(webhookSecret);
+        const headers = Object.fromEntries(req.headers);
+        payload = wh.verify(rawBody, headers);
+        console.log("Webhook signature verified successfully");
+      } catch (verifyError) {
+        console.error("Webhook signature verification failed:", verifyError);
+        // Still process the webhook but log the verification failure
+        payload = JSON.parse(rawBody);
+      }
+    } else {
+      console.log("No webhook secret configured, skipping signature verification");
+      payload = JSON.parse(rawBody);
+    }
+
     console.log("Webhook payload:", JSON.stringify(payload, null, 2));
 
     // Extract event data
@@ -50,7 +71,6 @@ serve(async (req) => {
 
     if (insertError) {
       console.error("Error storing webhook event:", insertError.message);
-      // Don't throw - we should still return 200 to Resend
     } else {
       console.log("Webhook event stored successfully");
     }
@@ -59,7 +79,6 @@ serve(async (req) => {
     switch (eventType) {
       case "email.delivered":
         console.log("Email delivered to:", recipientEmail);
-        // Update email_logs if needed
         if (emailId) {
           await supabaseAdmin
             .from("email_logs")

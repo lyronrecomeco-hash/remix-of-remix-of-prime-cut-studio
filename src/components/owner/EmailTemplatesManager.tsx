@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Mail, Edit, Save, X, Eye, Sparkles, Loader2, ShieldCheck, Key, Link2, UserPlus, AlertTriangle, Image, Type, FileText, MousePointer, Copy, Check, Webhook, ExternalLink, Palette } from 'lucide-react';
+import { Mail, Edit, Save, X, Eye, Sparkles, Loader2, ShieldCheck, Key, Link2, UserPlus, AlertTriangle, Image, Type, FileText, MousePointer, Copy, Check, Webhook, ExternalLink, Palette, Send, RefreshCw } from 'lucide-react';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -57,6 +57,9 @@ const EmailTemplatesManager = () => {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [copiedWebhook, setCopiedWebhook] = useState(false);
   const [webhookEvents, setWebhookEvents] = useState<WebhookEvent[]>([]);
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testEmail, setTestEmail] = useState('');
+  const [lastRefresh, setLastRefresh] = useState(new Date());
   const [templateConfig, setTemplateConfig] = useState<TemplateConfig>({
     logoUrl: '',
     headerIcon: '✨',
@@ -76,6 +79,14 @@ const EmailTemplatesManager = () => {
     fetchTemplates();
     generateWebhookUrl();
     fetchWebhookEvents();
+    
+    // Auto-refresh webhook events every 10 seconds
+    const interval = setInterval(() => {
+      fetchWebhookEvents();
+      setLastRefresh(new Date());
+    }, 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const generateWebhookUrl = () => {
@@ -110,7 +121,7 @@ const EmailTemplatesManager = () => {
         setWebhookEvents(webhookData.map(event => ({
           id: event.id,
           type: event.event_type,
-          created_at: event.created_at,
+          created_at: event.created_at || new Date().toISOString(),
           data: { email: event.recipient_email, ...(event.payload as Record<string, unknown>) }
         })));
         return;
@@ -133,6 +144,31 @@ const EmailTemplatesManager = () => {
       }
     } catch (error) {
       console.error('Error fetching webhook events:', error);
+    }
+  };
+
+  const sendTestEmail = async (templateType: string) => {
+    if (!testEmail) {
+      toast.error('Digite um email para teste');
+      return;
+    }
+    
+    setIsSendingTest(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-test-email', {
+        body: { email: testEmail, templateType }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success('Email de teste enviado!');
+      fetchWebhookEvents();
+    } catch (error: any) {
+      console.error('Error sending test email:', error);
+      toast.error(error.message || 'Erro ao enviar email de teste');
+    } finally {
+      setIsSendingTest(false);
     }
   };
 
@@ -532,6 +568,36 @@ const EmailTemplatesManager = () => {
           </div>
 
           <div className="space-y-2">
+            <Label className="text-sm font-medium">Testar Envio de Email</Label>
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="Digite seu email para teste"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                variant="outline"
+                onClick={() => sendTestEmail('auth_confirm')}
+                disabled={isSendingTest || !testEmail}
+              >
+                {isSendingTest ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-1" />
+                    Testar
+                  </>
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Envia um email de teste usando o template de confirmação
+            </p>
+          </div>
+
+          <div className="space-y-2">
             <Label className="text-sm font-medium">Eventos Suportados</Label>
             <div className="flex flex-wrap gap-2">
               {['email.sent', 'email.delivered', 'email.bounced', 'email.complained', 'email.opened', 'email.clicked'].map((event) => (
@@ -543,7 +609,13 @@ const EmailTemplatesManager = () => {
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Eventos Recentes</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Eventos Recentes</Label>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                <span>Auto-refresh: {lastRefresh.toLocaleTimeString('pt-BR')}</span>
+              </div>
+            </div>
             {webhookEvents.length > 0 ? (
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {webhookEvents.map((event) => (

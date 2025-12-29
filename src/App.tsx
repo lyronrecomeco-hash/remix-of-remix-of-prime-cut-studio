@@ -23,6 +23,7 @@ import FeedbackPage from "./pages/FeedbackPage";
 import OwnerPanel from "./pages/OwnerPanel";
 import EmailConfirmed from "./pages/EmailConfirmed";
 import ConfirmarEmail from "./pages/ConfirmarEmail";
+import RedefinirSenha from "./pages/RedefinirSenha";
 import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 
@@ -107,6 +108,7 @@ const AppContent = () => {
           <Route path="/owner" element={<OwnerPanel />} />
           <Route path="/email-confirmado" element={<EmailConfirmed />} />
           <Route path="/confirmar-email" element={<ConfirmarEmail />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <MobileBottomNav />
