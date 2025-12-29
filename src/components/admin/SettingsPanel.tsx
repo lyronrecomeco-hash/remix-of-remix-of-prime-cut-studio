@@ -121,6 +121,13 @@ interface SecuritySettings {
   alertOnNewLogin: boolean;
   alertOnFailedLogin: boolean;
   alertOnSettingsChange: boolean;
+  // Audit log detailed options
+  auditLogLogins: boolean;
+  auditLogChanges: boolean;
+  auditLogDeletions: boolean;
+  auditLogAppointments: boolean;
+  auditLogServices: boolean;
+  auditLogQueue: boolean;
 }
 
 interface BarberSchedule {
@@ -198,6 +205,13 @@ const defaultSecuritySettings: SecuritySettings = {
   alertOnNewLogin: true,
   alertOnFailedLogin: true,
   alertOnSettingsChange: false,
+  // Audit log detailed options
+  auditLogLogins: true,
+  auditLogChanges: true,
+  auditLogDeletions: true,
+  auditLogAppointments: true,
+  auditLogServices: true,
+  auditLogQueue: true,
 };
 
 const defaultBackupConfig: BackupConfig = {
@@ -1214,13 +1228,12 @@ Retorne APENAS a mensagem, sem explicações.`;
               <div className="flex items-center gap-2">
                 {securitySettings.auditLog && (
                   <Button
-                    size="sm"
+                    size="icon"
                     variant="outline"
                     onClick={() => setAuditLogModalOpen(true)}
-                    className="h-7 px-3 text-xs"
+                    className="h-7 w-7"
                   >
-                    <Settings className="w-3 h-3 mr-1" />
-                    Config
+                    <Settings className="w-3.5 h-3.5" />
                   </Button>
                 )}
                 <button
@@ -2228,7 +2241,7 @@ Retorne APENAS a mensagem, sem explicações.`;
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto scrollbar-hide">
             <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4">
               <p className="text-sm text-muted-foreground">
                 O log de auditoria registra todas as ações administrativas para segurança e rastreabilidade.
@@ -2236,25 +2249,90 @@ Retorne APENAS a mensagem, sem explicações.`;
             </div>
 
             <div className="space-y-3">
+              <p className="text-sm font-medium text-muted-foreground">Monitorar:</p>
+              
               <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                <span className="text-sm">Registrar logins</span>
-                <div className={`w-10 h-5 rounded-full bg-primary relative`}>
-                  <div className="absolute top-0.5 left-5 w-4 h-4 rounded-full bg-white" />
-                </div>
+                <span className="text-sm">Logins e Logouts</span>
+                <button
+                  onClick={() => saveSecuritySettings({ ...securitySettings, auditLogLogins: !securitySettings.auditLogLogins })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${
+                    securitySettings.auditLogLogins ? 'bg-primary' : 'bg-secondary'
+                  }`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                    securitySettings.auditLogLogins ? 'left-5' : 'left-0.5'
+                  }`} />
+                </button>
               </div>
 
               <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                <span className="text-sm">Registrar alterações</span>
-                <div className={`w-10 h-5 rounded-full bg-primary relative`}>
-                  <div className="absolute top-0.5 left-5 w-4 h-4 rounded-full bg-white" />
-                </div>
+                <span className="text-sm">Alterações de Dados</span>
+                <button
+                  onClick={() => saveSecuritySettings({ ...securitySettings, auditLogChanges: !securitySettings.auditLogChanges })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${
+                    securitySettings.auditLogChanges ? 'bg-primary' : 'bg-secondary'
+                  }`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                    securitySettings.auditLogChanges ? 'left-5' : 'left-0.5'
+                  }`} />
+                </button>
               </div>
 
               <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                <span className="text-sm">Registrar exclusões</span>
-                <div className={`w-10 h-5 rounded-full bg-primary relative`}>
-                  <div className="absolute top-0.5 left-5 w-4 h-4 rounded-full bg-white" />
-                </div>
+                <span className="text-sm">Exclusões</span>
+                <button
+                  onClick={() => saveSecuritySettings({ ...securitySettings, auditLogDeletions: !securitySettings.auditLogDeletions })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${
+                    securitySettings.auditLogDeletions ? 'bg-primary' : 'bg-secondary'
+                  }`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                    securitySettings.auditLogDeletions ? 'left-5' : 'left-0.5'
+                  }`} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                <span className="text-sm">Agendamentos</span>
+                <button
+                  onClick={() => saveSecuritySettings({ ...securitySettings, auditLogAppointments: !securitySettings.auditLogAppointments })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${
+                    securitySettings.auditLogAppointments ? 'bg-primary' : 'bg-secondary'
+                  }`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                    securitySettings.auditLogAppointments ? 'left-5' : 'left-0.5'
+                  }`} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                <span className="text-sm">Serviços</span>
+                <button
+                  onClick={() => saveSecuritySettings({ ...securitySettings, auditLogServices: !securitySettings.auditLogServices })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${
+                    securitySettings.auditLogServices ? 'bg-primary' : 'bg-secondary'
+                  }`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                    securitySettings.auditLogServices ? 'left-5' : 'left-0.5'
+                  }`} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                <span className="text-sm">Fila de Espera</span>
+                <button
+                  onClick={() => saveSecuritySettings({ ...securitySettings, auditLogQueue: !securitySettings.auditLogQueue })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${
+                    securitySettings.auditLogQueue ? 'bg-primary' : 'bg-secondary'
+                  }`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+                    securitySettings.auditLogQueue ? 'left-5' : 'left-0.5'
+                  }`} />
+                </button>
               </div>
             </div>
 

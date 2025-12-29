@@ -678,6 +678,9 @@ export default function MarketingPanel() {
         <div className="flex items-center gap-2">
           {settings?.is_enabled && (
             <>
+              <Button variant="outline" size="sm" onClick={() => setShowDocsModal(true)} className="h-9 px-3">
+                <BookOpen className="w-4 h-4" />
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setShowSettingsModal(true)} className="h-9 px-3">
                 <Settings className="w-4 h-4" />
               </Button>
@@ -929,7 +932,7 @@ export default function MarketingPanel() {
 
       {/* New Campaign Modal */}
       <Dialog open={showNewCampaignModal} onOpenChange={setShowNewCampaignModal}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto scrollbar-hide">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
               <Plus className="w-6 h-6 text-primary" />
@@ -1297,7 +1300,7 @@ export default function MarketingPanel() {
 
       {/* Protection Settings Modal */}
       <Dialog open={showProtectionModal} onOpenChange={setShowProtectionModal}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto scrollbar-hide">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
               <Shield className="w-6 h-6 text-green-500" />
@@ -1479,7 +1482,7 @@ export default function MarketingPanel() {
 
       {/* Documentation Modal */}
       <Dialog open={showDocsModal} onOpenChange={setShowDocsModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-hide">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-xl">
               <BookOpen className="w-6 h-6 text-primary" />
