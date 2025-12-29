@@ -1792,8 +1792,8 @@ Retorne APENAS a mensagem, sem explicações.`;
         </div>
 
         {/* Área de conteúdo */}
-        <div className={`flex-1 min-h-0 bg-card border border-border rounded-xl ${
-          activeSection === 'docs' ? 'overflow-hidden p-0' : 'overflow-y-auto p-5 lg:p-6'
+        <div className={`bg-card border border-border rounded-xl ${
+          activeSection === 'docs' ? 'flex-1 min-h-0 overflow-hidden p-0' : 'overflow-y-auto p-5 lg:p-6'
         }`}>
           {renderSectionContent()}
         </div>
