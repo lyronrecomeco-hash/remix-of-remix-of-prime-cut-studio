@@ -79,15 +79,15 @@ const UsersOverview = () => {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      // Fetch ALL subscriptions to get all users
-      const { data: subscriptions, error: subError } = await supabase
-        .from('shop_subscriptions')
-        .select('user_id, created_at')
+      // Fetch ALL user roles to get all registered users
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (subError) throw subError;
+      if (rolesError) throw rolesError;
 
-      // Fetch admin users
+      // Fetch admin users for names/emails
       const { data: adminUsers, error: usersError } = await supabase
         .from('admin_users')
         .select('*')
@@ -95,10 +95,15 @@ const UsersOverview = () => {
 
       if (usersError) throw usersError;
 
-      // Fetch roles for each user
-      const { data: roles } = await supabase
-        .from('user_roles')
+      // Fetch user profiles
+      const { data: profiles } = await supabase
+        .from('user_profiles')
         .select('*');
+
+      // Fetch ALL subscriptions
+      const { data: subscriptions } = await supabase
+        .from('shop_subscriptions')
+        .select('user_id, created_at, status');
 
       // Fetch login attempts with counts
       const { data: loginAttempts } = await supabase
@@ -114,29 +119,48 @@ const UsersOverview = () => {
         .eq('month', now.getMonth() + 1)
         .eq('year', now.getFullYear());
 
-      // Build complete user list from subscriptions
-      const userIds = new Set(subscriptions?.map(s => s.user_id) || []);
+      // Build complete user list from user_roles (ALL users)
+      const userIds = new Set<string>();
       
+      // Add all users from roles
+      roles?.forEach(r => userIds.add(r.user_id));
+      
+      // Add all users from admin_users
+      adminUsers?.forEach(u => userIds.add(u.user_id));
+      
+      // Add all users from subscriptions
+      subscriptions?.forEach(s => userIds.add(s.user_id));
+
       const enrichedUsers: AdminUser[] = [];
       
       userIds.forEach(userId => {
         const adminUser = adminUsers?.find(u => u.user_id === userId);
         const userRole = roles?.find(r => r.user_id === userId);
+        const profile = profiles?.find(p => p.user_id === userId);
         const userLogins = loginAttempts?.filter(l => l.email === adminUser?.email) || [];
         const successLogins = userLogins.filter(l => l.success);
         const lastLogin = successLogins[0];
         const usage = metrics?.find(m => m.user_id === userId);
+        const subscription = subscriptions?.find(s => s.user_id === userId);
+        
+        // Build display name
+        let displayName = 'Usuário';
+        if (adminUser?.name) {
+          displayName = adminUser.name;
+        } else if (profile?.first_name) {
+          displayName = `${profile.first_name} ${profile.last_name || ''}`.trim();
+        }
         
         enrichedUsers.push({
           id: adminUser?.id || userId,
           user_id: userId,
-          name: adminUser?.name || 'Usuário',
+          name: displayName,
           email: adminUser?.email || 'N/A',
           is_active: adminUser?.is_active ?? true,
           expires_at: adminUser?.expires_at || null,
-          created_at: adminUser?.created_at || subscriptions?.find(s => s.user_id === userId)?.created_at || new Date().toISOString(),
+          created_at: userRole?.created_at || subscription?.created_at || new Date().toISOString(),
           updated_at: adminUser?.updated_at || new Date().toISOString(),
-          role: userRole?.role || 'N/A',
+          role: userRole?.role || 'usuário',
           last_login: lastLogin?.attempted_at,
           login_count: successLogins.length,
           last_ip: lastLogin?.ip_address || 'N/A',
@@ -144,6 +168,9 @@ const UsersOverview = () => {
           clients_count: usage?.clients_count || 0,
         });
       });
+
+      // Sort by created_at descending
+      enrichedUsers.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       setUsers(enrichedUsers);
     } catch (error) {
@@ -252,8 +279,11 @@ const UsersOverview = () => {
         return <Badge className="bg-blue-500/10 text-blue-500">Admin</Badge>;
       case 'barber':
         return <Badge className="bg-green-500/10 text-green-500">Barbeiro</Badge>;
+      case 'usuário':
+      case 'N/A':
+        return <Badge variant="secondary">Usuário</Badge>;
       default:
-        return <Badge variant="secondary">{role}</Badge>;
+        return <Badge variant="secondary">Usuário</Badge>;
     }
   };
 

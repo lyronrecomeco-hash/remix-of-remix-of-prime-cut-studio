@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Shield, LayoutDashboard, Mail, FileText, Settings, Users, CreditCard, MessageCircle, Database } from 'lucide-react';
+import { Loader2, Shield, LayoutDashboard, Mail, FileText, Settings, Users, CreditCard, MessageCircle, Database, HardDrive } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import OwnerDashboard from '@/components/owner/OwnerDashboard';
 import EmailTemplatesManager from '@/components/owner/EmailTemplatesManager';
@@ -100,7 +100,7 @@ const OwnerPanel = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid grid-cols-7 w-full max-w-4xl bg-card border border-border">
+          <TabsList className="grid grid-cols-8 w-full max-w-5xl bg-card border border-border">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <LayoutDashboard className="w-4 h-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -112,6 +112,10 @@ const OwnerPanel = () => {
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Usuários</span>
+            </TabsTrigger>
+            <TabsTrigger value="database" className="flex items-center gap-2">
+              <HardDrive className="w-4 h-4" />
+              <span className="hidden sm:inline">Banco de Dados</span>
             </TabsTrigger>
             <TabsTrigger value="emails" className="flex items-center gap-2">
               <Mail className="w-4 h-4" />
@@ -141,6 +145,10 @@ const OwnerPanel = () => {
 
           <TabsContent value="users" className="space-y-6">
             <UsersOverview />
+          </TabsContent>
+
+          <TabsContent value="database" className="space-y-6">
+            <UserDatabaseSection />
           </TabsContent>
 
           <TabsContent value="emails" className="space-y-6">
