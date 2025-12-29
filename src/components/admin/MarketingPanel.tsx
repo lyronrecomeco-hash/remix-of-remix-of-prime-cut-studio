@@ -564,311 +564,274 @@ export default function MarketingPanel() {
     );
   }
 
+  // Separate campaigns by status
+  const activeCampaigns = campaigns.filter(c => ['sending', 'scheduled'].includes(c.status));
+  const draftCampaigns = campaigns.filter(c => c.status === 'draft');
+  const completedCampaigns = campaigns.filter(c => ['completed', 'failed', 'paused'].includes(c.status));
+
+  const [marketingTab, setMarketingTab] = useState<'active' | 'drafts' | 'history'>('active');
+
+  const renderCampaignCard = (campaign: Campaign, compact = false) => (
+    <div key={campaign.id} className={`glass-card rounded-xl ${compact ? 'p-4' : 'p-5'}`}>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <h4 className={`font-semibold truncate ${compact ? 'text-base' : 'text-lg'}`}>{campaign.name}</h4>
+            {getStatusBadge(campaign.status, campaign.scheduled_at)}
+          </div>
+          <p className={`text-muted-foreground line-clamp-2 mb-2 ${compact ? 'text-sm' : 'text-base'}`}>
+            {campaign.message_template}
+          </p>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5" />
+              {campaign.sent_count}/{campaign.target_count}
+            </span>
+            {campaign.image_url && (
+              <span className="flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5" />
+                Imagem
+              </span>
+            )}
+            {campaign.button_url && (
+              <span className="flex items-center gap-1.5">
+                <LinkIcon className="w-3.5 h-3.5" />
+                Botão
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {campaign.status === 'draft' && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => testCampaign(campaign.id)}
+                disabled={testingCampaign === campaign.id}
+                className="h-9 px-3"
+              >
+                {testingCampaign === campaign.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <TestTube className="w-4 h-4" />}
+              </Button>
+              <Button
+                variant="hero"
+                size="sm"
+                onClick={() => startCampaign(campaign.id)}
+                disabled={sendingCampaign === campaign.id}
+                className="h-9 px-3"
+              >
+                {sendingCampaign === campaign.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => deleteCampaign(campaign.id)}
+                className="h-9 px-2 text-destructive hover:bg-destructive/20"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </>
+          )}
+          {campaign.status === 'completed' && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => startCampaign(campaign.id, true)}
+                disabled={sendingCampaign === campaign.id}
+                className="h-9 px-3"
+              >
+                {sendingCampaign === campaign.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => deleteCampaign(campaign.id)}
+                className="h-9 px-2 text-destructive hover:bg-destructive/20"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </>
+          )}
+          {campaign.status === 'sending' && (
+            <span className="flex items-center gap-2 text-blue-400 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Enviando...
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex flex-col h-full min-h-0 max-w-full overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2 sm:gap-3">
-            <Megaphone className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
+          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Megaphone className="w-6 h-6 text-primary" />
             Marketing
           </h2>
-          <p className="text-sm sm:text-base text-muted-foreground">Disparo em massa via WhatsApp</p>
+          <p className="text-sm text-muted-foreground">Disparo em massa via WhatsApp</p>
         </div>
         
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2">
           {settings?.is_enabled && (
-            <Button variant="outline" onClick={() => setShowSettingsModal(true)} className="h-9 sm:h-10 px-2 sm:px-4">
-              <Settings className="w-4 h-4" />
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={() => setShowSettingsModal(true)} className="h-9 px-3">
+                <Settings className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowProtectionModal(true)} className="h-9 px-3">
+                <Shield className="w-4 h-4" />
+              </Button>
+            </>
           )}
           <button
             onClick={toggleMarketing}
-            className={`w-14 sm:w-16 h-7 sm:h-8 rounded-full transition-colors relative ${
+            className={`w-14 h-7 rounded-full transition-colors relative ${
               settings?.is_enabled ? 'bg-primary' : 'bg-secondary'
             }`}
           >
-            <div className={`absolute top-0.5 sm:top-1 w-5 sm:w-6 h-5 sm:h-6 rounded-full bg-white transition-all ${
-              settings?.is_enabled ? 'left-7 sm:left-9' : 'left-1'
+            <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${
+              settings?.is_enabled ? 'left-8' : 'left-1'
             }`} />
           </button>
         </div>
       </div>
 
       {!settings?.is_enabled ? (
-        <div className="glass-card rounded-2xl p-6 sm:p-12 text-center">
+        <div className="glass-card rounded-2xl p-8 text-center">
           <div className="opacity-60 pointer-events-none select-none">
-            <Megaphone className="w-16 sm:w-20 h-16 sm:h-20 text-muted-foreground mx-auto mb-4 sm:mb-6" />
-            <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-3">Modo Marketing Desativado</h3>
-            <p className="text-sm sm:text-lg text-muted-foreground mb-4 sm:mb-6">
+            <Megaphone className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-bold mb-2">Modo Marketing Desativado</h3>
+            <p className="text-muted-foreground mb-4">
               Ative o modo Marketing para enviar mensagens em massa via WhatsApp.
             </p>
           </div>
-          <Button variant="hero" size="lg" onClick={toggleMarketing} className="mt-2 sm:mt-4 h-10 sm:h-12 px-6 sm:px-8">
-            <Power className="w-4 sm:w-5 h-4 sm:h-5" />
+          <Button variant="hero" onClick={toggleMarketing} className="mt-2 h-10 px-6">
+            <Power className="w-4 h-4" />
             Ativar Marketing
           </Button>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-6 pr-1">
-          {/* Warning */}
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-muted-foreground">
-              <strong className="text-yellow-500">Atenção:</strong> Envio em massa pode resultar em bloqueio pelo WhatsApp. Use com moderação e respeite os termos de uso.
-            </p>
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {/* Navigation Tabs */}
+          <div className="flex items-center gap-1 p-1 bg-secondary/50 rounded-xl mb-4 shrink-0">
+            {[
+              { id: 'active', label: 'Ativas', count: activeCampaigns.length, icon: Zap },
+              { id: 'drafts', label: 'Rascunhos', count: draftCampaigns.length, icon: FileText },
+              { id: 'history', label: 'Histórico', count: completedCampaigns.length, icon: Clock },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setMarketingTab(tab.id as any)}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  marketingTab === tab.id
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+                {tab.count > 0 && (
+                  <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                    marketingTab === tab.id ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
 
-          {/* Anti-Blocking Protection Status */}
-          <div className="glass-card rounded-xl p-4 sm:p-5">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                  <Shield className="w-5 h-5 text-green-500" />
+          {/* Content Area */}
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+            {/* Status Bar - Always visible */}
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              <div className="bg-secondary/30 rounded-lg p-2.5 text-center">
+                <div className="flex items-center justify-center gap-1 text-primary mb-0.5">
+                  <TrendingUp className="w-3.5 h-3.5" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-sm sm:text-base">Proteção Anti-Bloqueio</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Sistema ativo protegendo seu número</p>
-                </div>
+                <span className="text-lg font-bold">{settings?.warmup_day || 1}/5</span>
+                <p className="text-[10px] text-muted-foreground">Aquecimento</p>
               </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Button variant="outline" size="sm" onClick={() => setShowDocsModal(true)} className="h-8 sm:h-9 flex-1 sm:flex-none">
-                  <BookOpen className="w-4 h-4 sm:mr-1.5" />
-                  <span className="hidden sm:inline">Guia</span>
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowProtectionModal(true)} className="h-8 sm:h-9 flex-1 sm:flex-none">
-                  <Settings className="w-4 h-4 sm:mr-1.5" />
-                  <span className="hidden sm:inline">Configurar</span>
-                </Button>
-              </div>
-            </div>
-            
-            {/* Status Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-              <div className="bg-secondary/30 rounded-lg p-2 sm:p-3 text-center">
-                <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-primary mb-1">
-                  <TrendingUp className="w-3 sm:w-4 h-3 sm:h-4" />
-                  <span className="text-xs sm:text-sm font-medium">Dia</span>
+              <div className="bg-secondary/30 rounded-lg p-2.5 text-center">
+                <div className="flex items-center justify-center gap-1 text-blue-400 mb-0.5">
+                  <Zap className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-lg sm:text-xl font-bold">{settings?.warmup_day || 1}/5</span>
-                <p className="text-[10px] sm:text-xs text-muted-foreground">Aquecimento</p>
-              </div>
-              
-              <div className="bg-secondary/30 rounded-lg p-2 sm:p-3 text-center">
-                <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-blue-400 mb-1">
-                  <Zap className="w-3 sm:w-4 h-3 sm:h-4" />
-                  <span className="text-xs sm:text-sm font-medium">Limite</span>
-                </div>
-                <span className="text-lg sm:text-xl font-bold">
+                <span className="text-lg font-bold">
                   {settings?.warmup_enabled 
                     ? getWarmupLimit(settings?.warmup_day || 1, settings?.daily_limit || 50) 
                     : settings?.daily_limit || 50}
                 </span>
-                <p className="text-[10px] sm:text-xs text-muted-foreground">msg/dia</p>
+                <p className="text-[10px] text-muted-foreground">msg/dia</p>
               </div>
-              
-              <div className="bg-secondary/30 rounded-lg p-2 sm:p-3 text-center">
-                <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-green-400 mb-1">
-                  <Send className="w-3 sm:w-4 h-3 sm:h-4" />
-                  <span className="text-xs sm:text-sm font-medium">Hoje</span>
+              <div className="bg-secondary/30 rounded-lg p-2.5 text-center">
+                <div className="flex items-center justify-center gap-1 text-green-400 mb-0.5">
+                  <Send className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-lg sm:text-xl font-bold">{settings?.messages_sent_today || 0}</span>
-                <p className="text-[10px] sm:text-xs text-muted-foreground">enviadas</p>
+                <span className="text-lg font-bold">{settings?.messages_sent_today || 0}</span>
+                <p className="text-[10px] text-muted-foreground">hoje</p>
               </div>
-              
-              <div className="bg-secondary/30 rounded-lg p-2 sm:p-3 text-center">
-                <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-orange-400 mb-1">
-                  <Clock className="w-3 sm:w-4 h-3 sm:h-4" />
-                  <span className="text-xs sm:text-sm font-medium">Horário</span>
+              <div className="bg-secondary/30 rounded-lg p-2.5 text-center">
+                <div className="flex items-center justify-center gap-1 text-orange-400 mb-0.5">
+                  <Clock className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-base sm:text-xl font-bold">{settings?.allowed_start_hour || 8}h-{settings?.allowed_end_hour || 20}h</span>
-                <p className="text-[10px] sm:text-xs text-muted-foreground">permitido</p>
+                <span className="text-base font-bold">{settings?.allowed_start_hour || 8}-{settings?.allowed_end_hour || 20}h</span>
+                <p className="text-[10px] text-muted-foreground">horário</p>
               </div>
             </div>
-          </div>
 
-          {/* New Campaign Button */}
-          <Button variant="hero" onClick={() => setShowNewCampaignModal(true)} className="w-full h-10">
-            <Plus className="w-4 h-4" />
-            Nova Campanha
-          </Button>
+            {/* New Campaign Button */}
+            <Button variant="hero" onClick={() => setShowNewCampaignModal(true)} className="w-full h-10 mb-4">
+              <Plus className="w-4 h-4" />
+              Nova Campanha
+            </Button>
 
-          {/* Campaigns List */}
-          {campaigns.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-lg">Campanhas ({campaigns.length})</h3>
-                {totalCampaignPages > 1 && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCampaignPage(Math.max(0, campaignPage - 1))}
-                      disabled={campaignPage === 0}
-                      className="h-8 px-2"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <span className="text-sm text-muted-foreground">
-                      {campaignPage + 1} / {totalCampaignPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCampaignPage(Math.min(totalCampaignPages - 1, campaignPage + 1))}
-                      disabled={campaignPage >= totalCampaignPages - 1}
-                      className="h-8 px-2"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
+            {/* Tab Content */}
+            {marketingTab === 'active' && (
+              <div className="space-y-3">
+                {activeCampaigns.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Zap className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="font-medium">Nenhuma campanha ativa</p>
+                    <p className="text-sm">Campanhas enviando ou agendadas aparecerão aqui</p>
                   </div>
+                ) : (
+                  activeCampaigns.map(c => renderCampaignCard(c))
                 )}
               </div>
-              {paginatedCampaigns.map((campaign) => (
-                <div key={campaign.id} className="glass-card rounded-xl p-5">
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h4 className="font-semibold text-lg truncate">{campaign.name}</h4>
-                        {getStatusBadge(campaign.status, campaign.scheduled_at)}
-                      </div>
-                      <p className="text-base text-muted-foreground line-clamp-2 mb-3">
-                        {campaign.message_template}
-                      </p>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-                        <span className="flex items-center gap-2">
-                          <Users className="w-4 h-4" />
-                          {campaign.sent_count}/{campaign.target_count} enviados
-                        </span>
-                        {campaign.image_url && (
-                          <span className="flex items-center gap-2">
-                            <ImageIcon className="w-4 h-4" />
-                            Com imagem
-                          </span>
-                        )}
-                        {campaign.button_url && (
-                          <span className="flex items-center gap-2">
-                            <LinkIcon className="w-4 h-4" />
-                            Com botão
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-start">
-                      {campaign.status === 'draft' && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => testCampaign(campaign.id)}
-                            disabled={testingCampaign === campaign.id}
-                            className="h-10 px-4"
-                            title="Testar com 1 contato"
-                          >
-                            {testingCampaign === campaign.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <TestTube className="w-4 h-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="hero"
-                            size="sm"
-                            onClick={() => startCampaign(campaign.id)}
-                            disabled={sendingCampaign === campaign.id}
-                            className="h-10 px-4"
-                            title="Iniciar campanha"
-                          >
-                            {sendingCampaign === campaign.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Play className="w-4 h-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteCampaign(campaign.id)}
-                            className="h-10 px-3 text-destructive hover:bg-destructive/20"
-                            title="Excluir campanha"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </>
-                      )}
-                      {campaign.status === 'completed' && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => startCampaign(campaign.id, true)}
-                            disabled={sendingCampaign === campaign.id}
-                            className="h-10 px-4"
-                            title="Reenviar para todos"
-                          >
-                            {sendingCampaign === campaign.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <>
-                                <RefreshCw className="w-4 h-4 mr-2" />
-                                Reenviar
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteCampaign(campaign.id)}
-                            className="h-10 px-3 text-destructive hover:bg-destructive/20"
-                            title="Excluir campanha"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              
-              {/* Bottom pagination for better mobile UX */}
-              {totalCampaignPages > 1 && (
-                <div className="flex items-center justify-center gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCampaignPage(Math.max(0, campaignPage - 1))}
-                    disabled={campaignPage === 0}
-                    className="h-9"
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    Anterior
-                  </Button>
-                  <span className="text-sm text-muted-foreground px-3">
-                    Página {campaignPage + 1} de {totalCampaignPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCampaignPage(Math.min(totalCampaignPages - 1, campaignPage + 1))}
-                    disabled={campaignPage >= totalCampaignPages - 1}
-                    className="h-9"
-                  >
-                    Próxima
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
+            )}
 
-          {campaigns.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              <Megaphone className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p className="text-lg">Nenhuma campanha criada ainda</p>
-              <p className="text-base">Clique em "Nova Campanha" para começar</p>
-            </div>
-          )}
+            {marketingTab === 'drafts' && (
+              <div className="space-y-3">
+                {draftCampaigns.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="font-medium">Nenhum rascunho</p>
+                    <p className="text-sm">Crie uma nova campanha para começar</p>
+                  </div>
+                ) : (
+                  draftCampaigns.map(c => renderCampaignCard(c))
+                )}
+              </div>
+            )}
+
+            {marketingTab === 'history' && (
+              <div className="space-y-3">
+                {completedCampaigns.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="font-medium">Nenhum histórico</p>
+                    <p className="text-sm">Campanhas concluídas aparecerão aqui</p>
+                  </div>
+                ) : (
+                  completedCampaigns.map(c => renderCampaignCard(c, true))
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
