@@ -1,35 +1,21 @@
 import React, { useState } from 'react';
 import { 
   Book, 
-  Calendar, 
-  Users, 
-  Scissors, 
-  DollarSign, 
-  BarChart3, 
-  Target, 
-  Palmtree,
-  Clock,
-  Image,
-  MessageSquare,
-  Megaphone,
-  AlertTriangle,
-  Lock,
-  Settings,
   Shield,
-  MessageCircle,
+  Megaphone,
   Webhook,
-  Database,
   Bell,
   ChevronRight,
   Search,
-  Home,
   Smartphone,
-  Globe,
   Zap,
-  CheckCircle,
   Info,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  Key,
+  AlertTriangle,
+  Users,
+  HelpCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,623 +33,407 @@ interface DocContent {
   text?: string;
   list?: string[];
   tip?: string;
+  warning?: string;
 }
 
 const documentationSections: DocSection[] = [
   {
-    id: 'overview',
-    title: 'Visão Geral',
-    icon: Home,
+    id: 'primeiros-passos',
+    title: 'Primeiros Passos',
+    icon: Zap,
     content: [
       {
-        subtitle: 'Bem-vindo ao Genesis',
-        text: 'O Genesis é um sistema completo de gestão para barbearias, projetado para otimizar todos os aspectos do seu negócio.',
-      },
-      {
-        subtitle: 'Principais Recursos',
-        text: 'O sistema oferece:',
+        subtitle: 'Configuração Inicial Obrigatória',
+        text: 'Antes de começar a usar o sistema, você precisa configurar:',
         list: [
-          'Gestão completa de agendamentos',
-          'Controle financeiro detalhado',
-          'Sistema de fila de espera inteligente',
-          'Marketing automatizado via WhatsApp',
-          'Dashboard com métricas em tempo real',
-          'Gestão de barbeiros e serviços',
-          'Sistema de feedbacks e avaliações',
-          'Logs de auditoria para segurança'
-        ]
-      },
-      {
-        text: 'Navegue pelo menu lateral para acessar cada módulo do sistema.',
-        tip: 'Use a barra de busca acima para encontrar rapidamente o que procura.'
-      }
-    ]
-  },
-  {
-    id: 'dashboard',
-    title: 'Dashboard',
-    icon: Calendar,
-    content: [
-      {
-        subtitle: 'Painel Principal',
-        text: 'O Dashboard é sua central de controle, exibindo métricas importantes do dia e da semana.',
-      },
-      {
-        subtitle: 'Métricas Disponíveis',
-        text: 'Visualize em tempo real:',
-        list: [
-          'Agendamentos do dia',
-          'Faturamento diário e semanal',
-          'Taxa de ocupação dos barbeiros',
-          'Próximos clientes na fila',
-          'Alertas de sobrecarga'
-        ]
-      },
-      {
-        text: 'Clique nos cards para navegar diretamente para a seção correspondente.',
-        tip: 'O Dashboard atualiza automaticamente a cada 60 segundos.'
-      }
-    ]
-  },
-  {
-    id: 'agenda',
-    title: 'Agenda',
-    icon: Calendar,
-    content: [
-      {
-        subtitle: 'Gestão de Agendamentos',
-        text: 'Controle todos os agendamentos da sua barbearia em um único lugar.',
-      },
-      {
-        subtitle: 'Funcionalidades',
-        text: 'Na agenda você pode:',
-        list: [
-          'Visualizar agendamentos por data',
-          'Filtrar por status (pendente, confirmado, concluído, cancelado)',
-          'Confirmar, cancelar ou concluir atendimentos',
-          'Ver detalhes do cliente e serviço',
-          'Acompanhar o limite diário de agendamentos'
-        ]
-      },
-      {
-        subtitle: 'Status dos Agendamentos',
-        text: 'Os agendamentos possuem os seguintes status:',
-        list: [
-          'Pendente: Aguardando confirmação',
-          'Confirmado: Cliente confirmou presença',
-          'Em Atendimento: Cliente está sendo atendido',
-          'Concluído: Atendimento finalizado',
-          'Cancelado: Agendamento cancelado'
+          'Dados da Barbearia: Nome, endereço, telefone e WhatsApp em Configurações > Barbearia',
+          'Horários de Funcionamento: Defina dias e horários em Configurações > Horários',
+          'Serviços: Cadastre seus serviços com preços e duração em Serviços',
+          'Barbeiros: Adicione sua equipe com fotos e especialidades'
         ],
-        tip: 'Clientes recebem notificações automáticas a cada mudança de status.'
+        tip: 'Sem essas configurações, o agendamento online não funcionará corretamente.'
+      },
+      {
+        subtitle: 'Ordem Recomendada',
+        list: [
+          '1. Configure dados da barbearia',
+          '2. Defina horários de funcionamento',
+          '3. Cadastre serviços',
+          '4. Adicione barbeiros',
+          '5. Configure horários individuais dos barbeiros',
+          '6. Teste um agendamento pelo site público'
+        ]
       }
     ]
   },
   {
-    id: 'fila',
-    title: 'Fila de Espera',
-    icon: Users,
+    id: 'whatsapp',
+    title: 'Integração WhatsApp',
+    icon: Megaphone,
     content: [
       {
-        subtitle: 'Sistema de Fila Inteligente',
-        text: 'Gerencie clientes que chegam sem agendamento ou que precisam aguardar.',
-      },
-      {
-        subtitle: 'Como Funciona',
-        text: 'O sistema de fila permite:',
+        subtitle: 'Como Configurar o ChatPro',
+        text: 'O ChatPro permite enviar mensagens automáticas aos clientes. Para ativar:',
         list: [
-          'Adicionar clientes à fila de espera',
-          'Ver tempo estimado de espera',
-          'Chamar próximo cliente automaticamente',
-          'Marcar cliente como "a caminho"',
-          'Notificar clientes via WhatsApp quando chegar a vez'
-        ]
+          '1. Acesse Configurações > ChatPro',
+          '2. Insira o Instance ID (fornecido pelo ChatPro)',
+          '3. Insira o Token da API',
+          '4. Defina o endpoint base (geralmente: https://api.chatpro.com.br)',
+          '5. Clique em Salvar e teste a conexão'
+        ],
+        warning: 'O número do WhatsApp deve estar conectado ao ChatPro antes de configurar aqui.'
       },
       {
-        text: 'Configure o tamanho máximo da fila nas Configurações.',
-        tip: 'Clientes podem acompanhar sua posição na fila pelo celular.'
-      }
-    ]
-  },
-  {
-    id: 'financeiro',
-    title: 'Financeiro',
-    icon: DollarSign,
-    content: [
-      {
-        subtitle: 'Dashboard Financeiro',
-        text: 'Acompanhe toda a movimentação financeira da sua barbearia.',
-      },
-      {
-        subtitle: 'Relatórios Disponíveis',
-        text: 'Visualize:',
+        subtitle: 'Mensagens Automáticas',
+        text: 'Configure templates em Configurações > Templates de Mensagens:',
         list: [
-          'Faturamento diário, semanal e mensal',
-          'Comparativo com períodos anteriores',
-          'Ticket médio por atendimento',
-          'Receita por barbeiro',
-          'Serviços mais rentáveis',
-          'Gráficos de evolução'
-        ]
+          'Confirmação de Agendamento: Enviada quando cliente agenda',
+          'Lembrete: Enviada X horas antes do horário',
+          'Chamada da Fila: Quando chega a vez do cliente',
+          'Agradecimento: Após conclusão do atendimento'
+        ],
+        tip: 'Use as variáveis {nome}, {data}, {hora}, {servico}, {barbeiro} nos templates.'
       },
       {
-        tip: 'Exporte relatórios em PDF para análise detalhada.'
-      }
-    ]
-  },
-  {
-    id: 'desempenho',
-    title: 'Desempenho',
-    icon: BarChart3,
-    content: [
-      {
-        subtitle: 'Análise de Performance',
-        text: 'Monitore o desempenho individual de cada barbeiro.',
-      },
-      {
-        subtitle: 'Métricas por Barbeiro',
-        text: 'Acompanhe:',
+        subtitle: 'Proteção Anti-Bloqueio',
+        text: 'Para evitar que o WhatsApp bloqueie seu número:',
         list: [
-          'Total de atendimentos',
-          'Taxa de conclusão',
-          'Faturamento individual',
-          'Avaliação média dos clientes',
-          'Serviço mais executado',
-          'Clientes novos vs recorrentes'
-        ]
-      },
-      {
-        tip: 'Use esses dados para bonificações e feedback da equipe.'
-      }
-    ]
-  },
-  {
-    id: 'metas',
-    title: 'Metas',
-    icon: Target,
-    content: [
-      {
-        subtitle: 'Sistema de Metas',
-        text: 'Defina e acompanhe metas mensais para sua equipe.',
-      },
-      {
-        subtitle: 'Tipos de Metas',
-        text: 'Configure metas para:',
-        list: [
-          'Faturamento total',
-          'Número de atendimentos',
-          'Novos clientes',
-          'Taxa de retorno de clientes',
-          'Metas individuais por barbeiro'
-        ]
-      },
-      {
-        subtitle: 'Bonificações',
-        text: 'Defina valores de bônus para metas atingidas e motive sua equipe.',
-        tip: 'Metas claras aumentam a produtividade em até 25%.'
-      }
-    ]
-  },
-  {
-    id: 'folgas',
-    title: 'Folgas e Férias',
-    icon: Palmtree,
-    content: [
-      {
-        subtitle: 'Gestão de Ausências',
-        text: 'Controle folgas, férias e afastamentos da equipe.',
-      },
-      {
-        subtitle: 'Funcionalidades',
-        text: 'O sistema permite:',
-        list: [
-          'Registrar folgas programadas',
-          'Agendar férias com antecedência',
-          'Bloquear horários automaticamente',
-          'Aprovar ou recusar solicitações',
-          'Histórico completo de ausências'
-        ]
-      },
-      {
-        tip: 'Clientes não conseguirão agendar com barbeiros em folga.'
-      }
-    ]
-  },
-  {
-    id: 'horarios',
-    title: 'Horários',
-    icon: Clock,
-    content: [
-      {
-        subtitle: 'Gestão de Horários',
-        text: 'Configure horários de funcionamento e disponibilidade.',
-      },
-      {
-        subtitle: 'Configurações',
-        text: 'Defina:',
-        list: [
-          'Horário de abertura e fechamento',
-          'Horário de almoço',
-          'Dias de funcionamento',
-          'Horários especiais por barbeiro',
-          'Bloqueio de horários específicos'
-        ]
-      },
-      {
-        tip: 'Horários bloqueados não aparecem para agendamento online.'
-      }
-    ]
-  },
-  {
-    id: 'servicos',
-    title: 'Serviços',
-    icon: Scissors,
-    content: [
-      {
-        subtitle: 'Catálogo de Serviços',
-        text: 'Gerencie todos os serviços oferecidos pela barbearia.',
-      },
-      {
-        subtitle: 'Para cada serviço, defina',
-        text: '',
-        list: [
-          'Nome e descrição',
-          'Preço',
-          'Duração estimada',
-          'Ícone representativo',
-          'Visibilidade (ativo/inativo)'
-        ]
-      },
-      {
-        tip: 'Serviços inativos não aparecem no agendamento online.'
-      }
-    ]
-  },
-  {
-    id: 'galeria',
-    title: 'Galeria',
-    icon: Image,
-    content: [
-      {
-        subtitle: 'Galeria de Fotos',
-        text: 'Exiba seus melhores trabalhos no site.',
-      },
-      {
-        subtitle: 'Gerenciamento',
-        text: 'Você pode:',
-        list: [
-          'Fazer upload de imagens (máx 5MB)',
-          'Adicionar imagens via URL',
-          'Definir títulos e descrições',
-          'Ordenar imagens',
-          'Remover imagens antigas'
-        ]
-      },
-      {
-        tip: 'Use fotos de alta qualidade para impressionar clientes.'
-      }
-    ]
-  },
-  {
-    id: 'feedbacks',
-    title: 'Feedbacks',
-    icon: MessageSquare,
-    content: [
-      {
-        subtitle: 'Avaliações de Clientes',
-        text: 'Receba e gerencie avaliações dos seus clientes.',
-      },
-      {
-        subtitle: 'Funcionalidades',
-        text: 'O sistema de feedbacks permite:',
-        list: [
-          'Receber avaliações de 1 a 5 estrelas',
-          'Ler comentários dos clientes',
-          'Publicar feedbacks no site',
-          'Arquivar feedbacks antigos',
-          'Copiar link de avaliação para enviar aos clientes'
-        ]
-      },
-      {
-        tip: 'Envie solicitação de avaliação após cada atendimento.'
+          'Mantenha delay entre mensagens (mínimo 10 segundos)',
+          'Use warmup progressivo para contas novas',
+          'Respeite os limites diários configurados',
+          'Envie apenas em horários comerciais',
+          'Evite mensagens muito longas ou com muitos links'
+        ],
+        warning: 'Ignorar essas regras pode resultar em bloqueio permanente do número!'
       }
     ]
   },
   {
     id: 'marketing',
-    title: 'Marketing',
+    title: 'Campanhas de Marketing',
     icon: Megaphone,
     content: [
       {
-        subtitle: 'Campanhas de Marketing',
-        text: 'Envie mensagens promocionais via WhatsApp.',
-      },
-      {
-        subtitle: 'Recursos',
-        text: 'O módulo de marketing oferece:',
+        subtitle: 'Enviando Campanhas em Massa',
+        text: 'Para criar uma campanha:',
         list: [
-          'Criação de campanhas',
-          'Importação de contatos',
-          'Templates personalizados',
-          'Agendamento de envios',
-          'Geração de mensagens com IA',
-          'Relatório de envios',
-          'Proteção anti-spam integrada'
+          '1. Acesse a aba Marketing',
+          '2. Clique em "Nova Campanha"',
+          '3. Importe contatos (CSV ou base de clientes)',
+          '4. Escreva a mensagem ou use IA para gerar',
+          '5. Agende ou envie imediatamente'
         ]
       },
       {
-        subtitle: 'Configurações de Segurança',
-        text: 'Proteja sua conta com:',
+        subtitle: 'Limites de Segurança',
+        text: 'Configurações importantes em Marketing > Configurações:',
         list: [
-          'Limite diário de mensagens',
-          'Delay entre envios',
-          'Horários permitidos para envio',
-          'Warmup progressivo'
+          'Limite diário: Máximo de mensagens por dia',
+          'Delay mínimo/máximo: Tempo entre cada envio',
+          'Horário permitido: Janela de envio (ex: 8h às 20h)',
+          'Pausa automática: A cada X mensagens, pausa Y segundos',
+          'Warmup: Aumenta limite gradualmente para contas novas'
         ],
-        tip: 'Respeite as políticas do WhatsApp para evitar bloqueios.'
-      }
-    ]
-  },
-  {
-    id: 'logs',
-    title: 'Logs de Auditoria',
-    icon: AlertTriangle,
-    content: [
-      {
-        subtitle: 'Rastreabilidade Total',
-        text: 'Monitore todas as ações realizadas no sistema.',
-      },
-      {
-        subtitle: 'O que é registrado',
-        text: 'Os logs capturam:',
-        list: [
-          'Logins e logouts',
-          'Criação e alteração de dados',
-          'Exclusões',
-          'Mudanças de status em agendamentos',
-          'Alterações em serviços',
-          'Ações na fila de espera'
-        ]
-      },
-      {
-        subtitle: 'Configuração',
-        text: 'Em Configurações > Segurança, você pode ativar/desativar cada tipo de log.',
-        tip: 'Os logs são essenciais para segurança e compliance.'
-      }
-    ]
-  },
-  {
-    id: 'usuarios',
-    title: 'Usuários',
-    icon: Lock,
-    content: [
-      {
-        subtitle: 'Gestão de Usuários',
-        text: 'Controle quem tem acesso ao painel administrativo.',
-      },
-      {
-        subtitle: 'Níveis de Acesso',
-        text: 'O sistema possui três níveis:',
-        list: [
-          'Super Admin: Acesso total ao sistema',
-          'Admin: Acesso administrativo sem gerenciar outros admins',
-          'Barbeiro: Acesso limitado às suas informações'
-        ]
-      },
-      {
-        subtitle: 'Segurança',
-        text: 'Para cada usuário você pode:',
-        list: [
-          'Definir data de expiração do acesso',
-          'Ativar/desativar conta',
-          'Resetar senha',
-          'Ver histórico de logins'
-        ],
-        tip: 'Revogue acessos imediatamente ao desligar colaboradores.'
-      }
-    ]
-  },
-  {
-    id: 'config',
-    title: 'Configurações',
-    icon: Settings,
-    content: [
-      {
-        subtitle: 'Central de Configurações',
-        text: 'Personalize todos os aspectos do sistema.',
-      },
-      {
-        subtitle: 'Seções Disponíveis',
-        text: '',
-        list: [
-          'Tema: Cores e aparência do sistema',
-          'Barbearia: Nome, endereço, telefone',
-          'Link Agendamento: URL exclusiva para clientes',
-          'Segurança: 2FA, timeout, logs',
-          'Redes Sociais: Instagram, Facebook, WhatsApp',
-          'Backup: Exportar e importar dados',
-          'Textos do Site: Personalizar conteúdo do site',
-          'ChatPro: Integração com WhatsApp',
-          'Templates: Mensagens automáticas',
-          'API: Webhooks e integrações',
-          'Menu Admin: Estilo do menu lateral'
-        ]
-      }
-    ]
-  },
-  {
-    id: 'integracao',
-    title: 'Integrações',
-    icon: Webhook,
-    content: [
-      {
-        subtitle: 'Conecte com Outros Sistemas',
-        text: 'O Genesis suporta diversas integrações.',
-      },
-      {
-        subtitle: 'Integrações Disponíveis',
-        text: '',
-        list: [
-          'ChatPro: Envio de mensagens via WhatsApp',
-          'Webhooks: Notificações para sistemas externos',
-          'Push Notifications: Alertas no navegador',
-          'API REST: Para desenvolvedores'
-        ]
-      },
-      {
-        subtitle: 'Webhooks',
-        text: 'Configure URLs para receber notificações quando eventos ocorrem:',
-        list: [
-          'Novo agendamento',
-          'Agendamento confirmado',
-          'Agendamento cancelado',
-          'Atendimento concluído'
-        ],
-        tip: 'Webhooks permitem automações avançadas com outras ferramentas.'
+        tip: 'Comece com limite baixo (50/dia) e aumente gradualmente.'
       }
     ]
   },
   {
     id: 'seguranca',
-    title: 'Segurança',
+    title: 'Segurança do Sistema',
     icon: Shield,
     content: [
       {
-        subtitle: 'Proteção de Dados',
-        text: 'O Genesis possui múltiplas camadas de segurança.',
+        subtitle: 'Níveis de Acesso',
+        text: 'O sistema possui três perfis de usuário:',
+        list: [
+          'Super Admin: Acesso total, pode gerenciar outros admins',
+          'Admin: Acesso administrativo, não gerencia usuários',
+          'Barbeiro: Vê apenas seus próprios dados e agenda'
+        ],
+        warning: 'Somente Super Admins podem criar ou remover outros usuários.'
       },
       {
-        subtitle: 'Recursos de Segurança',
-        text: '',
+        subtitle: 'Configurações de Segurança',
+        text: 'Em Configurações > Segurança você encontra:',
         list: [
-          'Autenticação em duas etapas (2FA)',
-          'Timeout automático de sessão',
-          'Limite de tentativas de login',
-          'Lista de IPs permitidos',
-          'Exigência de senha forte',
-          'Logs de auditoria completos',
-          'Backup criptografado'
+          'Timeout de Sessão: Tempo até deslogar automaticamente',
+          'Tentativas de Login: Máximo antes de bloquear temporariamente',
+          'Logs de Auditoria: Registra todas as ações do sistema',
+          'Lista de IPs: Restringe acesso a IPs específicos (opcional)'
         ]
       },
       {
-        subtitle: 'Alertas de Segurança',
-        text: 'Receba notificações push para:',
+        subtitle: 'Logs de Auditoria',
+        text: 'Os logs registram automaticamente:',
         list: [
-          'Novos logins',
-          'Tentativas de login falhas',
-          'Alterações em configurações críticas'
+          'Logins e tentativas falhas',
+          'Criação, edição e exclusão de dados',
+          'Mudanças de status em agendamentos',
+          'Alterações em configurações'
         ],
-        tip: 'Ative alertas push para monitoramento em tempo real.'
+        tip: 'Revise os logs periodicamente para detectar atividades suspeitas.'
       }
     ]
   },
   {
-    id: 'mobile',
-    title: 'App Mobile',
+    id: 'usuarios',
+    title: 'Gestão de Usuários',
+    icon: Users,
+    content: [
+      {
+        subtitle: 'Criando Novos Usuários',
+        text: 'Para adicionar um novo usuário ao sistema:',
+        list: [
+          '1. Acesse Configurações > Usuários',
+          '2. Clique em "Novo Usuário"',
+          '3. Preencha email, nome e senha temporária',
+          '4. Selecione o nível de acesso',
+          '5. Defina data de expiração (opcional)'
+        ]
+      },
+      {
+        subtitle: 'Data de Expiração',
+        text: 'Útil para acessos temporários:',
+        list: [
+          'Barbeiros em período de experiência',
+          'Consultores externos',
+          'Acessos de demonstração'
+        ],
+        tip: 'Após expirar, o usuário não consegue mais fazer login.'
+      },
+      {
+        subtitle: 'Desativando Usuários',
+        text: 'Para revogar acesso sem excluir o histórico:',
+        list: [
+          'Clique no botão de desativar na lista de usuários',
+          'O usuário perde acesso imediatamente',
+          'Dados e histórico são preservados',
+          'Pode ser reativado posteriormente'
+        ],
+        warning: 'Sempre desative usuários ao desligar colaboradores!'
+      }
+    ]
+  },
+  {
+    id: 'webhooks',
+    title: 'Webhooks e Integrações',
+    icon: Webhook,
+    content: [
+      {
+        subtitle: 'O que são Webhooks?',
+        text: 'Webhooks enviam dados automaticamente para outros sistemas quando eventos ocorrem no Genesis.',
+      },
+      {
+        subtitle: 'Eventos Disponíveis',
+        text: 'Você pode configurar webhooks para:',
+        list: [
+          'Novo agendamento criado',
+          'Agendamento confirmado',
+          'Agendamento cancelado',
+          'Atendimento concluído',
+          'Cliente adicionado à fila'
+        ]
+      },
+      {
+        subtitle: 'Como Configurar',
+        list: [
+          '1. Acesse Configurações > API',
+          '2. Encontre o evento desejado',
+          '3. Cole a URL do webhook de destino',
+          '4. Ative o webhook',
+          '5. Teste usando o botão de teste'
+        ],
+        tip: 'Use webhooks para integrar com Zapier, Make, ou sistemas próprios.'
+      }
+    ]
+  },
+  {
+    id: 'notificacoes',
+    title: 'Notificações Push',
+    icon: Bell,
+    content: [
+      {
+        subtitle: 'Ativando Notificações',
+        text: 'Para receber alertas no navegador/celular:',
+        list: [
+          '1. Clique no ícone de sino no painel',
+          '2. Permita notificações quando solicitado',
+          '3. Configure quais alertas deseja receber'
+        ]
+      },
+      {
+        subtitle: 'Tipos de Alertas',
+        list: [
+          'Novo agendamento recebido',
+          'Cliente chegou na fila',
+          'Alerta de sobrecarga (muitos agendamentos)',
+          'Tentativas de login suspeitas'
+        ]
+      },
+      {
+        subtitle: 'Solução de Problemas',
+        text: 'Se não estiver recebendo notificações:',
+        list: [
+          'Verifique se o navegador permite notificações',
+          'Em celulares, instale o app na tela inicial',
+          'Verifique se não está no modo "Não perturbe"',
+          'Tente desativar e reativar as notificações'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'pwa',
+    title: 'Instalando no Celular',
     icon: Smartphone,
     content: [
       {
-        subtitle: 'Acesso pelo Celular',
-        text: 'O Genesis é um PWA (Progressive Web App) totalmente responsivo.',
-      },
-      {
-        subtitle: 'Como Instalar',
-        text: '',
+        subtitle: 'Por que Instalar?',
+        text: 'Instalando como app você ganha:',
         list: [
-          'Acesse o sistema pelo navegador do celular',
-          'Toque em "Adicionar à tela inicial"',
-          'O app será instalado como um ícone',
-          'Use como um app nativo'
+          'Acesso rápido pela tela inicial',
+          'Notificações push funcionando',
+          'Interface em tela cheia',
+          'Funciona mesmo com internet instável'
         ]
       },
       {
-        subtitle: 'Recursos Mobile',
-        text: '',
+        subtitle: 'Como Instalar (Android)',
         list: [
-          'Interface otimizada para toque',
-          'Notificações push',
-          'Funciona offline (modo limitado)',
-          'Pull-to-refresh para atualizar dados'
+          '1. Acesse o sistema pelo Chrome',
+          '2. Toque nos 3 pontinhos (menu)',
+          '3. Selecione "Adicionar à tela inicial"',
+          '4. Confirme o nome do app',
+          '5. Pronto! O ícone aparecerá na tela inicial'
+        ]
+      },
+      {
+        subtitle: 'Como Instalar (iPhone)',
+        list: [
+          '1. Acesse o sistema pelo Safari',
+          '2. Toque no ícone de compartilhar',
+          '3. Role e toque em "Adicionar à Tela de Início"',
+          '4. Confirme o nome do app',
+          '5. O ícone aparecerá na tela inicial'
         ],
-        tip: 'Instale o app para acesso rápido e notificações.'
+        warning: 'No iPhone, deve ser feito pelo Safari, não pelo Chrome.'
       }
     ]
   },
   {
-    id: 'site',
-    title: 'Site Público',
-    icon: Globe,
+    id: 'backup',
+    title: 'Backup e Restauração',
+    icon: Key,
     content: [
       {
-        subtitle: 'Sua Presença Online',
-        text: 'O Genesis inclui um site público profissional.',
-      },
-      {
-        subtitle: 'Seções do Site',
-        text: '',
+        subtitle: 'Exportando Dados',
+        text: 'Em Configurações > Backup você pode:',
         list: [
-          'Hero: Banner principal com CTA',
-          'Sobre: Descrição da barbearia',
-          'Serviços: Catálogo com preços',
-          'Galeria: Fotos dos trabalhos',
-          'Depoimentos: Feedbacks dos clientes',
-          'Localização: Mapa e endereço',
-          'Rodapé: Redes sociais e contato'
+          'Exportar todas as configurações',
+          'Exportar lista de clientes',
+          'Exportar histórico de agendamentos',
+          'Gerar relatórios em PDF'
         ]
       },
       {
-        text: 'Personalize todos os textos em Configurações > Textos do Site.',
-        tip: 'Um site bem configurado aumenta a confiança dos clientes.'
+        subtitle: 'Importando Dados',
+        text: 'Formatos aceitos:',
+        list: [
+          'Configurações: arquivo JSON do próprio Genesis',
+          'Contatos: CSV com colunas "nome" e "telefone"'
+        ],
+        warning: 'Importar configurações sobrescreve as atuais!'
       }
     ]
   },
   {
-    id: 'dicas',
-    title: 'Dicas Rápidas',
-    icon: Zap,
+    id: 'problemas',
+    title: 'Problemas Comuns',
+    icon: HelpCircle,
     content: [
       {
-        subtitle: 'Maximize sua Produtividade',
-        text: 'Aproveite ao máximo o sistema.',
-      },
-      {
-        subtitle: 'Atalhos e Truques',
-        text: '',
+        subtitle: 'Agendamento não aparece',
+        text: 'Possíveis causas:',
         list: [
-          'Use o menu colapsável para mais espaço',
-          'Ative notificações push para alertas',
-          'Configure templates de mensagem com IA',
-          'Faça backups semanais',
-          'Monitore logs de auditoria regularmente',
-          'Defina metas mensais para a equipe',
-          'Use o link direto de agendamento para clientes VIP'
+          'Filtro de data/status ativo - limpe os filtros',
+          'Barbeiro em folga no dia selecionado',
+          'Horário fora do expediente configurado'
         ]
       },
       {
-        subtitle: 'Boas Práticas',
-        text: '',
+        subtitle: 'WhatsApp não envia mensagens',
+        text: 'Verifique:',
         list: [
-          'Confirme agendamentos no início do dia',
-          'Responda feedbacks negativos rapidamente',
-          'Mantenha a galeria atualizada',
-          'Revise preços periodicamente',
-          'Treine sua equipe no uso do sistema'
+          'ChatPro está configurado e conectado',
+          'Token da API está correto',
+          'Número do cliente está no formato correto (DDI+DDD+número)',
+          'Template de mensagem está ativo',
+          'Limite diário não foi atingido'
+        ]
+      },
+      {
+        subtitle: 'Notificações não funcionam',
+        text: 'Soluções:',
+        list: [
+          'Permita notificações no navegador',
+          'Instale o app na tela inicial (celulares)',
+          'Desative bloqueadores de anúncios',
+          'Verifique se Push está ativo nas configurações'
+        ]
+      },
+      {
+        subtitle: 'Sistema lento',
+        text: 'O que fazer:',
+        list: [
+          'Limpe o cache do navegador',
+          'Feche outras abas',
+          'Verifique sua conexão com internet',
+          'Tente outro navegador (recomendamos Chrome)'
+        ]
+      }
+    ]
+  },
+  {
+    id: 'suporte',
+    title: 'Suporte Técnico',
+    icon: AlertTriangle,
+    content: [
+      {
+        subtitle: 'Antes de Pedir Ajuda',
+        text: 'Verifique:',
+        list: [
+          'Se o problema persiste após atualizar a página',
+          'Se outros usuários têm o mesmo problema',
+          'Se há algum alerta no painel de notificações',
+          'Se todas as configurações estão corretas'
+        ]
+      },
+      {
+        subtitle: 'Informações para Suporte',
+        text: 'Ao solicitar ajuda, informe:',
+        list: [
+          'Descrição detalhada do problema',
+          'Passos para reproduzir o erro',
+          'Navegador e dispositivo usado',
+          'Capturas de tela do erro (se houver)',
+          'Horário aproximado que ocorreu'
         ],
-        tip: 'Consistência no uso do sistema gera melhores resultados.'
+        tip: 'Quanto mais detalhes, mais rápido conseguimos ajudar!'
       }
     ]
   }
 ];
 
 export default function GenesisDocumentation() {
-  const [activeSection, setActiveSection] = useState('overview');
+  const [activeSection, setActiveSection] = useState('primeiros-passos');
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredSections = searchQuery
     ? documentationSections.filter(s => 
         s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.content.some(c => 
-          c.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          c.text?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           c.subtitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           c.list?.some(l => l.toLowerCase().includes(searchQuery.toLowerCase()))
         )
@@ -686,21 +456,23 @@ export default function GenesisDocumentation() {
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center justify-between mb-6">
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header fixo */}
+      <div className="flex items-center justify-between mb-6 flex-shrink-0">
         <div className="flex items-center gap-3">
           <Book className="w-7 h-7 text-primary" />
           <div>
             <h2 className="text-2xl font-bold">Documentação Genesis</h2>
-            <p className="text-sm text-muted-foreground">Guia completo do sistema</p>
+            <p className="text-sm text-muted-foreground">Guia essencial do sistema</p>
           </div>
         </div>
       </div>
 
-      <div className="flex gap-6 flex-1 min-h-0">
-        {/* Sidebar - Index */}
-        <div className="w-64 flex-shrink-0 flex flex-col min-h-0">
-          <div className="mb-4">
+      {/* Container principal com scroll contido */}
+      <div className="flex gap-6 flex-1 min-h-0 overflow-hidden">
+        {/* Sidebar fixa */}
+        <div className="w-64 flex-shrink-0 flex flex-col overflow-hidden">
+          <div className="mb-4 flex-shrink-0">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -741,61 +513,71 @@ export default function GenesisDocumentation() {
           </ScrollArea>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <ScrollArea className="flex-1 pr-4">
-            {currentSection && (
-              <div className="space-y-6 pb-6">
-                <div className="flex items-center gap-3 pb-4 border-b border-border">
-                  {(() => {
-                    const Icon = currentSection.icon;
-                    return <Icon className="w-6 h-6 text-primary" />;
-                  })()}
-                  <h3 className="text-xl font-bold">{currentSection.title}</h3>
-                </div>
-
-                {currentSection.content.map((content, idx) => (
-                  <div key={idx} className="space-y-3">
-                    {content.subtitle && (
-                      <h4 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-primary" />
-                        {content.subtitle}
-                      </h4>
-                    )}
-
-                    {content.text && (
-                      <p className="text-muted-foreground leading-relaxed">
-                        {content.text}
-                      </p>
-                    )}
-
-                    {content.list && (
-                      <ul className="space-y-2 ml-4">
-                        {content.list.map((item, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-
-                    {content.tip && (
-                      <div className="flex items-start gap-3 p-4 bg-primary/10 border border-primary/20 rounded-xl">
-                        <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-primary">
-                          <strong>Dica:</strong> {content.tip}
-                        </p>
-                      </div>
-                    )}
+        {/* Content com scroll próprio */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <ScrollArea className="flex-1">
+            <div className="pr-4">
+              {currentSection && (
+                <div className="space-y-6 pb-6">
+                  <div className="flex items-center gap-3 pb-4 border-b border-border">
+                    {(() => {
+                      const Icon = currentSection.icon;
+                      return <Icon className="w-6 h-6 text-primary" />;
+                    })()}
+                    <h3 className="text-xl font-bold">{currentSection.title}</h3>
                   </div>
-                ))}
-              </div>
-            )}
+
+                  {currentSection.content.map((content, idx) => (
+                    <div key={idx} className="space-y-3">
+                      {content.subtitle && (
+                        <h4 className="text-lg font-semibold text-foreground">
+                          {content.subtitle}
+                        </h4>
+                      )}
+
+                      {content.text && (
+                        <p className="text-muted-foreground leading-relaxed">
+                          {content.text}
+                        </p>
+                      )}
+
+                      {content.list && (
+                        <ul className="space-y-2 ml-4">
+                          {content.list.map((item, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {content.warning && (
+                        <div className="flex items-start gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-xl">
+                          <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                          <p className="text-sm text-destructive">
+                            <strong>Atenção:</strong> {content.warning}
+                          </p>
+                        </div>
+                      )}
+
+                      {content.tip && (
+                        <div className="flex items-start gap-3 p-4 bg-primary/10 border border-primary/20 rounded-xl">
+                          <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                          <p className="text-sm text-primary">
+                            <strong>Dica:</strong> {content.tip}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </ScrollArea>
 
-          {/* Navigation */}
-          <div className="flex items-center justify-between pt-4 border-t border-border mt-auto">
+          {/* Navigation fixo no rodapé */}
+          <div className="flex items-center justify-between pt-4 border-t border-border mt-auto flex-shrink-0">
             <Button
               variant="outline"
               size="sm"
