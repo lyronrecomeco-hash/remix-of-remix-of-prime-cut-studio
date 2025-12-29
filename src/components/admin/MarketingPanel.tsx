@@ -688,8 +688,8 @@ export default function MarketingPanel() {
           </div>
 
           {/* New Campaign Button */}
-          <Button variant="hero" size="lg" onClick={() => setShowNewCampaignModal(true)} className="w-full h-12 sm:h-14 text-base sm:text-lg">
-            <Plus className="w-4 sm:w-5 h-4 sm:h-5" />
+          <Button variant="hero" onClick={() => setShowNewCampaignModal(true)} className="w-full h-10">
+            <Plus className="w-4 h-4" />
             Nova Campanha
           </Button>
 

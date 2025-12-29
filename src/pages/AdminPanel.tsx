@@ -1517,7 +1517,7 @@ const AdminPanel = () => {
             </div>
           )}
 
-          <nav className={`flex-1 min-h-0 overflow-y-auto scrollbar-hide ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
+          <nav className={`flex-1 min-h-0 overflow-y-auto scrollbar-hide py-2 ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
             {menuItems.map((item) => (
               <div key={item.id} className="relative group">
                 <button
@@ -1548,12 +1548,9 @@ const AdminPanel = () => {
               </div>
             ))}
           </nav>
-
-          {/* Spacer */}
-          <div className="flex-1" />
           
-          {/* Logout Button - Separated */}
-          <div className={`mt-auto border-t border-sidebar-border ${isSidebarCollapsed ? 'p-2' : 'p-4'}`}>
+          {/* Logout Button - Separated at bottom */}
+          <div className={`shrink-0 border-t border-sidebar-border ${isSidebarCollapsed ? 'p-2' : 'p-4'}`}>
             <button
               onClick={() => signOut()}
               className={`flex items-center gap-3 text-muted-foreground hover:text-destructive transition-colors w-full touch-manipulation rounded-xl ${
