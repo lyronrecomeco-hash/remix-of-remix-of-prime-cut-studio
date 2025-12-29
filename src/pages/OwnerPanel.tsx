@@ -21,18 +21,15 @@ const OwnerPanel = () => {
 
   useEffect(() => {
     const verifyOwner = async () => {
+      // Wait for auth to finish loading
       if (authLoading) return;
 
-      if (!user) {
-        navigate('/', { replace: true });
-        return;
-      }
-
-      // Double verification: must be super_admin AND have the correct email
+      // Get current user email
       const { data: userData } = await supabase.auth.getUser();
       const userEmail = userData?.user?.email;
 
-      if (!isSuperAdmin || userEmail !== OWNER_EMAIL) {
+      // Must be logged in, be super_admin, and have the correct email
+      if (!user || !isSuperAdmin || userEmail !== OWNER_EMAIL) {
         // Silently redirect - user should never know this page exists
         navigate('/', { replace: true });
         return;
