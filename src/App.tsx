@@ -31,6 +31,7 @@ const ConfirmarEmail = lazy(() => import("./pages/ConfirmarEmail"));
 const RedefinirSenha = lazy(() => import("./pages/RedefinirSenha"));
 const TermosDeUso = lazy(() => import("./pages/TermosDeUso"));
 const PoliticaDePrivacidade = lazy(() => import("./pages/PoliticaDePrivacidade"));
+const Docs = lazy(() => import("./pages/Docs"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // QueryClient com retry logic e cache otimizado
@@ -141,6 +142,7 @@ const AppContent = () => {
             <Route path="/redefinir-senha" element={<RedefinirSenha />} />
             <Route path="/termos" element={<TermosDeUso />} />
             <Route path="/privacidade" element={<PoliticaDePrivacidade />} />
+            <Route path="/docs" element={<Docs />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
