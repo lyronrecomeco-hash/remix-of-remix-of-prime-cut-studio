@@ -916,7 +916,7 @@ const documentationSections: DocSection[] = [
   }
 ];
 
-export default function GenesisDocumentation() {
+const GenesisDocumentation = React.forwardRef<HTMLDivElement>((props, ref) => {
   const [activeSection, setActiveSection] = useState('primeiros-passos');
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -948,7 +948,7 @@ export default function GenesisDocumentation() {
   };
 
   return (
-    <div className="flex h-full overflow-hidden relative">
+    <div ref={ref} className="flex h-full overflow-hidden relative">
       {/* Botão de menu mobile */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -1122,4 +1122,8 @@ export default function GenesisDocumentation() {
       </div>
     </div>
   );
-}
+});
+
+GenesisDocumentation.displayName = 'GenesisDocumentation';
+
+export default GenesisDocumentation;

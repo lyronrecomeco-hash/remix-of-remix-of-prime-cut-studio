@@ -530,13 +530,60 @@ export default function SettingsPanel() {
   };
 
   const fetchTemplates = async () => {
-    const { data } = await supabase.from('message_templates').select('*');
-    if (data) setTemplates(data as MessageTemplate[]);
+    const { data, error } = await supabase.from('message_templates').select('*');
+    if (error) {
+      console.error('Error fetching templates:', error);
+      return;
+    }
+    
+    if (data && data.length > 0) {
+      setTemplates(data as MessageTemplate[]);
+    } else {
+      // Create default templates if none exist
+      const templatesToCreate = Object.entries(defaultTemplates).map(([eventType, template]) => ({
+        event_type: eventType,
+        title: eventLabels[eventType] || eventType,
+        template,
+        is_active: true,
+        chatpro_enabled: true,
+      }));
+      
+      const { data: newTemplates, error: insertError } = await supabase
+        .from('message_templates')
+        .insert(templatesToCreate)
+        .select();
+      
+      if (!insertError && newTemplates) {
+        setTemplates(newTemplates as MessageTemplate[]);
+      }
+    }
   };
 
   const fetchChatProConfig = async () => {
-    const { data } = await supabase.from('chatpro_config').select('*').limit(1).single();
-    if (data) setChatproConfig(data as ChatProConfig);
+    const { data, error } = await supabase.from('chatpro_config').select('*').limit(1).maybeSingle();
+    if (error) {
+      console.error('Error fetching ChatPro config:', error);
+      return;
+    }
+    if (data) {
+      setChatproConfig(data as ChatProConfig);
+    } else {
+      // Create default config if none exists
+      const { data: newData, error: insertError } = await supabase
+        .from('chatpro_config')
+        .insert([{
+          is_enabled: false,
+          api_token: '',
+          instance_id: '',
+          base_endpoint: 'https://v2.chatpro.com.br'
+        }])
+        .select()
+        .single();
+      
+      if (!insertError && newData) {
+        setChatproConfig(newData as ChatProConfig);
+      }
+    }
   };
 
   const updateChatProConfig = async (updates: Partial<ChatProConfig>) => {
@@ -1854,6 +1901,9 @@ Retorne APENAS a mensagem, sem explicações.`;
               <Type className="w-5 h-5 text-primary" />
               Editar Textos do Site
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Personalize os textos exibidos nas seções do site.
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
@@ -1952,6 +2002,9 @@ Retorne APENAS a mensagem, sem explicações.`;
               <Clock className="w-5 h-5 text-primary" />
               Configurar Horários
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Configure os horários de trabalho dos barbeiros.
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
@@ -2161,6 +2214,9 @@ Retorne APENAS a mensagem, sem explicações.`;
               <FileText className="w-5 h-5 text-primary" />
               {editingTemplate ? eventLabels[editingTemplate] : 'Template'}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Edite o template de mensagem para este evento.
+            </DialogDescription>
           </DialogHeader>
           
           {editingTemplate && (() => {
@@ -2280,6 +2336,9 @@ Retorne APENAS a mensagem, sem explicações.`;
               <ShieldCheck className="w-5 h-5 text-purple-500" />
               Configuração de Auditoria
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Configure as opções de log de auditoria do sistema.
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto scrollbar-hide">
