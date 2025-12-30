@@ -272,26 +272,58 @@ const EmailTemplatesManager = () => {
     const urlVar = getUrlVariable(templateType);
     const defaults = getDefaultConfig(templateType);
     
+    // Extract icon
     const iconMatch = html.match(/<div class="icon">([^<]*)<\/div>/);
-    const headerTitleMatch = html.match(/<h1[^>]*>([^<]*)<\/h1>/);
-    const contentTitleMatch = html.match(/<h2[^>]*>([^<]*)<\/h2>/);
-    const buttonTextMatch = html.match(/<a[^>]*class="button"[^>]*>([^<]*)<\/a>/);
-    const headerColorMatch = html.match(/\.header\s*\{[^}]*background[^:]*:\s*[^;]*?([#][0-9a-fA-F]{6})/);
-    const buttonColorMatch = html.match(/\.button\s*\{[^}]*background[^:]*:\s*[^;]*?([#][0-9a-fA-F]{6})/);
+    
+    // Extract header title
+    const headerTitleMatch = html.match(/<div class="header">[\s\S]*?<h1[^>]*>([^<]*)<\/h1>/);
+    
+    // Extract content title (h2 inside content div)
+    const contentTitleMatch = html.match(/<div class="content">[\s\S]*?<h2[^>]*>([\s\S]*?)<\/h2>/);
+    
+    // Extract content text (p inside content div, after h2)
+    const contentTextMatch = html.match(/<div class="content">[\s\S]*?<h2[^>]*>[\s\S]*?<\/h2>[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/);
+    
+    // Extract button text
+    const buttonTextMatch = html.match(/<a[^>]*class="button"[^>]*>([\s\S]*?)<\/a>/);
+    
+    // Extract button URL
+    const buttonUrlMatch = html.match(/<a[^>]*href="([^"]*)"[^>]*class="button"/);
+    
+    // Extract header color - look for linear-gradient with the color
+    const headerColorMatch = html.match(/\.header\s*\{[^}]*linear-gradient\s*\([^,]*,\s*([#][0-9a-fA-F]{6})/);
+    // Fallback: look for background-color
+    const headerColorFallback = html.match(/\.header\s*\{[^}]*background(?:-color)?:\s*([#][0-9a-fA-F]{6})/);
+    
+    // Extract button color
+    const buttonColorMatch = html.match(/\.button\s*\{[^}]*linear-gradient\s*\([^,]*,\s*([#][0-9a-fA-F]{6})/);
+    const buttonColorFallback = html.match(/\.button\s*\{[^}]*background(?:-color)?:\s*([#][0-9a-fA-F]{6})/);
+    
+    // Extract logo URL
+    const logoMatch = html.match(/<img[^>]*src="([^"]*)"[^>]*class="logo"/);
+    
+    // Extract expiration text
+    const expirationMatch = html.match(/class="expiration"[^>]*>[\s\S]*?<strong>⏱\s*([\s\S]*?)<\/strong>/);
+    
+    // Extract footer text
+    const footerTextMatch = html.match(/<div class="footer">[\s\S]*?<p><strong>([\s\S]*?)<\/strong><\/p>/);
+    
+    // Extract footer subtext
+    const footerSubtextMatch = html.match(/<div class="footer">[\s\S]*?<strong>[\s\S]*?<\/strong><\/p>[\s\S]*?<p>([\s\S]*?)<\/p>/);
     
     return {
-      logoUrl: '',
+      logoUrl: logoMatch?.[1] || '',
       headerIcon: iconMatch?.[1] || defaults.headerIcon || '✨',
-      headerTitle: headerTitleMatch?.[1]?.replace(/^[^\w]*/, '') || defaults.headerTitle || 'Barber Studio',
-      headerBgColor: headerColorMatch?.[1] || '#c9a227',
-      contentTitle: contentTitleMatch?.[1] || defaults.contentTitle || '',
-      contentText: defaults.contentText || '',
-      buttonText: buttonTextMatch?.[1] || defaults.buttonText || 'Clique Aqui',
-      buttonUrl: `{{${urlVar}}}`,
-      buttonBgColor: buttonColorMatch?.[1] || '#c9a227',
-      expirationText: defaults.expirationText || 'Este link expira em 24 horas.',
-      footerText: 'Barber Studio - Tradição e Estilo',
-      footerSubtext: 'Se você não solicitou este email, pode ignorá-lo.',
+      headerTitle: headerTitleMatch?.[1]?.trim() || defaults.headerTitle || 'Barber Studio',
+      headerBgColor: headerColorMatch?.[1] || headerColorFallback?.[1] || '#c9a227',
+      contentTitle: contentTitleMatch?.[1]?.trim() || defaults.contentTitle || '',
+      contentText: contentTextMatch?.[1]?.trim() || defaults.contentText || '',
+      buttonText: buttonTextMatch?.[1]?.trim() || defaults.buttonText || 'Clique Aqui',
+      buttonUrl: buttonUrlMatch?.[1] || `{{${urlVar}}}`,
+      buttonBgColor: buttonColorMatch?.[1] || buttonColorFallback?.[1] || '#c9a227',
+      expirationText: expirationMatch?.[1]?.trim() || defaults.expirationText || '',
+      footerText: footerTextMatch?.[1]?.trim() || 'Barber Studio - Tradição e Estilo',
+      footerSubtext: footerSubtextMatch?.[1]?.trim() || 'Se você não solicitou este email, pode ignorá-lo.',
     };
   };
 
@@ -310,18 +342,18 @@ const EmailTemplatesManager = () => {
   };
 
   const getDefaultVariables = (templateType: string): string[] => {
-    const baseVars = ['name', 'email'];
+    const baseVars = ['name', 'email', 'first_name', 'last_name', 'phone', 'company_name', 'current_date', 'current_year'];
     switch (templateType) {
-      case 'auth_confirm': return [...baseVars, 'confirmation_url'];
-      case 'auth_reset': return [...baseVars, 'reset_url'];
-      case 'auth_magic_link': return [...baseVars, 'magic_link_url'];
-      case 'auth_invite': return [...baseVars, 'invite_url'];
-      case 'welcome': return [...baseVars, 'dashboard_url'];
-      case 'marketing': return [...baseVars, 'promo_url', 'discount_code'];
-      case 'reminder': return [...baseVars, 'appointment_url', 'date', 'time', 'service'];
-      case 'appointment': return [...baseVars, 'appointment_url', 'date', 'time', 'service', 'barber'];
-      case 'newsletter': return [...baseVars, 'unsubscribe_url'];
-      default: return [...baseVars, 'action_url'];
+      case 'auth_confirm': return [...baseVars, 'confirmation_url', 'token'];
+      case 'auth_reset': return [...baseVars, 'reset_url', 'token', 'expires_in'];
+      case 'auth_magic_link': return [...baseVars, 'magic_link_url', 'token'];
+      case 'auth_invite': return [...baseVars, 'invite_url', 'inviter_name', 'role'];
+      case 'welcome': return [...baseVars, 'dashboard_url', 'account_created_at'];
+      case 'marketing': return [...baseVars, 'promo_url', 'discount_code', 'discount_percent', 'offer_expires', 'product_name'];
+      case 'reminder': return [...baseVars, 'appointment_url', 'date', 'time', 'service', 'service_price', 'location', 'barber'];
+      case 'appointment': return [...baseVars, 'appointment_url', 'date', 'time', 'service', 'service_price', 'service_duration', 'barber', 'location', 'protocol'];
+      case 'newsletter': return [...baseVars, 'unsubscribe_url', 'newsletter_title', 'edition_number'];
+      default: return [...baseVars, 'action_url', 'custom_field_1', 'custom_field_2'];
     }
   };
 
@@ -632,6 +664,7 @@ const EmailTemplatesManager = () => {
     let previewContent = html;
     
     const exampleValues: Record<string, string> = {
+      // URLs
       confirmation_url: 'https://suaapp.com/email-confirmado',
       reset_url: 'https://suaapp.com/auth/reset?token=xyz789',
       magic_link_url: 'https://suaapp.com/auth/callback?token=magic123',
@@ -641,13 +674,44 @@ const EmailTemplatesManager = () => {
       appointment_url: 'https://suaapp.com/agendamento/12345',
       action_url: 'https://suaapp.com/action',
       unsubscribe_url: 'https://suaapp.com/unsubscribe',
+      // Dados pessoais
       email: 'usuario@exemplo.com',
       name: 'João Silva',
+      first_name: 'João',
+      last_name: 'Silva',
+      phone: '(11) 99999-9999',
+      // Empresa
+      company_name: 'Barber Studio',
+      // Datas e tempo
+      current_date: new Date().toLocaleDateString('pt-BR'),
+      current_year: new Date().getFullYear().toString(),
+      account_created_at: new Date().toLocaleDateString('pt-BR'),
+      expires_in: '24 horas',
+      // Agendamento
       date: '15/01/2025',
       time: '14:00',
       service: 'Corte + Barba',
+      service_price: 'R$ 75,00',
+      service_duration: '45 minutos',
       barber: 'Carlos',
+      location: 'Rua das Flores, 123',
+      protocol: 'AGD-2025-0001',
+      // Marketing
       discount_code: 'PROMO2025',
+      discount_percent: '20%',
+      offer_expires: '31/01/2025',
+      product_name: 'Combo Premium',
+      // Convites
+      inviter_name: 'Admin',
+      role: 'Colaborador',
+      // Token
+      token: 'abc123xyz789',
+      // Newsletter
+      newsletter_title: 'Novidades de Janeiro',
+      edition_number: '#42',
+      // Custom
+      custom_field_1: 'Valor Personalizado 1',
+      custom_field_2: 'Valor Personalizado 2',
     };
 
     Object.entries(exampleValues).forEach(([key, value]) => {
@@ -1328,6 +1392,42 @@ Ou: Template minimalista e elegante, cores preto e dourado, texto formal e sofis
                       onChange={(e) => setTemplateConfig({ ...templateConfig, footerText: e.target.value })}
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Subtexto do Rodapé</Label>
+                    <Input
+                      value={templateConfig.footerSubtext}
+                      onChange={(e) => setTemplateConfig({ ...templateConfig, footerSubtext: e.target.value })}
+                    />
+                  </div>
+
+                  {/* Variables Section */}
+                  <Card className="border-primary/20 bg-primary/5">
+                    <CardContent className="pt-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <FileText className="w-4 h-4 text-primary" />
+                        <p className="text-sm font-medium">Variáveis de Personalização</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Clique em uma variável para copiá-la. Cole no texto principal, assunto ou outros campos.
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {editingTemplate.variables.map((v, i) => (
+                          <Badge 
+                            key={i} 
+                            variant="outline" 
+                            className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`{{${v}}}`);
+                              toast.success(`{{${v}}} copiado!`);
+                            }}
+                          >
+                            {`{{${v}}}`}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </TabsContent>
 
                 {/* Header Tab */}
@@ -1381,6 +1481,33 @@ Ou: Template minimalista e elegante, cores preto e dourado, texto formal e sofis
                       />
                     </div>
                   </div>
+
+                  {/* Quick color presets */}
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Cores pré-definidas</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { color: '#c9a227', name: 'Dourado' },
+                        { color: '#1e40af', name: 'Azul' },
+                        { color: '#166534', name: 'Verde' },
+                        { color: '#dc2626', name: 'Vermelho' },
+                        { color: '#7c3aed', name: 'Roxo' },
+                        { color: '#0891b2', name: 'Ciano' },
+                        { color: '#ea580c', name: 'Laranja' },
+                        { color: '#be185d', name: 'Rosa' },
+                        { color: '#1f2937', name: 'Escuro' },
+                      ].map((preset) => (
+                        <button
+                          key={preset.color}
+                          type="button"
+                          className="w-8 h-8 rounded-lg border-2 border-border hover:border-primary transition-colors"
+                          style={{ backgroundColor: preset.color }}
+                          title={preset.name}
+                          onClick={() => setTemplateConfig({ ...templateConfig, headerBgColor: preset.color })}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </TabsContent>
 
                 {/* Button Tab */}
@@ -1424,6 +1551,33 @@ Ou: Template minimalista e elegante, cores preto e dourado, texto formal e sofis
                         onChange={(e) => setTemplateConfig({ ...templateConfig, buttonBgColor: e.target.value })}
                         className="flex-1"
                       />
+                    </div>
+                  </div>
+
+                  {/* Quick color presets for button */}
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Cores pré-definidas</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { color: '#c9a227', name: 'Dourado' },
+                        { color: '#1e40af', name: 'Azul' },
+                        { color: '#166534', name: 'Verde' },
+                        { color: '#dc2626', name: 'Vermelho' },
+                        { color: '#7c3aed', name: 'Roxo' },
+                        { color: '#0891b2', name: 'Ciano' },
+                        { color: '#ea580c', name: 'Laranja' },
+                        { color: '#be185d', name: 'Rosa' },
+                        { color: '#1f2937', name: 'Escuro' },
+                      ].map((preset) => (
+                        <button
+                          key={preset.color}
+                          type="button"
+                          className="w-8 h-8 rounded-lg border-2 border-border hover:border-primary transition-colors"
+                          style={{ backgroundColor: preset.color }}
+                          title={preset.name}
+                          onClick={() => setTemplateConfig({ ...templateConfig, buttonBgColor: preset.color })}
+                        />
+                      ))}
                     </div>
                   </div>
 
