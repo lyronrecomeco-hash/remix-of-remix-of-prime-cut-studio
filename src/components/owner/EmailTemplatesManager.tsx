@@ -8,9 +8,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Mail, Edit, Save, X, Eye, Sparkles, Loader2, ShieldCheck, Key, Link2, UserPlus, AlertTriangle, Image, Type, FileText, MousePointer, Copy, Check, Webhook, ExternalLink, Palette, Send, RefreshCw } from 'lucide-react';
+import { 
+  Mail, Edit, Save, X, Eye, Sparkles, Loader2, ShieldCheck, Key, Link2, 
+  UserPlus, AlertTriangle, Image, Type, FileText, MousePointer, Copy, Check, 
+  Webhook, ExternalLink, Palette, Send, RefreshCw, Plus, Megaphone, Gift, 
+  Bell, Calendar, Users, Trash2
+} from 'lucide-react';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/modal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface EmailTemplate {
   id: string;
@@ -46,10 +54,32 @@ interface WebhookEvent {
   data: Record<string, unknown>;
 }
 
+interface UserForEmail {
+  id: string;
+  email: string;
+  name: string;
+  selected: boolean;
+}
+
+// All available template types
+const TEMPLATE_TYPES = [
+  { value: 'auth_confirm', label: 'Confirmação de Email', icon: ShieldCheck, description: 'Email enviado após cadastro' },
+  { value: 'auth_reset', label: 'Recuperação de Senha', icon: Key, description: 'Email para redefinir senha' },
+  { value: 'auth_magic_link', label: 'Link Mágico', icon: Link2, description: 'Acesso sem senha' },
+  { value: 'auth_invite', label: 'Convite de Usuário', icon: UserPlus, description: 'Convite para novos usuários' },
+  { value: 'welcome', label: 'Boas-Vindas', icon: Gift, description: 'Email após confirmação de email' },
+  { value: 'marketing', label: 'Marketing', icon: Megaphone, description: 'Campanhas e promoções' },
+  { value: 'reminder', label: 'Lembrete', icon: Bell, description: 'Lembretes de agendamento' },
+  { value: 'newsletter', label: 'Newsletter', icon: Mail, description: 'Novidades e atualizações' },
+  { value: 'appointment', label: 'Confirmação de Agendamento', icon: Calendar, description: 'Confirmação de horário marcado' },
+  { value: 'custom', label: 'Personalizado', icon: FileText, description: 'Template customizado' },
+];
+
 const EmailTemplatesManager = () => {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
@@ -60,6 +90,20 @@ const EmailTemplatesManager = () => {
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testEmail, setTestEmail] = useState('');
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Send email modal
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendingTemplate, setSendingTemplate] = useState<EmailTemplate | null>(null);
+  const [usersForEmail, setUsersForEmail] = useState<UserForEmail[]>([]);
+  const [isSendingEmails, setIsSendingEmails] = useState(false);
+  const [selectAllUsers, setSelectAllUsers] = useState(false);
+  
+  // New template state
+  const [newTemplateType, setNewTemplateType] = useState('');
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplateSubject, setNewTemplateSubject] = useState('');
+  
   const [templateConfig, setTemplateConfig] = useState<TemplateConfig>({
     logoUrl: '',
     headerIcon: '✨',
@@ -80,7 +124,6 @@ const EmailTemplatesManager = () => {
     generateWebhookUrl();
     fetchWebhookEvents();
     
-    // Auto-refresh webhook events every 10 seconds
     const interval = setInterval(() => {
       fetchWebhookEvents();
       setLastRefresh(new Date());
@@ -90,8 +133,6 @@ const EmailTemplatesManager = () => {
   }, []);
 
   const generateWebhookUrl = () => {
-    // Get current domain automatically
-    const domain = window.location.origin;
     const projectId = 'wvnszzrvrrueuycrpgyc';
     const webhookEndpoint = `https://${projectId}.supabase.co/functions/v1/resend-webhook`;
     setWebhookUrl(webhookEndpoint);
@@ -110,7 +151,6 @@ const EmailTemplatesManager = () => {
 
   const fetchWebhookEvents = async () => {
     try {
-      // First try to fetch from email_webhook_events (real webhook events)
       const { data: webhookData, error: webhookError } = await supabase
         .from('email_webhook_events')
         .select('*')
@@ -127,7 +167,6 @@ const EmailTemplatesManager = () => {
         return;
       }
 
-      // Fallback to email_logs if no webhook events
       const { data, error } = await supabase
         .from('email_logs')
         .select('*')
@@ -195,27 +234,62 @@ const EmailTemplatesManager = () => {
     }
   };
 
+  const fetchUsersForEmail = async () => {
+    try {
+      // Get confirmed users from email_confirmation_tokens
+      const { data: confirmedUsers, error } = await supabase
+        .from('email_confirmation_tokens')
+        .select('email, user_id')
+        .not('confirmed_at', 'is', null);
+
+      if (error) throw error;
+
+      // Also try to get from user_profiles
+      const { data: profiles } = await supabase
+        .from('user_profiles')
+        .select('user_id, first_name, last_name');
+
+      const profileMap = new Map(profiles?.map(p => [p.user_id, `${p.first_name || ''} ${p.last_name || ''}`.trim()]) || []);
+
+      const users: UserForEmail[] = (confirmedUsers || []).map(u => ({
+        id: u.user_id,
+        email: u.email,
+        name: profileMap.get(u.user_id) || u.email.split('@')[0],
+        selected: false
+      }));
+
+      // Remove duplicates by email
+      const uniqueUsers = users.filter((u, i, arr) => arr.findIndex(x => x.email === u.email) === i);
+      
+      setUsersForEmail(uniqueUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Erro ao carregar usuários');
+    }
+  };
+
   const parseHtmlToConfig = (html: string, templateType: string): TemplateConfig => {
     const urlVar = getUrlVariable(templateType);
     const defaults = getDefaultConfig(templateType);
     
-    // Try to extract values from HTML
     const iconMatch = html.match(/<div class="icon">([^<]*)<\/div>/);
     const headerTitleMatch = html.match(/<h1[^>]*>([^<]*)<\/h1>/);
     const contentTitleMatch = html.match(/<h2[^>]*>([^<]*)<\/h2>/);
     const buttonTextMatch = html.match(/<a[^>]*class="button"[^>]*>([^<]*)<\/a>/);
+    const headerColorMatch = html.match(/\.header\s*\{[^}]*background[^:]*:\s*[^;]*?([#][0-9a-fA-F]{6})/);
+    const buttonColorMatch = html.match(/\.button\s*\{[^}]*background[^:]*:\s*[^;]*?([#][0-9a-fA-F]{6})/);
     
     return {
       logoUrl: '',
-      headerIcon: iconMatch?.[1] || defaults.headerIcon,
-      headerTitle: headerTitleMatch?.[1] || defaults.headerTitle,
-      headerBgColor: '#c9a227',
-      contentTitle: contentTitleMatch?.[1] || defaults.contentTitle,
-      contentText: defaults.contentText,
-      buttonText: buttonTextMatch?.[1] || defaults.buttonText,
+      headerIcon: iconMatch?.[1] || defaults.headerIcon || '✨',
+      headerTitle: headerTitleMatch?.[1]?.replace(/^[^\w]*/, '') || defaults.headerTitle || 'Barber Studio',
+      headerBgColor: headerColorMatch?.[1] || '#c9a227',
+      contentTitle: contentTitleMatch?.[1] || defaults.contentTitle || '',
+      contentText: defaults.contentText || '',
+      buttonText: buttonTextMatch?.[1] || defaults.buttonText || 'Clique Aqui',
       buttonUrl: `{{${urlVar}}}`,
-      buttonBgColor: '#c9a227',
-      expirationText: defaults.expirationText,
+      buttonBgColor: buttonColorMatch?.[1] || '#c9a227',
+      expirationText: defaults.expirationText || 'Este link expira em 24 horas.',
       footerText: 'Barber Studio - Tradição e Estilo',
       footerSubtext: 'Se você não solicitou este email, pode ignorá-lo.',
     };
@@ -227,7 +301,27 @@ const EmailTemplatesManager = () => {
       case 'auth_reset': return 'reset_url';
       case 'auth_magic_link': return 'magic_link_url';
       case 'auth_invite': return 'invite_url';
-      default: return 'confirmation_url';
+      case 'welcome': return 'dashboard_url';
+      case 'marketing': return 'promo_url';
+      case 'reminder': return 'appointment_url';
+      case 'appointment': return 'appointment_url';
+      default: return 'action_url';
+    }
+  };
+
+  const getDefaultVariables = (templateType: string): string[] => {
+    const baseVars = ['name', 'email'];
+    switch (templateType) {
+      case 'auth_confirm': return [...baseVars, 'confirmation_url'];
+      case 'auth_reset': return [...baseVars, 'reset_url'];
+      case 'auth_magic_link': return [...baseVars, 'magic_link_url'];
+      case 'auth_invite': return [...baseVars, 'invite_url'];
+      case 'welcome': return [...baseVars, 'dashboard_url'];
+      case 'marketing': return [...baseVars, 'promo_url', 'discount_code'];
+      case 'reminder': return [...baseVars, 'appointment_url', 'date', 'time', 'service'];
+      case 'appointment': return [...baseVars, 'appointment_url', 'date', 'time', 'service', 'barber'];
+      case 'newsletter': return [...baseVars, 'unsubscribe_url'];
+      default: return [...baseVars, 'action_url'];
     }
   };
 
@@ -269,8 +363,60 @@ const EmailTemplatesManager = () => {
           buttonText: 'Aceitar Convite',
           expirationText: 'Este link expira em 7 dias.',
         };
+      case 'welcome':
+        return {
+          headerIcon: '🎊',
+          headerTitle: 'Barber Studio',
+          contentTitle: 'Bem-vindo à Família!',
+          contentText: 'Sua conta foi confirmada com sucesso! Estamos muito felizes em ter você conosco. Explore nossos serviços e agende seu primeiro horário.',
+          buttonText: 'Acessar Minha Conta',
+          expirationText: '',
+        };
+      case 'marketing':
+        return {
+          headerIcon: '🎁',
+          headerTitle: 'Barber Studio',
+          contentTitle: 'Oferta Especial Para Você!',
+          contentText: 'Temos uma promoção exclusiva esperando por você. Não perca essa oportunidade!',
+          buttonText: 'Ver Promoção',
+          expirationText: 'Válido por tempo limitado.',
+        };
+      case 'reminder':
+        return {
+          headerIcon: '⏰',
+          headerTitle: 'Barber Studio',
+          contentTitle: 'Lembrete de Agendamento',
+          contentText: 'Este é um lembrete do seu horário marcado. Estamos te esperando!',
+          buttonText: 'Ver Detalhes',
+          expirationText: '',
+        };
+      case 'appointment':
+        return {
+          headerIcon: '📅',
+          headerTitle: 'Barber Studio',
+          contentTitle: 'Agendamento Confirmado!',
+          contentText: 'Seu horário foi confirmado com sucesso. Confira os detalhes abaixo.',
+          buttonText: 'Ver Agendamento',
+          expirationText: '',
+        };
+      case 'newsletter':
+        return {
+          headerIcon: '📰',
+          headerTitle: 'Barber Studio',
+          contentTitle: 'Novidades da Semana',
+          contentText: 'Confira as últimas novidades e dicas exclusivas da Barber Studio.',
+          buttonText: 'Ler Mais',
+          expirationText: '',
+        };
       default:
-        return {};
+        return {
+          headerIcon: '✉️',
+          headerTitle: 'Barber Studio',
+          contentTitle: 'Título do Email',
+          contentText: 'Conteúdo do email vai aqui.',
+          buttonText: 'Clique Aqui',
+          expirationText: '',
+        };
     }
   };
 
@@ -312,12 +458,14 @@ const EmailTemplatesManager = () => {
       <div class="button-container">
         <a href="${config.buttonUrl}" class="button">${config.buttonText}</a>
       </div>
+      ${config.expirationText ? `
       <div class="divider"></div>
       <p style="font-size: 13px;">Ou copie e cole este link no seu navegador:</p>
       <div class="link-box">
         <p>${config.buttonUrl}</p>
       </div>
       <p class="expiration"><strong>⏱ ${config.expirationText}</strong></p>
+      ` : ''}
     </div>
     <div class="footer">
       <p><strong>${config.footerText}</strong></p>
@@ -343,47 +491,139 @@ const EmailTemplatesManager = () => {
     setTemplateConfig(config);
     setEditingTemplate(template);
     setAiPrompt('');
+    setIsCreating(false);
+  };
+
+  const handleCreateNew = () => {
+    setNewTemplateType('');
+    setNewTemplateName('');
+    setNewTemplateSubject('');
+    setIsCreating(true);
+    setEditingTemplate(null);
+  };
+
+  const handleStartCreating = () => {
+    if (!newTemplateType || !newTemplateName || !newTemplateSubject) {
+      toast.error('Preencha todos os campos');
+      return;
+    }
+
+    const defaults = getDefaultConfig(newTemplateType);
+    const urlVar = getUrlVariable(newTemplateType);
+    
+    const config: TemplateConfig = {
+      logoUrl: '',
+      headerIcon: defaults.headerIcon || '✨',
+      headerTitle: defaults.headerTitle || 'Barber Studio',
+      headerBgColor: '#c9a227',
+      contentTitle: defaults.contentTitle || 'Título',
+      contentText: defaults.contentText || 'Conteúdo do email',
+      buttonText: defaults.buttonText || 'Clique Aqui',
+      buttonUrl: `{{${urlVar}}}`,
+      buttonBgColor: '#c9a227',
+      expirationText: defaults.expirationText || '',
+      footerText: 'Barber Studio - Tradição e Estilo',
+      footerSubtext: 'Se você não solicitou este email, pode ignorá-lo.',
+    };
+
+    setTemplateConfig(config);
+    
+    const newTemplate: EmailTemplate = {
+      id: '', // Will be created on save
+      template_type: newTemplateType,
+      name: newTemplateName,
+      subject: newTemplateSubject,
+      html_content: generateHtmlFromConfig(config),
+      variables: getDefaultVariables(newTemplateType),
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    setEditingTemplate(newTemplate);
   };
 
   const handleSave = async () => {
     if (!editingTemplate) return;
 
+    setIsSaving(true);
     try {
-      // Generate HTML from the current config
       const html = generateHtmlFromConfig(templateConfig);
       
-      console.log('Saving template with config:', templateConfig);
-      console.log('Generated HTML length:', html.length);
+      console.log('Saving template:', {
+        id: editingTemplate.id,
+        name: editingTemplate.name,
+        type: editingTemplate.template_type,
+        configSnapshot: templateConfig
+      });
       
-      const { data, error } = await supabase
-        .from('email_templates')
-        .update({
-          name: editingTemplate.name,
-          subject: editingTemplate.subject,
-          html_content: html,
-          is_active: editingTemplate.is_active,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', editingTemplate.id)
-        .select();
+      if (editingTemplate.id) {
+        // Update existing template
+        const { error } = await supabase
+          .from('email_templates')
+          .update({
+            name: editingTemplate.name,
+            subject: editingTemplate.subject,
+            html_content: html,
+            is_active: editingTemplate.is_active,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', editingTemplate.id);
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+        if (error) {
+          console.error('Supabase update error:', error);
+          throw error;
+        }
+        
+        toast.success('Template atualizado com sucesso!');
+      } else {
+        // Create new template
+        const { error } = await supabase
+          .from('email_templates')
+          .insert({
+            template_type: editingTemplate.template_type,
+            name: editingTemplate.name,
+            subject: editingTemplate.subject,
+            html_content: html,
+            variables: editingTemplate.variables,
+            is_active: editingTemplate.is_active,
+          });
+
+        if (error) {
+          console.error('Supabase insert error:', error);
+          throw error;
+        }
+        
+        toast.success('Template criado com sucesso!');
       }
-
-      console.log('Template saved successfully:', data);
       
-      toast.success('Template salvo com sucesso!');
-      
-      // Refresh templates list
       await fetchTemplates();
-      
-      // Close modal
       setEditingTemplate(null);
-    } catch (error) {
+      setIsCreating(false);
+    } catch (error: any) {
       console.error('Error saving template:', error);
-      toast.error('Erro ao salvar template');
+      toast.error(error.message || 'Erro ao salvar template');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (template: EmailTemplate) => {
+    if (!confirm(`Tem certeza que deseja excluir o template "${template.name}"?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('email_templates')
+        .delete()
+        .eq('id', template.id);
+
+      if (error) throw error;
+
+      toast.success('Template excluído!');
+      fetchTemplates();
+    } catch (error: any) {
+      console.error('Error deleting template:', error);
+      toast.error(error.message || 'Erro ao excluir template');
     }
   };
 
@@ -396,8 +636,18 @@ const EmailTemplatesManager = () => {
       reset_url: 'https://suaapp.com/auth/reset?token=xyz789',
       magic_link_url: 'https://suaapp.com/auth/callback?token=magic123',
       invite_url: 'https://suaapp.com/auth/invite?token=invite456',
+      dashboard_url: 'https://suaapp.com/dashboard',
+      promo_url: 'https://suaapp.com/promo/especial',
+      appointment_url: 'https://suaapp.com/agendamento/12345',
+      action_url: 'https://suaapp.com/action',
+      unsubscribe_url: 'https://suaapp.com/unsubscribe',
       email: 'usuario@exemplo.com',
       name: 'João Silva',
+      date: '15/01/2025',
+      time: '14:00',
+      service: 'Corte + Barba',
+      barber: 'Carlos',
+      discount_code: 'PROMO2025',
     };
 
     Object.entries(exampleValues).forEach(([key, value]) => {
@@ -408,15 +658,72 @@ const EmailTemplatesManager = () => {
     setShowPreview(true);
   };
 
+  const handleOpenSendModal = async (template: EmailTemplate) => {
+    setSendingTemplate(template);
+    setShowSendModal(true);
+    setSelectAllUsers(false);
+    await fetchUsersForEmail();
+  };
+
+  const handleToggleUserSelection = (userId: string) => {
+    setUsersForEmail(prev => prev.map(u => 
+      u.id === userId ? { ...u, selected: !u.selected } : u
+    ));
+  };
+
+  const handleToggleSelectAll = () => {
+    const newValue = !selectAllUsers;
+    setSelectAllUsers(newValue);
+    setUsersForEmail(prev => prev.map(u => ({ ...u, selected: newValue })));
+  };
+
+  const handleSendEmails = async () => {
+    if (!sendingTemplate) return;
+
+    const selectedUsers = usersForEmail.filter(u => u.selected);
+    if (selectedUsers.length === 0) {
+      toast.error('Selecione pelo menos um usuário');
+      return;
+    }
+
+    setIsSendingEmails(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-bulk-email', {
+        body: {
+          templateId: sendingTemplate.id,
+          templateType: sendingTemplate.template_type,
+          recipients: selectedUsers.map(u => ({ email: u.email, name: u.name }))
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(`${selectedUsers.length} email(s) enviado(s) com sucesso!`);
+      setShowSendModal(false);
+      fetchWebhookEvents();
+    } catch (error: any) {
+      console.error('Error sending emails:', error);
+      toast.error(error.message || 'Erro ao enviar emails');
+    } finally {
+      setIsSendingEmails(false);
+    }
+  };
+
   const generateWithAI = async () => {
-    if (!editingTemplate) return;
+    if (!aiPrompt.trim()) {
+      toast.error('Digite uma descrição para a IA');
+      return;
+    }
 
     setIsGeneratingAI(true);
     try {
+      const templateType = editingTemplate?.template_type || 'custom';
+      
       const { data, error } = await supabase.functions.invoke('generate-email-template', {
         body: {
-          prompt: aiPrompt || `Crie um template profissional e moderno para email de ${getTemplateTypeLabel(editingTemplate.template_type)} de uma barbearia sofisticada. Use cores elegantes e texto acolhedor.`,
-          templateType: editingTemplate.template_type,
+          prompt: aiPrompt,
+          templateType,
           currentConfig: {
             headerTitle: templateConfig.headerTitle,
             contentTitle: templateConfig.contentTitle,
@@ -433,7 +740,6 @@ const EmailTemplatesManager = () => {
       if (data?.success && data?.config) {
         const aiConfig = data.config;
         
-        // Apply AI generated config
         setTemplateConfig(prev => ({
           ...prev,
           headerTitle: aiConfig.headerTitle || prev.headerTitle,
@@ -444,9 +750,15 @@ const EmailTemplatesManager = () => {
           headerBgColor: aiConfig.headerBgColor || prev.headerBgColor,
           buttonBgColor: aiConfig.buttonBgColor || prev.buttonBgColor,
           footerText: aiConfig.footerText || prev.footerText,
+          expirationText: aiConfig.expirationText || prev.expirationText,
         }));
 
-        toast.success('Template personalizado com IA!');
+        toast.success('Template gerado com IA! Clique em Preview para ver.');
+        
+        // Auto show preview
+        setTimeout(() => {
+          handlePreview();
+        }, 500);
       } else {
         throw new Error(data?.error || 'Erro ao gerar template');
       }
@@ -459,33 +771,15 @@ const EmailTemplatesManager = () => {
   };
 
   const getTemplateTypeLabel = (type: string): string => {
-    switch (type) {
-      case 'auth_confirm': return 'confirmação de email';
-      case 'auth_reset': return 'redefinição de senha';
-      case 'auth_magic_link': return 'link mágico';
-      case 'auth_invite': return 'convite';
-      default: return 'email';
-    }
+    return TEMPLATE_TYPES.find(t => t.value === type)?.label || type;
   };
 
   const getTemplateIcon = (type: string) => {
-    switch (type) {
-      case 'auth_confirm': return ShieldCheck;
-      case 'auth_reset': return Key;
-      case 'auth_magic_link': return Link2;
-      case 'auth_invite': return UserPlus;
-      default: return Mail;
-    }
+    return TEMPLATE_TYPES.find(t => t.value === type)?.icon || Mail;
   };
 
   const getTemplateDescription = (type: string) => {
-    switch (type) {
-      case 'auth_confirm': return 'Email enviado quando um novo usuário se cadastra';
-      case 'auth_reset': return 'Email para recuperação de senha';
-      case 'auth_magic_link': return 'Email com link de acesso sem senha';
-      case 'auth_invite': return 'Email de convite para novos usuários';
-      default: return 'Template de email';
-    }
+    return TEMPLATE_TYPES.find(t => t.value === type)?.description || 'Template de email';
   };
 
   if (isLoading) {
@@ -510,8 +804,12 @@ const EmailTemplatesManager = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-foreground">Templates de Email</h2>
-          <p className="text-sm text-muted-foreground">Personalize completamente os emails de autenticação</p>
+          <p className="text-sm text-muted-foreground">Personalize e envie emails para seus usuários</p>
         </div>
+        <Button onClick={handleCreateNew} className="gap-2">
+          <Plus className="w-4 h-4" />
+          Novo Template
+        </Button>
       </div>
 
       {/* Info Alert */}
@@ -522,8 +820,7 @@ const EmailTemplatesManager = () => {
             <div>
               <p className="font-medium text-amber-500">Integração com Resend</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Os templates são enviados via <strong>Resend</strong>. Certifique-se de que a API Key está configurada.
-                O link de confirmação <code className="text-xs bg-muted px-1 rounded">{'{{confirmation_url}}'}</code> é inserido automaticamente.
+                Os templates são enviados via <strong>Resend</strong>. Variáveis como <code className="text-xs bg-muted px-1 rounded">{'{{name}}'}</code> são substituídas automaticamente.
               </p>
             </div>
           </div>
@@ -602,20 +899,6 @@ const EmailTemplatesManager = () => {
                 )}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Envia um email de teste usando o template de confirmação
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Eventos Suportados</Label>
-            <div className="flex flex-wrap gap-2">
-              {['email.sent', 'email.delivered', 'email.bounced', 'email.complained', 'email.opened', 'email.clicked'].map((event) => (
-                <Badge key={event} variant="outline" className="text-xs">
-                  {event}
-                </Badge>
-              ))}
-            </div>
           </div>
 
           <div className="space-y-2">
@@ -627,14 +910,14 @@ const EmailTemplatesManager = () => {
               </div>
             </div>
             {webhookEvents.length > 0 ? (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {webhookEvents.map((event) => (
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {webhookEvents.slice(0, 5).map((event) => (
                   <div key={event.id} className="flex items-center justify-between p-2 bg-secondary/30 rounded-lg text-sm">
                     <div className="flex items-center gap-2">
                       <Badge variant={event.type.includes('delivered') || event.type.includes('sent') ? 'default' : 'destructive'} className="text-xs">
                         {event.type}
                       </Badge>
-                      <span className="text-muted-foreground">{(event.data as any).email}</span>
+                      <span className="text-muted-foreground text-xs">{(event.data as any).email}</span>
                     </div>
                     <span className="text-xs text-muted-foreground">
                       {new Date(event.created_at).toLocaleString('pt-BR')}
@@ -643,14 +926,15 @@ const EmailTemplatesManager = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                Nenhum evento registrado ainda
+              <p className="text-sm text-muted-foreground py-2 text-center">
+                Nenhum evento registrado
               </p>
             )}
           </div>
         </CardContent>
       </Card>
 
+      {/* Templates Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {templates.map((template) => {
           const IconComponent = getTemplateIcon(template.template_type);
@@ -679,16 +963,6 @@ const EmailTemplatesManager = () => {
                   <p className="text-xs text-muted-foreground">Assunto:</p>
                   <p className="text-sm text-foreground">{template.subject}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Variáveis disponíveis:</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {template.variables.map((v, i) => (
-                      <Badge key={i} variant="outline" className="text-xs">
-                        {`{{${v}}}`}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
                 <div className="flex gap-2 pt-2">
                   <Button
                     size="sm"
@@ -696,7 +970,23 @@ const EmailTemplatesManager = () => {
                     className="flex-1"
                   >
                     <Edit className="w-3 h-3 mr-1" />
-                    Personalizar
+                    Editar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleOpenSendModal(template)}
+                  >
+                    <Send className="w-3 h-3 mr-1" />
+                    Enviar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleDelete(template)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="w-3 h-3" />
                   </Button>
                 </div>
               </CardContent>
@@ -705,18 +995,85 @@ const EmailTemplatesManager = () => {
         })}
       </div>
 
-      {/* Edit Modal - Visual Editor */}
+      {/* Create New Template Modal */}
+      <Modal
+        isOpen={isCreating && !editingTemplate}
+        onClose={() => setIsCreating(false)}
+        title="Criar Novo Template"
+        size="md"
+      >
+        <ModalBody className="space-y-4">
+          <div className="space-y-2">
+            <Label>Tipo do Template</Label>
+            <Select value={newTemplateType} onValueChange={setNewTemplateType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                {TEMPLATE_TYPES.map((type) => {
+                  const Icon = type.icon;
+                  return (
+                    <SelectItem key={type.value} value={type.value}>
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4" />
+                        <span>{type.label}</span>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            {newTemplateType && (
+              <p className="text-xs text-muted-foreground">
+                {TEMPLATE_TYPES.find(t => t.value === newTemplateType)?.description}
+              </p>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Nome do Template</Label>
+            <Input
+              value={newTemplateName}
+              onChange={(e) => setNewTemplateName(e.target.value)}
+              placeholder="Ex: Boas-Vindas Premium"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label>Assunto do Email</Label>
+            <Input
+              value={newTemplateSubject}
+              onChange={(e) => setNewTemplateSubject(e.target.value)}
+              placeholder="Ex: Bem-vindo à Barber Studio!"
+            />
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="outline" onClick={() => setIsCreating(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={handleStartCreating}>
+            Continuar
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Edit Modal */}
       <Modal
         isOpen={!!editingTemplate}
-        onClose={() => setEditingTemplate(null)}
-        title={`Personalizar: ${editingTemplate?.name}`}
+        onClose={() => { setEditingTemplate(null); setIsCreating(false); }}
+        title={editingTemplate?.id ? `Editar: ${editingTemplate?.name}` : `Criar: ${editingTemplate?.name}`}
         size="xl"
       >
         {editingTemplate && (
           <>
             <ModalBody className="max-h-[70vh] overflow-y-auto">
-              <Tabs defaultValue="content" className="w-full">
+              <Tabs defaultValue="ai" className="w-full">
                 <TabsList className="grid w-full grid-cols-4 mb-4">
+                  <TabsTrigger value="ai" className="flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    Modo IA
+                  </TabsTrigger>
                   <TabsTrigger value="content" className="flex items-center gap-1">
                     <FileText className="w-3 h-3" />
                     Conteúdo
@@ -729,11 +1086,79 @@ const EmailTemplatesManager = () => {
                     <MousePointer className="w-3 h-3" />
                     Botão
                   </TabsTrigger>
-                  <TabsTrigger value="ai" className="flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    IA
-                  </TabsTrigger>
                 </TabsList>
+
+                {/* AI Tab - Now First */}
+                <TabsContent value="ai" className="space-y-4">
+                  <Card className="border-purple-500/20 bg-purple-500/5">
+                    <CardContent className="pt-4">
+                      <div className="flex items-start gap-3">
+                        <Sparkles className="w-5 h-5 text-purple-500 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-purple-500">Gerar Template Completo com IA</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Descreva sua ideia e a IA irá gerar o template completo: cores, textos, cabeçalho e botão!
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="space-y-2">
+                    <Label>Descreva como você quer o template</Label>
+                    <Textarea
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder={`Ex: Quero um template moderno com cores roxas e azuis, tom amigável e jovem, mencionando que somos a melhor barbearia da cidade...
+
+Ou: Template minimalista e elegante, cores preto e dourado, texto formal e sofisticado para clientes VIP...`}
+                      className="min-h-[140px]"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={generateWithAI}
+                    disabled={isGeneratingAI || !aiPrompt.trim()}
+                    className="w-full"
+                    size="lg"
+                  >
+                    {isGeneratingAI ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Gerando Template Completo...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Gerar com IA e Ver Preview
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">Exemplos de prompts:</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        'Moderno e jovem com cores vibrantes',
+                        'Elegante e sofisticado com dourado',
+                        'Minimalista preto e branco',
+                        'Acolhedor e casual para jovens',
+                        'Profissional e corporativo',
+                        'Festivo com tema de promoção',
+                      ].map((example, i) => (
+                        <Button
+                          key={i}
+                          variant="outline"
+                          size="sm"
+                          className="justify-start text-left h-auto py-2"
+                          onClick={() => setAiPrompt(example)}
+                        >
+                          <span className="text-xs">{example}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </TabsContent>
 
                 {/* Content Tab */}
                 <TabsContent value="content" className="space-y-4">
@@ -750,7 +1175,6 @@ const EmailTemplatesManager = () => {
                       <Input
                         value={editingTemplate.subject}
                         onChange={(e) => setEditingTemplate({ ...editingTemplate, subject: e.target.value })}
-                        placeholder="Ex: Confirme seu email - Barber Studio"
                       />
                     </div>
                   </div>
@@ -763,7 +1187,6 @@ const EmailTemplatesManager = () => {
                     <Input
                       value={templateConfig.contentTitle}
                       onChange={(e) => setTemplateConfig({ ...templateConfig, contentTitle: e.target.value })}
-                      placeholder="Ex: Confirme seu Email"
                     />
                   </div>
 
@@ -775,7 +1198,6 @@ const EmailTemplatesManager = () => {
                     <Textarea
                       value={templateConfig.contentText}
                       onChange={(e) => setTemplateConfig({ ...templateConfig, contentText: e.target.value })}
-                      placeholder="Digite o texto que o usuário verá no email..."
                       className="min-h-[100px]"
                     />
                   </div>
@@ -786,7 +1208,6 @@ const EmailTemplatesManager = () => {
                       <Input
                         value={templateConfig.expirationText}
                         onChange={(e) => setTemplateConfig({ ...templateConfig, expirationText: e.target.value })}
-                        placeholder="Ex: Este link expira em 24 horas."
                       />
                     </div>
                     <div className="flex items-center gap-2 pt-6">
@@ -803,16 +1224,6 @@ const EmailTemplatesManager = () => {
                     <Input
                       value={templateConfig.footerText}
                       onChange={(e) => setTemplateConfig({ ...templateConfig, footerText: e.target.value })}
-                      placeholder="Ex: Barber Studio - Tradição e Estilo"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Subtexto do Rodapé</Label>
-                    <Input
-                      value={templateConfig.footerSubtext}
-                      onChange={(e) => setTemplateConfig({ ...templateConfig, footerSubtext: e.target.value })}
-                      placeholder="Ex: Se você não solicitou este email..."
                     />
                   </div>
                 </TabsContent>
@@ -829,18 +1240,14 @@ const EmailTemplatesManager = () => {
                       onChange={(e) => setTemplateConfig({ ...templateConfig, logoUrl: e.target.value })}
                       placeholder="https://seusite.com/logo.png"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Se preenchido, substitui o ícone emoji. Recomendado: 150x50px, fundo transparente.
-                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Ícone Emoji (se não usar logo)</Label>
+                      <Label>Ícone Emoji</Label>
                       <Input
                         value={templateConfig.headerIcon}
                         onChange={(e) => setTemplateConfig({ ...templateConfig, headerIcon: e.target.value })}
-                        placeholder="✨"
                         maxLength={4}
                       />
                     </div>
@@ -849,7 +1256,6 @@ const EmailTemplatesManager = () => {
                       <Input
                         value={templateConfig.headerTitle}
                         onChange={(e) => setTemplateConfig({ ...templateConfig, headerTitle: e.target.value })}
-                        placeholder="Barber Studio"
                       />
                     </div>
                   </div>
@@ -869,7 +1275,6 @@ const EmailTemplatesManager = () => {
                       <Input
                         value={templateConfig.headerBgColor}
                         onChange={(e) => setTemplateConfig({ ...templateConfig, headerBgColor: e.target.value })}
-                        placeholder="#c9a227"
                         className="flex-1"
                       />
                     </div>
@@ -886,7 +1291,6 @@ const EmailTemplatesManager = () => {
                     <Input
                       value={templateConfig.buttonText}
                       onChange={(e) => setTemplateConfig({ ...templateConfig, buttonText: e.target.value })}
-                      placeholder="Ex: Confirmar Email"
                     />
                   </div>
 
@@ -895,10 +1299,9 @@ const EmailTemplatesManager = () => {
                     <Input
                       value={templateConfig.buttonUrl}
                       onChange={(e) => setTemplateConfig({ ...templateConfig, buttonUrl: e.target.value })}
-                      placeholder="{{confirmation_url}}"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Use <code className="bg-muted px-1 rounded">{'{{confirmation_url}}'}</code> para inserir o link de confirmação automaticamente.
+                      Use variáveis como <code className="bg-muted px-1 rounded">{'{{confirmation_url}}'}</code>
                     </p>
                   </div>
 
@@ -917,7 +1320,6 @@ const EmailTemplatesManager = () => {
                       <Input
                         value={templateConfig.buttonBgColor}
                         onChange={(e) => setTemplateConfig({ ...templateConfig, buttonBgColor: e.target.value })}
-                        placeholder="#c9a227"
                         className="flex-1"
                       />
                     </div>
@@ -943,80 +1345,10 @@ const EmailTemplatesManager = () => {
                     </CardContent>
                   </Card>
                 </TabsContent>
-
-                {/* AI Tab */}
-                <TabsContent value="ai" className="space-y-4">
-                  <Card className="border-purple-500/20 bg-purple-500/5">
-                    <CardContent className="pt-4">
-                      <div className="flex items-start gap-3">
-                        <Sparkles className="w-5 h-5 text-purple-500 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-purple-500">Gerar com Inteligência Artificial</p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Descreva o tipo de texto que você quer e a IA irá gerar o conteúdo para você.
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <div className="space-y-2">
-                    <Label>Descreva o que você quer (opcional)</Label>
-                    <Textarea
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      placeholder={`Ex: Quero um texto mais formal e corporativo, mencionando que somos uma barbearia premium...
-
-Ou deixe em branco para usar o texto padrão otimizado para ${getTemplateTypeLabel(editingTemplate.template_type)}.`}
-                      className="min-h-[120px]"
-                    />
-                  </div>
-
-                  <Button
-                    onClick={generateWithAI}
-                    disabled={isGeneratingAI}
-                    className="w-full"
-                    variant="secondary"
-                  >
-                    {isGeneratingAI ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Gerando...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Gerar Texto com IA
-                      </>
-                    )}
-                  </Button>
-
-                  <div className="space-y-2">
-                    <Label>Exemplos de prompts:</Label>
-                    <div className="space-y-2">
-                      {[
-                        'Texto amigável e casual para jovens',
-                        'Texto formal e profissional para empresas',
-                        'Texto acolhedor com tom de boas-vindas',
-                        'Texto direto e objetivo, sem enrolação',
-                      ].map((example, i) => (
-                        <Button
-                          key={i}
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start text-left h-auto py-2"
-                          onClick={() => setAiPrompt(example)}
-                        >
-                          <span className="text-xs">{example}</span>
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </TabsContent>
               </Tabs>
             </ModalBody>
             <ModalFooter>
-              <Button variant="outline" onClick={() => setEditingTemplate(null)}>
+              <Button variant="outline" onClick={() => { setEditingTemplate(null); setIsCreating(false); }}>
                 <X className="w-4 h-4 mr-2" />
                 Cancelar
               </Button>
@@ -1024,8 +1356,12 @@ Ou deixe em branco para usar o texto padrão otimizado para ${getTemplateTypeLab
                 <Eye className="w-4 h-4 mr-2" />
                 Preview
               </Button>
-              <Button onClick={handleSave}>
-                <Save className="w-4 h-4 mr-2" />
+              <Button onClick={handleSave} disabled={isSaving}>
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
                 Salvar
               </Button>
             </ModalFooter>
@@ -1052,6 +1388,94 @@ Ou deixe em branco para usar o texto padrão otimizado para ${getTemplateTypeLab
         <ModalFooter>
           <Button variant="outline" onClick={() => setShowPreview(false)}>
             Fechar
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Send Email Modal */}
+      <Modal
+        isOpen={showSendModal}
+        onClose={() => setShowSendModal(false)}
+        title={`Enviar: ${sendingTemplate?.name}`}
+        size="md"
+      >
+        <ModalBody className="space-y-4">
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardContent className="pt-4">
+              <div className="flex items-start gap-3">
+                <Users className="w-5 h-5 text-blue-500 mt-0.5" />
+                <div>
+                  <p className="font-medium text-blue-500">Selecione os Destinatários</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Escolha os usuários que receberão este email. Apenas usuários com email confirmado são listados.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex items-center gap-2 p-2 border rounded-lg">
+            <Checkbox 
+              checked={selectAllUsers}
+              onCheckedChange={handleToggleSelectAll}
+              id="select-all"
+            />
+            <Label htmlFor="select-all" className="cursor-pointer">
+              Selecionar Todos ({usersForEmail.length} usuários)
+            </Label>
+          </div>
+
+          <ScrollArea className="h-[300px] border rounded-lg p-2">
+            {usersForEmail.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                Nenhum usuário com email confirmado encontrado
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {usersForEmail.map((user) => (
+                  <div 
+                    key={user.id} 
+                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                      user.selected ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted'
+                    }`}
+                    onClick={() => handleToggleUserSelection(user.id)}
+                  >
+                    <Checkbox checked={user.selected} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{user.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              {usersForEmail.filter(u => u.selected).length} selecionado(s)
+            </span>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="outline" onClick={() => setShowSendModal(false)}>
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSendEmails} 
+            disabled={isSendingEmails || usersForEmail.filter(u => u.selected).length === 0}
+          >
+            {isSendingEmails ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Enviando...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4 mr-2" />
+                Enviar Emails
+              </>
+            )}
           </Button>
         </ModalFooter>
       </Modal>
