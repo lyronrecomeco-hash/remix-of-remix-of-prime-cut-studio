@@ -29,59 +29,137 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY não configurada');
     }
 
-    const { prompt, templateType, currentConfig }: GenerateRequest = await req.json();
-    console.log('Generating email template with AI:', templateType, prompt);
+    const { prompt, templateType }: GenerateRequest = await req.json();
+    console.log('🚀 Advanced AI Email Template Generator');
+    console.log('Template type:', templateType);
+    console.log('User prompt:', prompt);
 
     const templateTypeLabels: Record<string, string> = {
-      'auth_confirm': 'confirmação de email',
-      'auth_reset': 'redefinição de senha',
-      'auth_magic_link': 'link mágico de acesso',
-      'auth_invite': 'convite para usuário'
+      'auth_confirm': 'confirmação de email - usuário acabou de se cadastrar e precisa confirmar',
+      'auth_reset': 'redefinição de senha - usuário esqueceu a senha e precisa resetar',
+      'auth_magic_link': 'link mágico de acesso - login sem senha',
+      'auth_invite': 'convite para usuário - convidando alguém para a plataforma',
+      'welcome': 'boas-vindas após confirmação - usuário confirmou o email com sucesso',
+      'marketing': 'marketing promocional - promoções, ofertas especiais, novidades',
+      'reminder': 'lembrete de agendamento - lembrar cliente sobre horário marcado',
+      'feedback': 'solicitação de feedback - pedir avaliação após serviço',
+      'loyalty': 'programa de fidelidade - pontos, recompensas, benefícios',
+      'birthday': 'aniversário do cliente - mensagem especial de aniversário'
     };
 
-    const systemPrompt = `Você é um especialista em design de emails e UX/UI.
-Sua tarefa é personalizar templates de email para uma barbearia moderna e sofisticada.
+    const systemPrompt = `Você é um ESPECIALISTA SÊNIOR em Design de Email Marketing e UX/UI com mais de 15 anos de experiência.
+Você trabalhou para grandes marcas como Apple, Nike, Airbnb e domina completamente a arte de criar emails que CONVERTEM.
 
-VOCÊ DEVE RETORNAR UM JSON VÁLIDO com a seguinte estrutura:
+## SUA ESPECIALIDADE:
+- Email Marketing de Alta Conversão
+- Design Visual Sofisticado e Moderno
+- Copywriting Persuasivo
+- Psicologia das Cores
+- Hierarquia Visual
+- Responsividade Mobile-First
+- Acessibilidade
+
+## CONTEXTO DO NEGÓCIO:
+Este é um sistema de agendamento para barbearias premium e modernas. O público-alvo são homens que valorizam:
+- Estilo e sofisticação
+- Atendimento premium
+- Experiência diferenciada
+- Qualidade acima de tudo
+
+## TIPO DE EMAIL QUE VOCÊ VAI CRIAR:
+${templateTypeLabels[templateType] || templateType}
+
+## SUA TAREFA:
+Criar um template de email COMPLETAMENTE NOVO e ÚNICO baseado EXCLUSIVAMENTE na ideia/prompt do usuário.
+NÃO use templates padrão. CRIE do zero algo original e impactante.
+
+## VOCÊ DEVE RETORNAR UM JSON VÁLIDO:
 {
-  "headerTitle": "Nome da marca/título do header",
-  "contentTitle": "Título principal do conteúdo",
-  "contentText": "Texto explicativo do email",
-  "buttonText": "Texto do botão CTA",
-  "headerBgColor": "#hexcolor",
-  "buttonBgColor": "#hexcolor",
-  "headerIcon": "emoji ou ícone unicode",
-  "footerText": "Texto do rodapé"
+  "headerTitle": "Título/marca do header (máx 35 chars)",
+  "headerIcon": "emoji estratégico que representa o conteúdo",
+  "headerBgColor": "#hexcolor - cor principal do header",
+  "headerTextColor": "#hexcolor - cor do texto do header",
+  "contentTitle": "Título principal impactante (máx 60 chars)",
+  "contentSubtitle": "Subtítulo complementar opcional (máx 80 chars)",
+  "contentText": "Corpo do email - texto persuasivo e claro (máx 300 chars)",
+  "highlightBox": "Texto de destaque/urgência opcional (máx 100 chars)",
+  "highlightBgColor": "#hexcolor - cor de fundo do destaque",
+  "buttonText": "CTA forte e claro (máx 25 chars)",
+  "buttonBgColor": "#hexcolor - cor do botão CTA",
+  "buttonTextColor": "#hexcolor - cor do texto do botão",
+  "secondaryButtonText": "CTA secundário opcional (máx 25 chars)",
+  "footerText": "Texto do rodapé (máx 150 chars)",
+  "accentColor": "#hexcolor - cor de acento para detalhes",
+  "bodyBgColor": "#hexcolor - cor de fundo do corpo",
+  "cardBgColor": "#hexcolor - cor de fundo do card principal",
+  "textColor": "#hexcolor - cor principal do texto",
+  "dividerStyle": "solid | dashed | gradient | none",
+  "borderRadius": "0px | 8px | 16px | 24px",
+  "shadowIntensity": "none | subtle | medium | strong",
+  "templateStyle": "minimal | elegant | bold | playful | corporate | luxury"
 }
 
-REGRAS IMPORTANTES:
-- headerTitle: máximo 30 caracteres
-- contentTitle: máximo 50 caracteres  
-- contentText: máximo 200 caracteres, texto claro e profissional
-- buttonText: máximo 20 caracteres, deve ser um CTA claro
-- Cores devem ser em formato hexadecimal (#RRGGBB)
-- Para cores, escolha paletas que transmitam profissionalismo e elegância
-- headerIcon: use emojis apropriados como ✨, 🔐, 🔗, 🎉, ✅, 💈
-- O tom deve ser profissional mas acolhedor
-- Adapte o conteúdo ao tipo de email: ${templateTypeLabels[templateType] || templateType}
+## REGRAS DE DESIGN PROFISSIONAL:
 
-Responda APENAS com o JSON, sem explicações adicionais.`;
+### CORES:
+- Use paletas harmônicas e profissionais
+- Contraste adequado para legibilidade (WCAG AA mínimo)
+- Cores que evocam a emoção certa para o tipo de email
+- Para luxo: dourados, pretos, brancos, tons escuros
+- Para energia: vermelhos, laranjas, amarelos vibrantes
+- Para confiança: azuis, verdes, tons sóbrios
+- Para modernidade: gradientes sutis, tons neutros com acentos
 
-    const userPrompt = `Crie/personalize um template de email de ${templateTypeLabels[templateType] || templateType} com base nesta descrição do usuário:
+### COPYWRITING:
+- Headlines que capturam atenção IMEDIATAMENTE
+- Texto escaneável e direto ao ponto
+- CTAs com verbos de ação poderosos
+- Urgência quando apropriado (sem ser spam)
+- Personalização implícita (falar diretamente com o leitor)
+- Tom que combina com a marca: premium, acolhedor, profissional
 
+### HIERARQUIA VISUAL:
+- Header impactante mas não dominante
+- Conteúdo principal com destaque claro
+- CTA impossível de ignorar
+- Footer discreto mas informativo
+
+### EMOJIS:
+Use emojis estratégicos que complementam a mensagem:
+- ✨ Novidade, especial
+- 🔐 Segurança, privacidade
+- 🎉 Celebração, promoção
+- ✅ Confirmação, sucesso
+- 💈 Barbearia, serviço
+- 🔥 Urgência, popular
+- ⭐ Premium, qualidade
+- 🎁 Presente, surpresa
+- ⏰ Tempo, urgência
+- 💪 Força, confiança
+
+## IMPORTANTE:
+- NUNCA copie templates genéricos
+- SEMPRE crie algo ÚNICO baseado no prompt
+- Seja CRIATIVO e PROFISSIONAL
+- O resultado deve parecer feito por um designer sênior
+- Adapte TUDO ao contexto específico do prompt do usuário
+
+Responda APENAS com o JSON válido, sem explicações.`;
+
+    const userPrompt = `## PROMPT DO USUÁRIO:
 "${prompt}"
 
-${currentConfig ? `
-Configuração atual (pode manter ou modificar conforme a ideia do usuário):
-- Título header: ${currentConfig.headerTitle || 'Barber Studio'}
-- Título conteúdo: ${currentConfig.contentTitle || ''}
-- Texto: ${currentConfig.contentText || ''}
-- Botão: ${currentConfig.buttonText || ''}
-- Cor header: ${currentConfig.headerBgColor || '#c9a227'}
-- Cor botão: ${currentConfig.buttonBgColor || '#c9a227'}
-` : ''}
+## TIPO DE EMAIL:
+${templateTypeLabels[templateType] || templateType}
 
-Retorne o JSON com as configurações personalizadas baseadas na ideia do usuário.`;
+## INSTRUÇÕES:
+Crie um template de email COMPLETAMENTE PERSONALIZADO baseado na ideia acima.
+Seja criativo, profissional e impactante.
+O resultado deve ser ÚNICO e refletir exatamente o que o usuário pediu.
+
+RETORNE APENAS O JSON com todas as configurações do template.`;
+
+    console.log('Sending request to AI Gateway with advanced prompt...');
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -125,8 +203,14 @@ Retorne o JSON com as configurações personalizadas baseadas na ideia do usuár
       throw new Error('Resposta vazia da IA');
     }
 
+    console.log('Raw AI response:', generatedContent);
+
     // Clean the response - remove markdown code blocks if present
-    generatedContent = generatedContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    generatedContent = generatedContent
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .replace(/^\s*\n/gm, '')
+      .trim();
 
     // Parse JSON
     let templateConfig;
@@ -134,13 +218,51 @@ Retorne o JSON com as configurações personalizadas baseadas na ideia do usuár
       templateConfig = JSON.parse(generatedContent);
     } catch (parseError) {
       console.error('JSON parse error:', parseError, 'Content:', generatedContent);
-      throw new Error('Erro ao processar resposta da IA');
+      
+      // Try to extract JSON from the response
+      const jsonMatch = generatedContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          templateConfig = JSON.parse(jsonMatch[0]);
+        } catch {
+          throw new Error('Erro ao processar resposta da IA');
+        }
+      } else {
+        throw new Error('Erro ao processar resposta da IA');
+      }
     }
 
-    console.log('Generated template config:', templateConfig);
+    // Validate and set defaults for required fields
+    const finalConfig = {
+      headerTitle: templateConfig.headerTitle || 'Barber Studio',
+      headerIcon: templateConfig.headerIcon || '💈',
+      headerBgColor: templateConfig.headerBgColor || '#1a1a2e',
+      headerTextColor: templateConfig.headerTextColor || '#ffffff',
+      contentTitle: templateConfig.contentTitle || 'Título do Email',
+      contentSubtitle: templateConfig.contentSubtitle || '',
+      contentText: templateConfig.contentText || 'Conteúdo do email.',
+      highlightBox: templateConfig.highlightBox || '',
+      highlightBgColor: templateConfig.highlightBgColor || '#fef3c7',
+      buttonText: templateConfig.buttonText || 'Clique Aqui',
+      buttonBgColor: templateConfig.buttonBgColor || '#c9a227',
+      buttonTextColor: templateConfig.buttonTextColor || '#ffffff',
+      secondaryButtonText: templateConfig.secondaryButtonText || '',
+      footerText: templateConfig.footerText || 'Obrigado por escolher nossos serviços.',
+      accentColor: templateConfig.accentColor || '#c9a227',
+      bodyBgColor: templateConfig.bodyBgColor || '#f5f5f5',
+      cardBgColor: templateConfig.cardBgColor || '#ffffff',
+      textColor: templateConfig.textColor || '#333333',
+      dividerStyle: templateConfig.dividerStyle || 'solid',
+      borderRadius: templateConfig.borderRadius || '16px',
+      shadowIntensity: templateConfig.shadowIntensity || 'medium',
+      templateStyle: templateConfig.templateStyle || 'elegant',
+      expirationText: templateConfig.expirationText || '',
+    };
+
+    console.log('✅ Generated advanced template config:', finalConfig);
 
     return new Response(
-      JSON.stringify({ success: true, config: templateConfig }),
+      JSON.stringify({ success: true, config: finalConfig }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
