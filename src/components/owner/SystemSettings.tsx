@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Settings, Save, AlertTriangle, CheckCircle, XCircle, Key, Bell, Shield, Database, Loader2 } from 'lucide-react';
+import { Settings, Save, AlertTriangle, CheckCircle, XCircle, Key, Bell, Shield, Database, Loader2, Globe } from 'lucide-react';
 
 interface OwnerSetting {
   id: string;
@@ -28,6 +28,7 @@ const SystemSettings = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [integrations, setIntegrations] = useState<IntegrationStatus[]>([]);
+  const [barberSiteEnabled, setBarberSiteEnabled] = useState(false);
 
   // Form states
   const [systemLimits, setSystemLimits] = useState({
@@ -63,6 +64,9 @@ const SystemSettings = () => {
         }
         if (setting.setting_key === 'notifications' && typeof setting.setting_value === 'object') {
           setNotifications(setting.setting_value as typeof notifications);
+        }
+        if (setting.setting_key === 'barber_site_enabled') {
+          setBarberSiteEnabled(setting.setting_value === true);
         }
       });
     } catch (error) {
@@ -107,6 +111,41 @@ const SystemSettings = () => {
       ]);
     } catch (error) {
       console.error('Error checking integrations:', error);
+    }
+  };
+
+  const handleToggleBarberSite = async (enabled: boolean) => {
+    try {
+      // Check if setting exists
+      const { data: existing } = await supabase
+        .from('owner_settings')
+        .select('id')
+        .eq('setting_key', 'barber_site_enabled')
+        .single();
+
+      if (existing) {
+        await supabase
+          .from('owner_settings')
+          .update({ 
+            setting_value: enabled,
+            updated_at: new Date().toISOString()
+          })
+          .eq('setting_key', 'barber_site_enabled');
+      } else {
+        await supabase
+          .from('owner_settings')
+          .insert({ 
+            setting_key: 'barber_site_enabled',
+            setting_value: enabled,
+            description: 'Controla se o site comercial da barbearia está ativo'
+          });
+      }
+
+      setBarberSiteEnabled(enabled);
+      toast.success(enabled ? 'Site da barbearia ativado!' : 'Site da barbearia desativado!');
+    } catch (error) {
+      console.error('Error toggling barber site:', error);
+      toast.error('Erro ao alterar configuração');
     }
   };
 
@@ -180,6 +219,40 @@ const SystemSettings = () => {
           Salvar Alterações
         </Button>
       </div>
+
+      {/* Barber Site Toggle */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Globe className="w-4 h-4 text-primary" />
+            Site Comercial da Barbearia
+          </CardTitle>
+          <CardDescription>Controle a visibilidade do site comercial modelo</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Ativar Site da Barbearia</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Quando ativado, o site modelo da barbearia será exibido na página inicial do sistema.
+                Quando desativado, a landing page do Genesis Hub será exibida.
+              </p>
+            </div>
+            <Switch
+              checked={barberSiteEnabled}
+              onCheckedChange={handleToggleBarberSite}
+            />
+          </div>
+          {barberSiteEnabled && (
+            <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+              <p className="text-sm text-green-400 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                Site da barbearia está ativo e visível em genesishub.cloud
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* System Limits */}
