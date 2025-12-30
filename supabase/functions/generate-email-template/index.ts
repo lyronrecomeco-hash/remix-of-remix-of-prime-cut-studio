@@ -8,14 +8,6 @@ const corsHeaders = {
 interface GenerateRequest {
   prompt: string;
   templateType: string;
-  currentConfig?: {
-    headerTitle?: string;
-    contentTitle?: string;
-    contentText?: string;
-    buttonText?: string;
-    headerBgColor?: string;
-    buttonBgColor?: string;
-  };
 }
 
 serve(async (req) => {
@@ -30,136 +22,180 @@ serve(async (req) => {
     }
 
     const { prompt, templateType }: GenerateRequest = await req.json();
-    console.log('🚀 Advanced AI Email Template Generator');
-    console.log('Template type:', templateType);
-    console.log('User prompt:', prompt);
+    console.log('🧬 MODO ATIVADO: Geração de Template Estrutural do Zero');
+    console.log('📋 Template type:', templateType);
+    console.log('📝 User prompt:', prompt);
 
     const templateTypeLabels: Record<string, string> = {
-      'auth_confirm': 'confirmação de email - usuário acabou de se cadastrar e precisa confirmar',
-      'auth_reset': 'redefinição de senha - usuário esqueceu a senha e precisa resetar',
-      'auth_magic_link': 'link mágico de acesso - login sem senha',
-      'auth_invite': 'convite para usuário - convidando alguém para a plataforma',
-      'welcome': 'boas-vindas após confirmação - usuário confirmou o email com sucesso',
-      'marketing': 'marketing promocional - promoções, ofertas especiais, novidades',
-      'reminder': 'lembrete de agendamento - lembrar cliente sobre horário marcado',
-      'feedback': 'solicitação de feedback - pedir avaliação após serviço',
-      'loyalty': 'programa de fidelidade - pontos, recompensas, benefícios',
-      'birthday': 'aniversário do cliente - mensagem especial de aniversário'
+      'auth_confirm': 'confirmação de email',
+      'auth_reset': 'redefinição de senha',
+      'auth_magic_link': 'link mágico de acesso',
+      'auth_invite': 'convite para usuário',
+      'welcome': 'boas-vindas após confirmação',
+      'marketing': 'marketing promocional',
+      'reminder': 'lembrete de agendamento',
+      'feedback': 'solicitação de feedback',
+      'loyalty': 'programa de fidelidade',
+      'birthday': 'aniversário do cliente'
     };
 
-    const systemPrompt = `Você é um ESPECIALISTA SÊNIOR em Design de Email Marketing e UX/UI com mais de 15 anos de experiência.
-Você trabalhou para grandes marcas como Apple, Nike, Airbnb e domina completamente a arte de criar emails que CONVERTEM.
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 🧬 SISTEMA DE GERAÇÃO ESTRUTURAL DO ZERO - MODALIDADE EXCLUSIVA
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    const systemPrompt = `# 🧬 IDENTIDADE E MODO DE OPERAÇÃO
 
-## SUA ESPECIALIDADE:
-- Email Marketing de Alta Conversão
-- Design Visual Sofisticado e Moderno
-- Copywriting Persuasivo
-- Psicologia das Cores
-- Hierarquia Visual
-- Responsividade Mobile-First
-- Acessibilidade
+Você é um ARQUITETO DE EMAILS com nível de expertise equivalente a:
+- Diretor Criativo de agências como Pentagram, IDEO, Sagmeister & Walsh
+- 20+ anos em design de comunicação digital de alta conversão
+- Especialista em psicologia visual, neuromarketing e persuasão
 
-## CONTEXTO DO NEGÓCIO:
-Este é um sistema de agendamento para barbearias premium e modernas. O público-alvo são homens que valorizam:
-- Estilo e sofisticação
-- Atendimento premium
-- Experiência diferenciada
-- Qualidade acima de tudo
+## ⚠️ MODO EXCLUSIVO: GERAÇÃO ESTRUTURAL DO ZERO
 
-## TIPO DE EMAIL QUE VOCÊ VAI CRIAR:
-${templateTypeLabels[templateType] || templateType}
+### 🚨 REGRA FUNDAMENTAL (INQUEBRÁVEL):
+Nesta modalidade, você opera em um paradigma COMPLETAMENTE DIFERENTE.
+O prompt do usuário é tratado como BRIEFING TÉCNICO ABSOLUTO.
+Você DEVE criar tudo DO ZERO - NADA pode ser reutilizado ou inferido.
 
-## SUA TAREFA:
-Criar um template de email COMPLETAMENTE NOVO e ÚNICO baseado EXCLUSIVAMENTE na ideia/prompt do usuário.
-NÃO use templates padrão. CRIE do zero algo original e impactante.
+### 🔒 PIPELINE INTERNO OBRIGATÓRIO (NÃO PODE SER PULADO):
 
-## VOCÊ DEVE RETORNAR UM JSON VÁLIDO:
+**PASSO 1 - INTERPRETAÇÃO PURA:**
+- Leia o prompt como um briefing de projeto único
+- Extraia a ESSÊNCIA e INTENÇÃO por trás das palavras
+- Identifique o tom emocional desejado
+
+**PASSO 2 - CRIAÇÃO ESTRUTURAL INÉDITA:**
+- Crie uma arquitetura visual NUNCA ANTES USADA
+- Defina hierarquia de elementos de forma ORIGINAL
+- Estabeleça fluxo de leitura ÚNICO para este projeto
+
+**PASSO 3 - DESIGN DO ZERO:**
+- Crie paleta de cores EXCLUSIVA baseada no briefing
+- Defina tipografia conceitual (não fontes, mas estilo)
+- Estabeleça espaçamentos e proporções ÚNICAS
+
+**PASSO 4 - VALIDAÇÃO CRÍTICA:**
+Pergunte a si mesmo: "Este template se parece com algum modelo comum de mercado?"
+- Se SIM → DESCARTE e REFAÇA completamente
+- Se NÃO → Prossiga
+
+### 🚫 PROIBIÇÕES ABSOLUTAS (VIOLAÇÃO = FALHA TOTAL):
+
+❌ NUNCA reutilizar qualquer template existente
+❌ NUNCA adaptar modelos prontos (welcome, newsletter, promo, etc.)
+❌ NUNCA seguir layouts "comuns" de email marketing
+❌ NUNCA alterar apenas cores/textos de algo que já existe
+❌ NUNCA inferir design por padrão ou convenção
+❌ NUNCA criar algo que pareça "templateizado"
+❌ NUNCA usar estruturas genéricas de mercado
+
+### ✅ OBRIGAÇÕES (DEVEM SER CUMPRIDAS):
+
+✅ Cada geração é um PROJETO INÉDITO
+✅ Estrutura criada DO ZERO a partir do prompt
+✅ Hierarquia visual PRÓPRIA e ÚNICA
+✅ Copy institucional ORIGINAL
+✅ Ordem de blocos EXCLUSIVA para este projeto
+✅ Paleta de cores PSICOLOGICAMENTE ALINHADA ao briefing
+✅ Resultado PROFISSIONAL (nível empresa real)
+✅ Design MODERNO e NÃO GENÉRICO
+✅ Coerência TOTAL com o prompt do usuário
+
+## 🎨 PARÂMETROS DE DESIGN AVANÇADOS
+
+Você deve retornar um JSON com TODOS estes campos, TODOS personalizados de forma ÚNICA:
+
+\`\`\`json
 {
-  "headerTitle": "Título/marca do header (máx 35 chars)",
-  "headerIcon": "emoji estratégico que representa o conteúdo",
-  "headerBgColor": "#hexcolor - cor principal do header",
-  "headerTextColor": "#hexcolor - cor do texto do header",
-  "contentTitle": "Título principal impactante (máx 60 chars)",
-  "contentSubtitle": "Subtítulo complementar opcional (máx 80 chars)",
-  "contentText": "Corpo do email - texto persuasivo e claro (máx 300 chars)",
-  "highlightBox": "Texto de destaque/urgência opcional (máx 100 chars)",
-  "highlightBgColor": "#hexcolor - cor de fundo do destaque",
-  "buttonText": "CTA forte e claro (máx 25 chars)",
-  "buttonBgColor": "#hexcolor - cor do botão CTA",
-  "buttonTextColor": "#hexcolor - cor do texto do botão",
-  "secondaryButtonText": "CTA secundário opcional (máx 25 chars)",
-  "footerText": "Texto do rodapé (máx 150 chars)",
-  "accentColor": "#hexcolor - cor de acento para detalhes",
-  "bodyBgColor": "#hexcolor - cor de fundo do corpo",
-  "cardBgColor": "#hexcolor - cor de fundo do card principal",
-  "textColor": "#hexcolor - cor principal do texto",
-  "dividerStyle": "solid | dashed | gradient | none",
-  "borderRadius": "0px | 8px | 16px | 24px",
-  "shadowIntensity": "none | subtle | medium | strong",
-  "templateStyle": "minimal | elegant | bold | playful | corporate | luxury"
+  "headerTitle": "string - título/marca CRIADO para este projeto (máx 35 chars)",
+  "headerIcon": "string - emoji ESTRATÉGICO que REPRESENTA a essência",
+  "headerBgColor": "#hexcolor - cor PSICOLOGICAMENTE alinhada ao objetivo",
+  "headerTextColor": "#hexcolor - contraste WCAG AAA",
+  "contentTitle": "string - headline IMPACTANTE e ÚNICA (máx 60 chars)",
+  "contentSubtitle": "string - subtítulo COMPLEMENTAR opcional (máx 80 chars)",
+  "contentText": "string - corpo PERSUASIVO e ORIGINAL (máx 350 chars)",
+  "highlightBox": "string - destaque/urgência se RELEVANTE (máx 100 chars)",
+  "highlightBgColor": "#hexcolor - cor de destaque HARMÔNICA",
+  "buttonText": "string - CTA PODEROSO e ÚNICO (máx 25 chars)",
+  "buttonBgColor": "#hexcolor - cor que DEMANDA AÇÃO",
+  "buttonTextColor": "#hexcolor - legibilidade PERFEITA",
+  "secondaryButtonText": "string - CTA secundário se NECESSÁRIO (máx 25 chars)",
+  "footerText": "string - fechamento ELEGANTE (máx 150 chars)",
+  "accentColor": "#hexcolor - cor de ACENTO estratégica",
+  "bodyBgColor": "#hexcolor - fundo que SUPORTA a hierarquia",
+  "cardBgColor": "#hexcolor - superfície do card PRINCIPAL",
+  "textColor": "#hexcolor - cor de texto LEGÍVEL",
+  "dividerStyle": "solid | dashed | gradient | none - COERENTE com o tom",
+  "borderRadius": "0px | 8px | 16px | 24px - ALINHADO ao estilo",
+  "shadowIntensity": "none | subtle | medium | strong - PROFUNDIDADE visual",
+  "templateStyle": "minimal | elegant | bold | playful | corporate | luxury | brutalist | editorial | organic"
 }
+\`\`\`
 
-## REGRAS DE DESIGN PROFISSIONAL:
+## 🧠 PSICOLOGIA DAS CORES (APLICAR COM INTELIGÊNCIA):
 
-### CORES:
-- Use paletas harmônicas e profissionais
-- Contraste adequado para legibilidade (WCAG AA mínimo)
-- Cores que evocam a emoção certa para o tipo de email
-- Para luxo: dourados, pretos, brancos, tons escuros
-- Para energia: vermelhos, laranjas, amarelos vibrantes
-- Para confiança: azuis, verdes, tons sóbrios
-- Para modernidade: gradientes sutis, tons neutros com acentos
+**Confiança & Segurança:** Azuis profundos, verdes escuros, tons sóbrios
+**Energia & Ação:** Vermelhos, laranjas, amarelos vibrantes
+**Luxo & Premium:** Dourados, pretos, brancos, platina, tons escuros
+**Modernidade & Tech:** Gradientes sutis, neons sobre escuro, monocromático
+**Natureza & Calma:** Verdes, terrosos, beges, tons orgânicos
+**Urgência & FOMO:** Vermelhos, contrastes fortes, amarelos de alerta
+**Exclusividade:** Roxos, violetas, tons raros
+**Acolhimento:** Tons quentes, beges, laranjas suaves
 
-### COPYWRITING:
-- Headlines que capturam atenção IMEDIATAMENTE
-- Texto escaneável e direto ao ponto
-- CTAs com verbos de ação poderosos
-- Urgência quando apropriado (sem ser spam)
-- Personalização implícita (falar diretamente com o leitor)
-- Tom que combina com a marca: premium, acolhedor, profissional
+## ✍️ COPYWRITING (REGRAS ABSOLUTAS):
 
-### HIERARQUIA VISUAL:
-- Header impactante mas não dominante
-- Conteúdo principal com destaque claro
-- CTA impossível de ignorar
-- Footer discreto mas informativo
+- Headline que CAPTURA atenção em < 2 segundos
+- Texto ESCANEÁVEL - ninguém lê emails, eles escaneiam
+- CTAs com VERBOS DE AÇÃO poderosos
+- Urgência QUANDO apropriado (sem parecer spam)
+- Tom que COMBINA com o briefing do usuário
+- PERSONALIZAÇÃO implícita (falar com "você")
+- ZERO clichês de marketing
 
-### EMOJIS:
-Use emojis estratégicos que complementam a mensagem:
-- ✨ Novidade, especial
-- 🔐 Segurança, privacidade
-- 🎉 Celebração, promoção
-- ✅ Confirmação, sucesso
-- 💈 Barbearia, serviço
-- 🔥 Urgência, popular
-- ⭐ Premium, qualidade
-- 🎁 Presente, surpresa
-- ⏰ Tempo, urgência
-- 💪 Força, confiança
+## 📐 HIERARQUIA VISUAL (CRIADA DO ZERO):
 
-## IMPORTANTE:
-- NUNCA copie templates genéricos
-- SEMPRE crie algo ÚNICO baseado no prompt
-- Seja CRIATIVO e PROFISSIONAL
-- O resultado deve parecer feito por um designer sênior
-- Adapte TUDO ao contexto específico do prompt do usuário
+A hierarquia deve ser ÚNICA para cada projeto:
+- Pode começar com imagem, pode começar com texto
+- Pode ter 2 colunas, pode ser linear
+- Pode ter card centralizado, pode ser full-width
+- Pode ter múltiplos CTAs, pode ter um
+- A ESTRUTURA serve ao CONTEÚDO, não o contrário
 
-Responda APENAS com o JSON válido, sem explicações.`;
+## 🎯 OBJETIVO FINAL:
 
-    const userPrompt = `## PROMPT DO USUÁRIO:
+Quando alguém olhar para o email gerado, deve pensar:
+"Isso foi claramente desenhado por um profissional de alto nível especificamente para esta marca/ocasião."
+
+E NUNCA:
+"Isso parece aquele template de [Mailchimp/HubSpot/qualquer outro]"
+
+## 📤 OUTPUT:
+
+RETORNE APENAS O JSON VÁLIDO.
+Sem explicações. Sem comentários. Sem justificativas.
+O JSON É o resultado. Nada mais.`;
+
+    const userPrompt = `# 📋 BRIEFING DO PROJETO
+
+## SOLICITAÇÃO DO CLIENTE:
 "${prompt}"
 
-## TIPO DE EMAIL:
-${templateTypeLabels[templateType] || templateType}
+## CONTEXTO OPERACIONAL:
+Tipo de email: ${templateTypeLabels[templateType] || templateType}
+Segmento: Barbearia premium / Estilo masculino sofisticado
 
-## INSTRUÇÕES:
-Crie um template de email COMPLETAMENTE PERSONALIZADO baseado na ideia acima.
-Seja criativo, profissional e impactante.
-O resultado deve ser ÚNICO e refletir exatamente o que o usuário pediu.
+## INSTRUÇÃO FINAL:
 
-RETORNE APENAS O JSON com todas as configurações do template.`;
+Aplique o PIPELINE INTERNO OBRIGATÓRIO:
+1. Interprete o briefing acima como projeto ÚNICO
+2. Crie estrutura INÉDITA do zero
+3. Valide: "Parece com algum template comum?" → Se sim, refaça
+4. Retorne APENAS o JSON com a configuração completa
 
-    console.log('Sending request to AI Gateway with advanced prompt...');
+O template deve ser PROFISSIONAL, ÚNICO e PERFEITAMENTE ALINHADO ao briefing.`;
+
+    console.log('🚀 Enviando para AI Gateway - Modo Estrutural do Zero...');
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -173,6 +209,8 @@ RETORNE APENAS O JSON com todas as configurações do template.`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
+        temperature: 0.9, // Maior criatividade
+        top_p: 0.95,
       }),
     });
 
@@ -193,7 +231,7 @@ RETORNE APENAS O JSON com todas as configurações do template.`;
         );
       }
       
-      throw new Error('Erro ao gerar template');
+      throw new Error('Erro ao gerar template estrutural');
     }
 
     const data = await response.json();
@@ -203,7 +241,7 @@ RETORNE APENAS O JSON com todas as configurações do template.`;
       throw new Error('Resposta vazia da IA');
     }
 
-    console.log('Raw AI response:', generatedContent);
+    console.log('📦 Raw AI response:', generatedContent.substring(0, 500) + '...');
 
     // Clean the response - remove markdown code blocks if present
     generatedContent = generatedContent
@@ -225,41 +263,43 @@ RETORNE APENAS O JSON com todas as configurações do template.`;
         try {
           templateConfig = JSON.parse(jsonMatch[0]);
         } catch {
-          throw new Error('Erro ao processar resposta da IA');
+          throw new Error('Erro ao processar resposta estrutural da IA');
         }
       } else {
-        throw new Error('Erro ao processar resposta da IA');
+        throw new Error('Erro ao processar resposta estrutural da IA');
       }
     }
 
-    // Validate and set defaults for required fields
+    // Validate all required fields exist (with minimal fallbacks only for technical requirements)
     const finalConfig = {
-      headerTitle: templateConfig.headerTitle || 'Barber Studio',
-      headerIcon: templateConfig.headerIcon || '💈',
-      headerBgColor: templateConfig.headerBgColor || '#1a1a2e',
+      headerTitle: templateConfig.headerTitle || 'Projeto Único',
+      headerIcon: templateConfig.headerIcon || '✨',
+      headerBgColor: templateConfig.headerBgColor || '#0a0a0a',
       headerTextColor: templateConfig.headerTextColor || '#ffffff',
-      contentTitle: templateConfig.contentTitle || 'Título do Email',
+      contentTitle: templateConfig.contentTitle || 'Título Exclusivo',
       contentSubtitle: templateConfig.contentSubtitle || '',
-      contentText: templateConfig.contentText || 'Conteúdo do email.',
+      contentText: templateConfig.contentText || 'Conteúdo personalizado.',
       highlightBox: templateConfig.highlightBox || '',
       highlightBgColor: templateConfig.highlightBgColor || '#fef3c7',
-      buttonText: templateConfig.buttonText || 'Clique Aqui',
+      buttonText: templateConfig.buttonText || 'Ação Principal',
       buttonBgColor: templateConfig.buttonBgColor || '#c9a227',
       buttonTextColor: templateConfig.buttonTextColor || '#ffffff',
       secondaryButtonText: templateConfig.secondaryButtonText || '',
-      footerText: templateConfig.footerText || 'Obrigado por escolher nossos serviços.',
+      footerText: templateConfig.footerText || '',
       accentColor: templateConfig.accentColor || '#c9a227',
       bodyBgColor: templateConfig.bodyBgColor || '#f5f5f5',
       cardBgColor: templateConfig.cardBgColor || '#ffffff',
-      textColor: templateConfig.textColor || '#333333',
-      dividerStyle: templateConfig.dividerStyle || 'solid',
+      textColor: templateConfig.textColor || '#1a1a1a',
+      dividerStyle: templateConfig.dividerStyle || 'none',
       borderRadius: templateConfig.borderRadius || '16px',
       shadowIntensity: templateConfig.shadowIntensity || 'medium',
       templateStyle: templateConfig.templateStyle || 'elegant',
       expirationText: templateConfig.expirationText || '',
     };
 
-    console.log('✅ Generated advanced template config:', finalConfig);
+    console.log('✅ Template Estrutural do Zero gerado com sucesso');
+    console.log('🎨 Estilo:', finalConfig.templateStyle);
+    console.log('🎯 Paleta principal:', finalConfig.headerBgColor, '->', finalConfig.accentColor);
 
     return new Response(
       JSON.stringify({ success: true, config: finalConfig }),
@@ -267,7 +307,7 @@ RETORNE APENAS O JSON com todas as configurações do template.`;
     );
 
   } catch (error) {
-    console.error('Generate template error:', error);
+    console.error('❌ Erro na geração estrutural:', error);
     return new Response(
       JSON.stringify({ 
         success: false, 
