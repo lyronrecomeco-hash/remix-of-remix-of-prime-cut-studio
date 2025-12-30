@@ -1,180 +1,298 @@
-const CACHE_NAME = 'barbershop-v4';
-const STATIC_CACHE = 'barbershop-static-v4';
-const DYNAMIC_CACHE = 'barbershop-dynamic-v4';
+/**
+ * PACK ENTERPRISE: Service Worker v5 com Versionamento e SkipWaiting
+ * Cache otimizado e atualização imediata
+ */
 
-const urlsToCache = [
+const SW_VERSION = '5.0.0';
+const BUILD_TIMESTAMP = Date.now();
+const STATIC_CACHE = `barber-static-v5-${BUILD_TIMESTAMP}`;
+const DYNAMIC_CACHE = 'barber-dynamic-v5';
+
+// Assets estáticos para cache imediato
+const STATIC_ASSETS = [
   '/',
-  '/index.html',
   '/manifest.json',
-  '/agendar',
-  '/meus-agendamentos',
-  '/avaliar',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
-// Install event
+// Padrões de URL que devem usar network-first
+const NETWORK_FIRST_PATTERNS = [
+  /\/api\//,
+  /supabase\.co/,
+  /\/functions\//,
+  /\/auth\//
+];
+
+// Padrões de URL que devem usar cache-first
+const CACHE_FIRST_PATTERNS = [
+  /\.(js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|webp|ico)$/
+];
+
+/**
+ * Instalação: Cache de assets estáticos
+ */
 self.addEventListener('install', (event) => {
+  console.log(`[SW v${SW_VERSION}] Instalando...`);
+  
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('Caching static assets');
-        return cache.addAll(urlsToCache);
+        console.log(`[SW v${SW_VERSION}] Cacheando assets estáticos`);
+        return cache.addAll(STATIC_ASSETS);
+      })
+      .then(() => {
+        console.log(`[SW v${SW_VERSION}] SkipWaiting ativado`);
+        return self.skipWaiting();
       })
   );
-  // Immediately activate new service worker
-  self.skipWaiting();
 });
 
-// Activate event
+/**
+ * Ativação: Limpa caches antigos e assume controle
+ */
 self.addEventListener('activate', (event) => {
+  console.log(`[SW v${SW_VERSION}] Ativando...`);
+  
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => {
-      // Claim all clients immediately
-      return self.clients.claim();
-    }).then(() => {
-      // Notify all clients about the update
-      return self.clients.matchAll({ type: 'window' }).then(clients => {
-        clients.forEach(client => {
-          client.postMessage({ type: 'SW_UPDATED' });
-        });
-      });
-    })
-  );
-});
-
-// Fetch event - Network first with cache fallback
-self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') return;
-  
-  // Skip external requests
-  if (!event.request.url.startsWith(self.location.origin)) return;
-
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Clone and cache successful responses
-        if (response.status === 200) {
-          const responseClone = response.clone();
-          caches.open(DYNAMIC_CACHE).then((cache) => {
-            cache.put(event.request, responseClone);
+    caches.keys()
+      .then((cacheNames) => {
+        return Promise.all(
+          cacheNames
+            .filter((name) => {
+              return name.startsWith('barber-') && 
+                     name !== STATIC_CACHE && 
+                     name !== DYNAMIC_CACHE;
+            })
+            .map((name) => {
+              console.log(`[SW v${SW_VERSION}] Removendo cache antigo:`, name);
+              return caches.delete(name);
+            })
+        );
+      })
+      .then(() => {
+        console.log(`[SW v${SW_VERSION}] Assumindo controle de todos os clientes`);
+        return self.clients.claim();
+      })
+      .then(() => {
+        return self.clients.matchAll({ type: 'window' });
+      })
+      .then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({
+            type: 'SW_UPDATED',
+            version: SW_VERSION,
+            timestamp: BUILD_TIMESTAMP
           });
-        }
-        return response;
-      })
-      .catch(async () => {
-        // Try cache on network failure
-        const cachedResponse = await caches.match(event.request);
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        
-        // For navigation requests, return index.html
-        if (event.request.mode === 'navigate') {
-          return caches.match('/') || caches.match('/index.html');
-        }
-        
-        return new Response('Offline', { status: 503 });
+        });
       })
   );
 });
 
-// Push notification event
-self.addEventListener('push', (event) => {
-  let data = { title: 'Barber Studio', body: 'Atualização disponível!' };
+/**
+ * Determina a estratégia de cache baseada na URL
+ */
+function getCacheStrategy(url) {
+  const urlString = url.toString();
   
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch (e) {
-      data.body = event.data.text();
-    }
+  if (NETWORK_FIRST_PATTERNS.some(pattern => pattern.test(urlString))) {
+    return 'network-first';
   }
+  
+  if (CACHE_FIRST_PATTERNS.some(pattern => pattern.test(urlString))) {
+    return 'cache-first';
+  }
+  
+  return 'network-first';
+}
 
+/**
+ * Estratégia Network-First com fallback para cache
+ */
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    
+    if (response.ok && request.method === 'GET') {
+      const cache = await caches.open(DYNAMIC_CACHE);
+      cache.put(request, response.clone());
+    }
+    
+    return response;
+  } catch (error) {
+    console.log(`[SW v${SW_VERSION}] Rede falhou, buscando do cache:`, request.url);
+    
+    const cached = await caches.match(request);
+    if (cached) {
+      return cached;
+    }
+    
+    if (request.mode === 'navigate') {
+      return caches.match('/');
+    }
+    
+    throw error;
+  }
+}
+
+/**
+ * Estratégia Cache-First com atualização em background
+ */
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  
+  if (cached) {
+    fetch(request)
+      .then((response) => {
+        if (response.ok) {
+          caches.open(DYNAMIC_CACHE)
+            .then((cache) => cache.put(request, response));
+        }
+      })
+      .catch(() => {});
+    
+    return cached;
+  }
+  
+  const response = await fetch(request);
+  
+  if (response.ok && request.method === 'GET') {
+    const cache = await caches.open(DYNAMIC_CACHE);
+    cache.put(request, response.clone());
+  }
+  
+  return response;
+}
+
+/**
+ * Intercepta requisições e aplica estratégia apropriada
+ */
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  
+  const url = new URL(event.request.url);
+  if (!url.protocol.startsWith('http')) {
+    return;
+  }
+  
+  const strategy = getCacheStrategy(url);
+  
+  if (strategy === 'cache-first') {
+    event.respondWith(cacheFirst(event.request));
+  } else {
+    event.respondWith(networkFirst(event.request));
+  }
+});
+
+/**
+ * Push Notifications
+ */
+self.addEventListener('push', (event) => {
+  console.log(`[SW v${SW_VERSION}] Push recebido`);
+  
+  let data = {
+    title: 'Nova Notificação',
+    body: 'Você tem uma nova atualização',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png'
+  };
+  
+  try {
+    if (event.data) {
+      const payload = event.data.json();
+      data = { ...data, ...payload };
+    }
+  } catch (e) {
+    console.error('[SW] Erro ao parsear push data:', e);
+  }
+  
   const options = {
     body: data.body,
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    vibrate: [200, 100, 200],
-    tag: data.tag || 'notification',
-    renotify: true,
-    requireInteraction: data.requireInteraction || false,
+    icon: data.icon || '/icon-192.png',
+    badge: data.badge || '/icon-192.png',
+    vibrate: [100, 50, 100],
     data: {
       url: data.url || '/',
-      dateOfArrival: Date.now(),
+      dateOfArrival: Date.now()
     },
-    actions: data.actions || [
-      { action: 'open', title: 'Abrir' },
-      { action: 'close', title: 'Fechar' }
-    ]
+    actions: data.actions || []
   };
-
+  
   event.waitUntil(
     self.registration.showNotification(data.title, options)
   );
 });
 
-// Notification click event
+/**
+ * Clique em notificação
+ */
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
+  console.log(`[SW v${SW_VERSION}] Notificação clicada`);
   
-  if (event.action === 'close') return;
+  event.notification.close();
   
   const urlToOpen = event.notification.data?.url || '/';
   
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
-        // Focus existing window if available
         for (const client of clientList) {
-          if (client.url.includes(self.location.origin) && 'focus' in client) {
-            client.navigate(urlToOpen);
+          if (client.url.includes(urlToOpen) && 'focus' in client) {
             return client.focus();
           }
         }
-        // Open new window
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
+        
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(urlToOpen);
         }
       })
   );
 });
 
-// Background sync for queue updates
+/**
+ * Background Sync
+ */
 self.addEventListener('sync', (event) => {
+  console.log(`[SW v${SW_VERSION}] Sync event:`, event.tag);
+  
   if (event.tag === 'queue-sync') {
-    event.waitUntil(syncQueueData());
+    event.waitUntil(Promise.resolve());
   }
 });
 
-async function syncQueueData() {
-  // Sync queue data when back online
-  console.log('Syncing queue data...');
-}
-
-// Message event for communication with app
+/**
+ * Mensagens do cliente
+ */
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  console.log(`[SW v${SW_VERSION}] Mensagem recebida:`, event.data?.type);
+  
+  if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
   
-  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
-    const { title, body, tag, url } = event.data;
+  if (event.data?.type === 'GET_VERSION') {
+    event.ports[0]?.postMessage({
+      version: SW_VERSION,
+      timestamp: BUILD_TIMESTAMP
+    });
+  }
+  
+  if (event.data?.type === 'CLEAR_CACHE') {
+    caches.keys().then((names) => {
+      names.forEach((name) => caches.delete(name));
+    });
+  }
+  
+  if (event.data?.type === 'SHOW_NOTIFICATION' && event.data?.payload) {
+    const { title, body, icon, url } = event.data.payload;
     self.registration.showNotification(title, {
       body,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      vibrate: [200, 100, 200],
-      tag: tag || 'app-notification',
+      icon: icon || '/icon-192.png',
       data: { url: url || '/' }
     });
   }
 });
+
+console.log(`[SW v${SW_VERSION}] Service Worker carregado`);

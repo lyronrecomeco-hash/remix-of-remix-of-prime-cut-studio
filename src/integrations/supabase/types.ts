@@ -1153,6 +1153,33 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          created_at: string | null
+          endpoint: string
+          id: string
+          identifier: string
+          request_count: number | null
+          window_start: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          identifier: string
+          request_count?: number | null
+          window_start?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          identifier?: string
+          request_count?: number | null
+          window_start?: string | null
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           created_at: string
@@ -1687,6 +1714,10 @@ export type Database = {
         Returns: undefined
       }
       tenant_matches: { Args: { p_tenant: string }; Returns: boolean }
+      validate_token_owner: {
+        Args: { token_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "barber"

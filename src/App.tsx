@@ -13,23 +13,49 @@ import { useSecurityProtection } from "@/hooks/useSecurityProtection";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import UpgradeModal from "@/components/subscription/UpgradeModal";
-import Index from "./pages/Index";
-import Booking from "./pages/Booking";
-import BookingDirect from "./pages/BookingDirect";
-import MyAppointments from "./pages/MyAppointments";
-import AdminPanel from "./pages/AdminPanel";
-import AdminLogin from "./pages/AdminLogin";
-import FeedbackPage from "./pages/FeedbackPage";
-import OwnerPanel from "./pages/OwnerPanel";
-import EmailConfirmed from "./pages/EmailConfirmed";
-import ConfirmarEmail from "./pages/ConfirmarEmail";
-import RedefinirSenha from "./pages/RedefinirSenha";
-import TermosDeUso from "./pages/TermosDeUso";
-import PoliticaDePrivacidade from "./pages/PoliticaDePrivacidade";
-import NotFound from "./pages/NotFound";
-import { useEffect } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Suspense, lazy, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 
-const queryClient = new QueryClient();
+// Lazy loading de páginas para code splitting
+const Index = lazy(() => import("./pages/Index"));
+const Booking = lazy(() => import("./pages/Booking"));
+const BookingDirect = lazy(() => import("./pages/BookingDirect"));
+const MyAppointments = lazy(() => import("./pages/MyAppointments"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const FeedbackPage = lazy(() => import("./pages/FeedbackPage"));
+const OwnerPanel = lazy(() => import("./pages/OwnerPanel"));
+const EmailConfirmed = lazy(() => import("./pages/EmailConfirmed"));
+const ConfirmarEmail = lazy(() => import("./pages/ConfirmarEmail"));
+const RedefinirSenha = lazy(() => import("./pages/RedefinirSenha"));
+const TermosDeUso = lazy(() => import("./pages/TermosDeUso"));
+const PoliticaDePrivacidade = lazy(() => import("./pages/PoliticaDePrivacidade"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+// QueryClient com retry logic e cache otimizado
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 3,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      staleTime: 30 * 1000,
+      gcTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+    },
+  },
+});
+
+// Loading component para Suspense
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  </div>
+);
 
 // Register Service Worker for PWA
 const registerServiceWorker = async () => {
@@ -57,6 +83,7 @@ const registerServiceWorker = async () => {
       // Listen for messages from service worker
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data?.type === 'SW_UPDATED') {
+          console.log('SW Updated to version:', event.data.version);
           // Reload the page to get the new version
           window.location.reload();
         }
@@ -95,26 +122,28 @@ const AppContent = () => {
       <Sonner />
       <UpgradeModal />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/agendar" element={<Booking />} />
-          <Route path="/agendamento-direto" element={<BookingDirect />} />
-          <Route path="/meus-agendamentos" element={<MyAppointments />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin" element={
-            <ProtectedRoute>
-              <AdminPanel />
-            </ProtectedRoute>
-          } />
-          <Route path="/avaliar" element={<FeedbackPage />} />
-          <Route path="/owner" element={<OwnerPanel />} />
-          <Route path="/email-confirmado" element={<EmailConfirmed />} />
-          <Route path="/confirmar-email" element={<ConfirmarEmail />} />
-          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
-          <Route path="/termos" element={<TermosDeUso />} />
-          <Route path="/privacidade" element={<PoliticaDePrivacidade />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/agendar" element={<Booking />} />
+            <Route path="/agendamento-direto" element={<BookingDirect />} />
+            <Route path="/meus-agendamentos" element={<MyAppointments />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <AdminPanel />
+              </ProtectedRoute>
+            } />
+            <Route path="/avaliar" element={<FeedbackPage />} />
+            <Route path="/owner" element={<OwnerPanel />} />
+            <Route path="/email-confirmado" element={<EmailConfirmed />} />
+            <Route path="/confirmar-email" element={<ConfirmarEmail />} />
+            <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+            <Route path="/termos" element={<TermosDeUso />} />
+            <Route path="/privacidade" element={<PoliticaDePrivacidade />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
         <MobileBottomNav />
       </BrowserRouter>
     </>
@@ -122,23 +151,25 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <SubscriptionProvider>
-        <AppProvider>
-          <GalleryProvider>
-            <FeedbackProvider>
-              <NotificationProvider>
-                <TooltipProvider>
-                  <AppContent />
-                </TooltipProvider>
-              </NotificationProvider>
-            </FeedbackProvider>
-          </GalleryProvider>
-        </AppProvider>
-      </SubscriptionProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <SubscriptionProvider>
+          <AppProvider>
+            <GalleryProvider>
+              <FeedbackProvider>
+                <NotificationProvider>
+                  <TooltipProvider>
+                    <AppContent />
+                  </TooltipProvider>
+                </NotificationProvider>
+              </FeedbackProvider>
+            </GalleryProvider>
+          </AppProvider>
+        </SubscriptionProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
