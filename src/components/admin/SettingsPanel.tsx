@@ -1798,8 +1798,6 @@ Retorne APENAS a mensagem, sem explicações.`;
 
   return (
     <div className="flex flex-col h-full min-h-0 overflow-hidden">
-      <h2 className="text-2xl font-bold mb-4">Configurações</h2>
-      
       {/* Mobile: Dropdown selector */}
       <div className="lg:hidden mb-4">
         <select
@@ -1817,7 +1815,7 @@ Retorne APENAS a mensagem, sem explicações.`;
 
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row lg:items-start gap-4 overflow-hidden">
         {/* Menu lateral de categorias - Desktop only */}
-        <div className="hidden lg:flex w-52 flex-shrink-0 flex-col space-y-2">
+        <div className="hidden lg:flex w-52 flex-shrink-0 flex-col space-y-1.5 pt-1">
           {settingsSections.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection === section.id;
@@ -1825,14 +1823,14 @@ Retorne APENAS a mensagem, sem explicações.`;
               <button
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left ${
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-left ${
                   isActive 
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-card hover:bg-muted/50 border border-border'
                 }`}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="font-medium text-base">{section.label}</span>
+                <span className="font-medium text-sm">{section.label}</span>
               </button>
             );
           })}

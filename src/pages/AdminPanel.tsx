@@ -1551,7 +1551,7 @@ const AdminPanel = () => {
       {/* Sidebar Desktop */}
       {menuStyle === 'sidebar' && (
         <aside className={`hidden lg:flex flex-col bg-sidebar/95 backdrop-blur-sm border-r border-sidebar-border relative z-10 h-screen sticky top-0 transition-all duration-300 overflow-hidden min-h-0 ${
-          isSidebarCollapsed ? 'w-[68px]' : 'w-64'
+          isSidebarCollapsed ? 'w-[68px]' : 'w-56'
         }`}>
           <div className={`p-4 ${isSidebarCollapsed ? 'px-3' : 'p-6'}`}>
             <div className="flex items-center gap-2 justify-between">
@@ -1597,7 +1597,7 @@ const AdminPanel = () => {
                 <button
                   onClick={() => setActiveTab(item.id)}
                   className={`w-full flex items-center gap-3 rounded-xl mb-1 transition-all relative touch-manipulation ${
-                    isSidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'
+                    isSidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-2.5'
                   } ${
                     activeTab === item.id
                       ? 'bg-sidebar-accent text-sidebar-accent-foreground'
@@ -1628,7 +1628,7 @@ const AdminPanel = () => {
             <button
               onClick={() => signOut()}
               className={`flex items-center gap-3 text-muted-foreground hover:text-destructive transition-colors w-full touch-manipulation rounded-xl ${
-                isSidebarCollapsed ? 'px-3 py-3 justify-center hover:bg-destructive/10' : 'px-4 py-3 hover:bg-destructive/10'
+                isSidebarCollapsed ? 'px-3 py-3 justify-center hover:bg-destructive/10' : 'px-4 py-2.5 hover:bg-destructive/10'
               }`}
             >
               <LogOut className="w-5 h-5" />

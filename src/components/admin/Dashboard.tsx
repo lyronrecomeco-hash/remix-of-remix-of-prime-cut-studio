@@ -267,24 +267,6 @@ const Dashboard = React.memo(({ onNavigate }: DashboardProps) => {
         </div>
       </motion.div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: 'Ver Agenda', icon: Calendar, tab: 'agenda' },
-          { label: 'Gerenciar Fila', icon: Users, tab: 'fila' },
-          { label: 'Horários', icon: Clock, tab: 'horarios' },
-          { label: 'Configurações', icon: Eye, tab: 'config' },
-        ].map((action) => (
-          <button
-            key={action.label}
-            onClick={() => onNavigate?.(action.tab)}
-            className="glass-card rounded-xl p-4 hover:border-primary/50 transition-all flex items-center gap-3"
-          >
-            <action.icon className="w-5 h-5 text-primary" />
-            <span className="text-sm font-medium">{action.label}</span>
-          </button>
-        ))}
-      </div>
     </div>
   );
 });
