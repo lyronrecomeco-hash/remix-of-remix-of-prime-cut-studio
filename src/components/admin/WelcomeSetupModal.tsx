@@ -372,13 +372,32 @@ const WelcomeSetupModal = ({ isOpen, onComplete }: WelcomeSetupModalProps) => {
   const handleComplete = async () => {
     if (user) {
       try {
-        // Mark setup as complete in admin_settings
-        await supabase
+        // First check if record exists
+        const { data: existing } = await supabase
           .from('admin_settings')
-          .upsert({
-            setting_type: `welcome_completed_${user.id}`,
-            settings: { completed: true, completedAt: new Date().toISOString() }
-          }, { onConflict: 'setting_type' });
+          .select('id')
+          .eq('setting_type', `welcome_completed_${user.id}`)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (existing) {
+          // Update existing record
+          await supabase
+            .from('admin_settings')
+            .update({
+              settings: { completed: true, completedAt: new Date().toISOString() }
+            })
+            .eq('id', existing.id);
+        } else {
+          // Insert new record with user_id
+          await supabase
+            .from('admin_settings')
+            .insert({
+              setting_type: `welcome_completed_${user.id}`,
+              settings: { completed: true, completedAt: new Date().toISOString() },
+              user_id: user.id
+            });
+        }
       } catch (e) {
         console.error('Error saving welcome completion:', e);
       }

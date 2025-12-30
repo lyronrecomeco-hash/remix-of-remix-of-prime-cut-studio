@@ -180,6 +180,7 @@ const AdminPanel = () => {
         .from('admin_settings')
         .select('settings')
         .eq('setting_type', `welcome_completed_${user.id}`)
+        .eq('user_id', user.id)
         .maybeSingle();
       
       // Show modal if not completed yet
