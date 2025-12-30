@@ -136,6 +136,420 @@ const FAQItem = ({ question, answer }: { question: string; answer: string }) => 
   );
 };
 
+// Live Simulation Section - Interactive Demo
+const LiveSimulationSection = () => {
+  const [step, setStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  
+  // Auto-advance simulation
+  useEffect(() => {
+    if (!isInView || !isPlaying) return;
+    
+    const timer = setInterval(() => {
+      setStep(prev => (prev + 1) % 5);
+    }, 3000);
+    
+    return () => clearInterval(timer);
+  }, [isInView, isPlaying]);
+
+  const simulationSteps = [
+    {
+      title: 'Cliente acessa o site',
+      phone: {
+        screen: 'landing',
+        content: (
+          <div className="p-3 space-y-2">
+            <div className="h-8 bg-primary/20 rounded-lg flex items-center justify-center">
+              <span className="text-[10px] font-bold text-primary">Barber Studio</span>
+            </div>
+            <div className="h-12 bg-muted/50 rounded animate-pulse" />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="h-8 bg-muted/30 rounded" />
+              <div className="h-8 bg-muted/30 rounded" />
+            </div>
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              transition={{ repeat: Infinity, repeatType: 'reverse', duration: 0.8 }}
+              className="h-10 bg-primary rounded-lg flex items-center justify-center mt-4"
+            >
+              <span className="text-[10px] font-bold text-primary-foreground">AGENDAR AGORA</span>
+            </motion.div>
+          </div>
+        )
+      },
+      dashboard: null
+    },
+    {
+      title: 'Escolhe serviço e horário',
+      phone: {
+        screen: 'booking',
+        content: (
+          <div className="p-3 space-y-2">
+            <div className="text-[10px] font-medium text-center mb-2">Escolha o Serviço</div>
+            <motion.div 
+              initial={{ opacity: 0.5 }}
+              animate={{ opacity: 1, borderColor: 'hsl(var(--primary))' }}
+              transition={{ delay: 0.5 }}
+              className="p-2 border-2 border-primary rounded-lg bg-primary/10"
+            >
+              <div className="flex justify-between items-center">
+                <span className="text-[9px] font-medium">Corte + Barba</span>
+                <span className="text-[9px] text-primary font-bold">R$ 45</span>
+              </div>
+            </motion.div>
+            <div className="p-2 border border-border/50 rounded-lg opacity-50">
+              <div className="flex justify-between items-center">
+                <span className="text-[9px]">Corte Simples</span>
+                <span className="text-[9px]">R$ 35</span>
+              </div>
+            </div>
+            <div className="mt-3 text-[10px] font-medium text-center">Horário</div>
+            <div className="grid grid-cols-3 gap-1">
+              {['14:00', '14:30', '15:00'].map((time, i) => (
+                <motion.div
+                  key={time}
+                  initial={{ opacity: 0.5 }}
+                  animate={{ 
+                    opacity: 1, 
+                    backgroundColor: i === 1 ? 'hsl(var(--primary))' : 'transparent',
+                    color: i === 1 ? 'hsl(var(--primary-foreground))' : 'inherit'
+                  }}
+                  transition={{ delay: 1 + i * 0.2 }}
+                  className="p-1 border border-border/50 rounded text-center text-[9px]"
+                >
+                  {time}
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )
+      },
+      dashboard: null
+    },
+    {
+      title: 'Confirma agendamento',
+      phone: {
+        screen: 'confirm',
+        content: (
+          <div className="p-3 flex flex-col items-center justify-center h-full">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', delay: 0.3 }}
+              className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mb-3"
+            >
+              <Check className="w-6 h-6 text-green-500" />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="text-center"
+            >
+              <div className="text-[11px] font-bold text-green-500 mb-1">Agendado!</div>
+              <div className="text-[9px] text-muted-foreground">Corte + Barba</div>
+              <div className="text-[9px] text-muted-foreground">Hoje, 14:30</div>
+              <div className="text-[8px] text-muted-foreground mt-2">Protocolo: #28491</div>
+            </motion.div>
+          </div>
+        )
+      },
+      dashboard: (
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="absolute top-4 right-4 bg-card border border-primary/50 rounded-lg p-3 shadow-lg"
+        >
+          <div className="flex items-center gap-2">
+            <Bell className="w-4 h-4 text-primary animate-pulse" />
+            <span className="text-[10px] font-medium">Novo agendamento!</span>
+          </div>
+        </motion.div>
+      )
+    },
+    {
+      title: 'WhatsApp automático',
+      phone: {
+        screen: 'whatsapp',
+        content: (
+          <div className="p-2 bg-[#0b141a] h-full">
+            <div className="flex items-center gap-2 p-2 border-b border-white/10">
+              <div className="w-6 h-6 rounded-full bg-primary/30" />
+              <span className="text-[10px] text-white">Barber Studio</span>
+            </div>
+            <div className="p-2 space-y-2 mt-2">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-[#202c33] rounded-lg p-2 max-w-[85%]"
+              >
+                <p className="text-[8px] text-white/90">
+                  ✅ Agendamento Confirmado!{'\n\n'}
+                  📅 Data: Hoje{'\n'}
+                  ⏰ Horário: 14:30{'\n'}
+                  ✂️ Serviço: Corte + Barba{'\n\n'}
+                  Te esperamos! 💈
+                </p>
+                <span className="text-[6px] text-white/50 float-right">14:32 ✓✓</span>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1.2 }}
+                className="bg-[#005c4b] rounded-lg p-2 max-w-[60%] ml-auto"
+              >
+                <p className="text-[8px] text-white/90">Beleza, estarei lá! 👍</p>
+                <span className="text-[6px] text-white/50 float-right">14:33 ✓✓</span>
+              </motion.div>
+            </div>
+          </div>
+        )
+      },
+      dashboard: null
+    },
+    {
+      title: 'Dashboard atualizado',
+      phone: null,
+      dashboard: (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute inset-4 bg-card border border-border rounded-xl p-4 overflow-hidden"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                <BarChart3 className="w-4 h-4 text-primary" />
+              </div>
+              <span className="text-[11px] font-bold">Dashboard</span>
+            </div>
+            <Badge className="text-[8px] bg-green-500/20 text-green-500">Online</Badge>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {[
+              { label: 'Hoje', value: '12', icon: Calendar },
+              { label: 'Faturamento', value: 'R$ 540', icon: TrendingUp },
+              { label: 'Clientes', value: '89', icon: Users }
+            ].map((stat, i) => (
+              <motion.div
+                key={i}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2 + i * 0.1 }}
+                className="bg-muted/50 rounded-lg p-2 text-center"
+              >
+                <stat.icon className="w-3 h-3 mx-auto mb-1 text-primary" />
+                <div className="text-[10px] font-bold">{stat.value}</div>
+                <div className="text-[7px] text-muted-foreground">{stat.label}</div>
+              </motion.div>
+            ))}
+          </div>
+          
+          <div className="text-[9px] font-medium mb-2">Próximos Agendamentos</div>
+          <div className="space-y-1">
+            {[
+              { time: '14:30', name: 'João Silva', service: 'Corte + Barba', isNew: true },
+              { time: '15:00', name: 'Pedro Santos', service: 'Corte', isNew: false },
+              { time: '15:30', name: 'Carlos Lima', service: 'Barba', isNew: false }
+            ].map((apt, i) => (
+              <motion.div
+                key={i}
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.5 + i * 0.15 }}
+                className={`flex items-center justify-between p-1.5 rounded-lg ${apt.isNew ? 'bg-primary/10 border border-primary/30' : 'bg-muted/30'}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-medium text-primary">{apt.time}</span>
+                  <span className="text-[8px]">{apt.name}</span>
+                </div>
+                <span className="text-[7px] text-muted-foreground">{apt.service}</span>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      )
+    }
+  ];
+
+  const currentStep = simulationSteps[step];
+
+  return (
+    <section ref={ref} className="py-20 md:py-32 bg-gradient-to-b from-background to-card/50 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
+            <Sparkles className="w-3 h-3 mr-1" />
+            Simulação Interativa
+          </Badge>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Veja o sistema{' '}
+            <span className="text-gradient">funcionando ao vivo</span>
+          </h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Acompanhe o fluxo completo: do agendamento do cliente até a gestão no seu dashboard.
+          </p>
+        </div>
+
+        <div className="relative">
+          {/* Step Indicators */}
+          <div className="flex justify-center gap-2 md:gap-4 mb-8 flex-wrap">
+            {simulationSteps.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => { setStep(i); setIsPlaying(false); }}
+                className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-medium transition-all ${
+                  step === i 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                <span className="w-5 h-5 rounded-full bg-background/20 flex items-center justify-center text-[10px]">
+                  {i + 1}
+                </span>
+                <span className="hidden sm:inline">{s.title}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Simulation Container */}
+          <div className="flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-16">
+            {/* Phone Mockup */}
+            <AnimatePresence mode="wait">
+              {currentStep.phone && (
+                <motion.div
+                  key={`phone-${step}`}
+                  initial={{ opacity: 0, x: -50, rotateY: -15 }}
+                  animate={{ opacity: 1, x: 0, rotateY: 0 }}
+                  exit={{ opacity: 0, x: 50, rotateY: 15 }}
+                  transition={{ duration: 0.5 }}
+                  className="relative"
+                >
+                  {/* Phone Frame */}
+                  <div className="relative w-48 md:w-56 h-96 md:h-[420px] bg-gradient-to-b from-zinc-800 to-zinc-900 rounded-[2.5rem] p-2 shadow-2xl">
+                    {/* Notch */}
+                    <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-5 bg-black rounded-full z-10" />
+                    
+                    {/* Screen */}
+                    <div className="w-full h-full bg-background rounded-[2rem] overflow-hidden relative">
+                      {/* Status Bar */}
+                      <div className="h-6 bg-card flex items-center justify-between px-4 text-[8px] text-muted-foreground">
+                        <span>14:32</span>
+                        <div className="flex gap-1">
+                          <div className="w-3 h-2 border border-current rounded-sm">
+                            <div className="w-2 h-full bg-green-500 rounded-sm" />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="h-[calc(100%-1.5rem)]">
+                        {currentStep.phone.content}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Reflection */}
+                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent rounded-[2.5rem] pointer-events-none" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Arrow */}
+            {currentStep.phone && (step === 2 || step === 4) && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="hidden lg:flex items-center"
+              >
+                <div className="flex items-center gap-2">
+                  <motion.div
+                    animate={{ x: [0, 10, 0] }}
+                    transition={{ repeat: Infinity, duration: 1 }}
+                  >
+                    <ArrowRight className="w-8 h-8 text-primary" />
+                  </motion.div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Dashboard Mockup */}
+            <AnimatePresence mode="wait">
+              {(step === 2 || step === 4) && (
+                <motion.div
+                  key={`dashboard-${step}`}
+                  initial={{ opacity: 0, x: 50, scale: 0.9 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -50, scale: 0.9 }}
+                  transition={{ duration: 0.5 }}
+                  className="relative w-72 md:w-96 h-64 md:h-80 bg-card border border-border rounded-xl shadow-2xl overflow-hidden"
+                >
+                  {/* Browser Bar */}
+                  <div className="h-7 bg-muted/50 flex items-center gap-1.5 px-3 border-b border-border">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
+                    <div className="flex-1 mx-3">
+                      <div className="bg-muted rounded-md px-2 py-0.5 text-[8px] text-muted-foreground">
+                        app.genesishub.cloud/admin
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Dashboard Content */}
+                  <div className="relative h-[calc(100%-1.75rem)]">
+                    {currentStep.dashboard}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Current Step Title */}
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mt-8"
+          >
+            <Badge variant="outline" className="text-sm px-4 py-2">
+              <span className="text-primary mr-2">Passo {step + 1}:</span>
+              {currentStep.title}
+            </Badge>
+          </motion.div>
+
+          {/* Play/Pause Button */}
+          <div className="flex justify-center mt-6">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="gap-2"
+            >
+              {isPlaying ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-current" />
+                  Pausar
+                </>
+              ) : (
+                <>
+                  <div className="w-0 h-0 border-l-[8px] border-l-current border-y-[5px] border-y-transparent" />
+                  Reproduzir
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 // Pricing Card Component
 const PricingCard = ({ 
   name, 
@@ -495,6 +909,9 @@ const GenesisLanding = () => {
           </div>
         </div>
       </section>
+
+      {/* Interactive Live Simulation Section */}
+      <LiveSimulationSection />
 
       {/* Features Section */}
       <section id="features" className="py-20 md:py-32 relative">
