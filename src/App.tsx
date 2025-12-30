@@ -117,6 +117,26 @@ const AppContent = () => {
     requestNotificationPermission();
   }, []);
 
+  // Check if accessing via docs subdomain
+  const isDocsSubdomain = window.location.hostname === 'docs.genesishub.cloud';
+
+  // If on docs subdomain, show only the Docs page
+  if (isDocsSubdomain) {
+    return (
+      <>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="*" element={<Docs />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </>
+    );
+  }
+
   return (
     <>
       <Toaster />
