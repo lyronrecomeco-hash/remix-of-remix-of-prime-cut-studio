@@ -20,6 +20,7 @@ export type Database = {
           id: string
           setting_type: string
           settings: Json
+          tenant_id: string | null
           updated_at: string
           user_id: string | null
         }
@@ -28,6 +29,7 @@ export type Database = {
           id?: string
           setting_type: string
           settings?: Json
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -36,6 +38,7 @@ export type Database = {
           id?: string
           setting_type?: string
           settings?: Json
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -85,6 +88,7 @@ export type Database = {
           protocol: string
           service_id: string
           status: string
+          tenant_id: string | null
           time: string
           updated_at: string
           user_id: string | null
@@ -99,6 +103,7 @@ export type Database = {
           protocol: string
           service_id: string
           status?: string
+          tenant_id?: string | null
           time: string
           updated_at?: string
           user_id?: string | null
@@ -113,6 +118,7 @@ export type Database = {
           protocol?: string
           service_id?: string
           status?: string
+          tenant_id?: string | null
           time?: string
           updated_at?: string
           user_id?: string | null
@@ -174,6 +180,7 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          tenant_id: string | null
           updated_at: string
           user_id: string | null
         }
@@ -183,6 +190,7 @@ export type Database = {
           created_at?: string
           date: string
           id?: string
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -192,6 +200,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -217,6 +226,7 @@ export type Database = {
           reason: string | null
           start_date: string
           status: string
+          tenant_id: string | null
           updated_at: string
           user_id: string | null
         }
@@ -231,6 +241,7 @@ export type Database = {
           reason?: string | null
           start_date: string
           status?: string
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -245,6 +256,7 @@ export type Database = {
           reason?: string | null
           start_date?: string
           status?: string
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -274,6 +286,7 @@ export type Database = {
           period_start: string
           period_type: string
           returning_clients: number
+          tenant_id: string | null
           total_appointments: number
           total_revenue: number
           updated_at: string
@@ -294,6 +307,7 @@ export type Database = {
           period_start: string
           period_type?: string
           returning_clients?: number
+          tenant_id?: string | null
           total_appointments?: number
           total_revenue?: number
           updated_at?: string
@@ -314,6 +328,7 @@ export type Database = {
           period_start?: string
           period_type?: string
           returning_clients?: number
+          tenant_id?: string | null
           total_appointments?: number
           total_revenue?: number
           updated_at?: string
@@ -345,6 +360,7 @@ export type Database = {
           id: string
           is_enabled: boolean
           start_time: string
+          tenant_id: string | null
           updated_at: string
           user_id: string | null
         }
@@ -356,6 +372,7 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           start_time?: string
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -367,6 +384,7 @@ export type Database = {
           id?: string
           is_enabled?: boolean
           start_time?: string
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -390,6 +408,7 @@ export type Database = {
           photo: string | null
           rating: number | null
           specialties: string[] | null
+          tenant_id: string | null
           updated_at: string
           user_id: string | null
         }
@@ -402,6 +421,7 @@ export type Database = {
           photo?: string | null
           rating?: number | null
           specialties?: string[] | null
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -414,6 +434,7 @@ export type Database = {
           photo?: string | null
           rating?: number | null
           specialties?: string[] | null
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -428,6 +449,7 @@ export type Database = {
           id: string
           reason: string | null
           start_time: string
+          tenant_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -438,6 +460,7 @@ export type Database = {
           id?: string
           reason?: string | null
           start_time: string
+          tenant_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -448,6 +471,7 @@ export type Database = {
           id?: string
           reason?: string | null
           start_time?: string
+          tenant_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -468,6 +492,7 @@ export type Database = {
           id: string
           instance_id: string | null
           is_enabled: boolean | null
+          tenant_id: string | null
           updated_at: string
           user_id: string | null
         }
@@ -478,6 +503,7 @@ export type Database = {
           id?: string
           instance_id?: string | null
           is_enabled?: boolean | null
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -488,6 +514,7 @@ export type Database = {
           id?: string
           instance_id?: string | null
           is_enabled?: boolean | null
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -635,6 +662,7 @@ export type Database = {
           name: string
           rating: number
           status: string
+          tenant_id: string | null
           text: string
           updated_at: string
           user_id: string
@@ -648,6 +676,7 @@ export type Database = {
           name: string
           rating: number
           status?: string
+          tenant_id?: string | null
           text: string
           updated_at?: string
           user_id: string
@@ -661,6 +690,7 @@ export type Database = {
           name?: string
           rating?: number
           status?: string
+          tenant_id?: string | null
           text?: string
           updated_at?: string
           user_id?: string
@@ -745,6 +775,7 @@ export type Database = {
           sent_count: number
           status: string
           target_count: number
+          tenant_id: string | null
           updated_at: string
           use_ai: boolean
           user_id: string | null
@@ -763,6 +794,7 @@ export type Database = {
           sent_count?: number
           status?: string
           target_count?: number
+          tenant_id?: string | null
           updated_at?: string
           use_ai?: boolean
           user_id?: string | null
@@ -781,6 +813,7 @@ export type Database = {
           sent_count?: number
           status?: string
           target_count?: number
+          tenant_id?: string | null
           updated_at?: string
           use_ai?: boolean
           user_id?: string | null
@@ -797,6 +830,7 @@ export type Database = {
           phone: string
           sent_at: string | null
           status: string
+          tenant_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -808,6 +842,7 @@ export type Database = {
           phone: string
           sent_at?: string | null
           status?: string
+          tenant_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -819,6 +854,7 @@ export type Database = {
           phone?: string
           sent_at?: string | null
           status?: string
+          tenant_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -849,6 +885,7 @@ export type Database = {
           min_delay_seconds: number
           pause_duration_seconds: number
           pause_every_n_messages: number
+          tenant_id: string | null
           updated_at: string
           user_id: string | null
           warmup_day: number
@@ -871,6 +908,7 @@ export type Database = {
           min_delay_seconds?: number
           pause_duration_seconds?: number
           pause_every_n_messages?: number
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
           warmup_day?: number
@@ -893,6 +931,7 @@ export type Database = {
           min_delay_seconds?: number
           pause_duration_seconds?: number
           pause_every_n_messages?: number
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
           warmup_day?: number
@@ -911,6 +950,7 @@ export type Database = {
           image_url: string | null
           is_active: boolean | null
           template: string
+          tenant_id: string | null
           title: string
           updated_at: string
           user_id: string | null
@@ -925,6 +965,7 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean | null
           template: string
+          tenant_id?: string | null
           title: string
           updated_at?: string
           user_id?: string | null
@@ -939,6 +980,7 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean | null
           template?: string
+          tenant_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null
@@ -956,6 +998,7 @@ export type Database = {
           is_active: boolean
           month: number
           target_value: number
+          tenant_id: string | null
           updated_at: string
           user_id: string | null
           year: number
@@ -970,6 +1013,7 @@ export type Database = {
           is_active?: boolean
           month: number
           target_value: number
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
           year: number
@@ -984,6 +1028,7 @@ export type Database = {
           is_active?: boolean
           month?: number
           target_value?: number
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
           year?: number
@@ -1033,6 +1078,7 @@ export type Database = {
           endpoint: string
           id: string
           p256dh: string
+          tenant_id: string | null
           user_id: string | null
           user_type: string
         }
@@ -1043,6 +1089,7 @@ export type Database = {
           endpoint: string
           id?: string
           p256dh: string
+          tenant_id?: string | null
           user_id?: string | null
           user_type?: string
         }
@@ -1053,6 +1100,7 @@ export type Database = {
           endpoint?: string
           id?: string
           p256dh?: string
+          tenant_id?: string | null
           user_id?: string | null
           user_type?: string
         }
@@ -1068,6 +1116,7 @@ export type Database = {
           onway_at: string | null
           position: number
           status: string
+          tenant_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -1079,6 +1128,7 @@ export type Database = {
           onway_at?: string | null
           position: number
           status?: string
+          tenant_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -1090,6 +1140,7 @@ export type Database = {
           onway_at?: string | null
           position?: number
           status?: string
+          tenant_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -1111,6 +1162,7 @@ export type Database = {
           id: string
           name: string
           price: number
+          tenant_id: string | null
           updated_at: string
           user_id: string | null
           visible: boolean | null
@@ -1123,6 +1175,7 @@ export type Database = {
           id?: string
           name: string
           price?: number
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
           visible?: boolean | null
@@ -1135,6 +1188,7 @@ export type Database = {
           id?: string
           name?: string
           price?: number
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
           visible?: boolean | null
@@ -1163,6 +1217,7 @@ export type Database = {
           phone: string | null
           queue_enabled: boolean | null
           tagline: string | null
+          tenant_id: string | null
           theme: string | null
           updated_at: string
           user_id: string | null
@@ -1189,6 +1244,7 @@ export type Database = {
           phone?: string | null
           queue_enabled?: boolean | null
           tagline?: string | null
+          tenant_id?: string | null
           theme?: string | null
           updated_at?: string
           user_id?: string | null
@@ -1215,6 +1271,7 @@ export type Database = {
           phone?: string | null
           queue_enabled?: boolean | null
           tagline?: string | null
+          tenant_id?: string | null
           theme?: string | null
           updated_at?: string
           user_id?: string | null
@@ -1232,6 +1289,7 @@ export type Database = {
           plan_id: string
           starts_at: string
           status: string
+          tenant_id: string | null
           updated_at: string
           user_id: string
         }
@@ -1244,6 +1302,7 @@ export type Database = {
           plan_id: string
           starts_at?: string
           status?: string
+          tenant_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1256,6 +1315,7 @@ export type Database = {
           plan_id?: string
           starts_at?: string
           status?: string
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1275,6 +1335,7 @@ export type Database = {
           date: string
           id: string
           page: string
+          tenant_id: string | null
           unique_visitors: number
           user_id: string | null
           visits: number
@@ -1284,6 +1345,7 @@ export type Database = {
           date?: string
           id?: string
           page: string
+          tenant_id?: string | null
           unique_visitors?: number
           user_id?: string | null
           visits?: number
@@ -1293,6 +1355,7 @@ export type Database = {
           date?: string
           id?: string
           page?: string
+          tenant_id?: string | null
           unique_visitors?: number
           user_id?: string | null
           visits?: number
@@ -1371,6 +1434,21 @@ export type Database = {
         }
         Relationships: []
       }
+      tenants: {
+        Row: {
+          created_at: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       usage_metrics: {
         Row: {
           appointments_count: number
@@ -1378,6 +1456,7 @@ export type Database = {
           created_at: string
           id: string
           month: number
+          tenant_id: string | null
           updated_at: string
           user_id: string
           year: number
@@ -1388,6 +1467,7 @@ export type Database = {
           created_at?: string
           id?: string
           month: number
+          tenant_id?: string | null
           updated_at?: string
           user_id: string
           year: number
@@ -1398,6 +1478,7 @@ export type Database = {
           created_at?: string
           id?: string
           month?: number
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string
           year?: number
@@ -1412,6 +1493,7 @@ export type Database = {
           first_name: string | null
           id: string
           last_name: string | null
+          tenant_id: string | null
           updated_at: string
           user_id: string
           whatsapp: string | null
@@ -1423,6 +1505,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
+          tenant_id?: string | null
           updated_at?: string
           user_id: string
           whatsapp?: string | null
@@ -1434,6 +1517,7 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string
           whatsapp?: string | null
@@ -1461,6 +1545,35 @@ export type Database = {
         }
         Relationships: []
       }
+      user_tenants: {
+        Row: {
+          created_at: string
+          role: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          role?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          role?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_tenants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_configs: {
         Row: {
           created_at: string
@@ -1468,6 +1581,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           last_triggered_at: string | null
+          tenant_id: string | null
           updated_at: string
           user_id: string | null
           webhook_url: string | null
@@ -1478,6 +1592,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_triggered_at?: string | null
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
           webhook_url?: string | null
@@ -1488,6 +1603,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_triggered_at?: string | null
+          tenant_id?: string | null
           updated_at?: string
           user_id?: string | null
           webhook_url?: string | null
@@ -1545,6 +1661,7 @@ export type Database = {
     }
     Functions: {
       check_ip_fraud: { Args: { check_ip: string }; Returns: boolean }
+      current_tenant_id: { Args: never; Returns: string }
       get_user_plan: { Args: { check_user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -1559,6 +1676,7 @@ export type Database = {
         Returns: boolean
       }
       is_owner: { Args: { _user_id: string }; Returns: boolean }
+      tenant_matches: { Args: { p_tenant: string }; Returns: boolean }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "barber"
