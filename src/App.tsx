@@ -39,6 +39,7 @@ const AffiliateLogin = lazy(() => import("./pages/AffiliateLogin"));
 const AffiliatePanel = lazy(() => import("./pages/AffiliatePanel"));
 const CRMLogin = lazy(() => import("./pages/CRMLogin"));
 const CRMPanel = lazy(() => import("./pages/CRMPanel"));
+const CRMTokenLogin = lazy(() => import("./pages/CRMTokenLogin"));
 
 // QueryClient com retry logic e cache otimizado
 const queryClient = new QueryClient({
@@ -194,6 +195,7 @@ const AppContent = () => {
             <Route path="/afiliado/login" element={<AffiliateLogin />} />
             <Route path="/afiliado" element={<AffiliatePanel />} />
             <Route path="/crm/login" element={<CRMProvider><CRMLogin /></CRMProvider>} />
+            <Route path="/crm/token" element={<CRMProvider><CRMTokenLogin /></CRMProvider>} />
             <Route path="/crmpainel" element={<CRMProvider><CRMPanel /></CRMProvider>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
