@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   Building2,
   LogOut,
+  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCRM } from '@/contexts/CRMContext';
@@ -37,6 +38,8 @@ import CRMCollaborators from '@/components/crm/CRMCollaborators';
 import CRMUserProfile from '@/components/crm/CRMUserProfile';
 import CRMProfileMenu from '@/components/crm/CRMProfileMenu';
 import CRMSecurityProvider from '@/components/crm/CRMSecurityProvider';
+import CRMInteractiveBackground from '@/components/crm/CRMInteractiveBackground';
+import CRMGlobalSearch from '@/components/crm/CRMGlobalSearch';
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -54,6 +57,7 @@ export default function CRMPanel() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { crmUser, crmTenant, isAuthenticated, isLoading, logout, isAdmin } = useCRM();
   const navigate = useNavigate();
 
@@ -126,10 +130,18 @@ export default function CRMPanel() {
 
   return (
     <CRMSecurityProvider>
+      {/* Interactive Background */}
+      <CRMInteractiveBackground />
+      
+      {/* Global Search */}
+      <CRMGlobalSearch 
+        isOpen={isSearchOpen} 
+        onClose={() => setIsSearchOpen(false)}
+        onNavigate={(tab) => setActiveTab(tab)}
+      />
+
       {/* Onboarding Modal */}
       {!crmTenant.onboarding_completed && <CRMOnboardingModal />}
-
-      <div className="min-h-screen bg-background flex">
         {/* Desktop Sidebar */}
         <motion.aside
           initial={false}
@@ -219,8 +231,13 @@ export default function CRMPanel() {
         </motion.aside>
 
         {/* Desktop Top Header with Profile Menu */}
-        <div className="hidden lg:flex fixed top-0 right-0 h-16 bg-card/95 backdrop-blur-sm border-b border-border z-30 items-center justify-end px-6"
+        <div className="hidden lg:flex fixed top-0 right-0 h-16 bg-card/95 backdrop-blur-sm border-b border-border z-30 items-center justify-end px-6 gap-3"
              style={{ left: isSidebarOpen ? '256px' : '72px', transition: 'left 0.3s' }}>
+          <Button variant="outline" size="sm" onClick={() => setIsSearchOpen(true)} className="gap-2">
+            <Search className="w-4 h-4" />
+            <span className="text-muted-foreground">Buscar...</span>
+            <kbd className="ml-2 px-1.5 py-0.5 rounded bg-muted text-[10px]">⌘K</kbd>
+          </Button>
           <CRMProfileMenu onNavigate={handleProfileNavigate} onLogout={handleLogout} />
         </div>
 
