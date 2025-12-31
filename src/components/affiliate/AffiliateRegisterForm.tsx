@@ -162,12 +162,19 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
     
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('send-affiliate-verification', {
+      // Simple hash for password (will be properly hashed on server)
+      const encoder = new TextEncoder();
+      const passwordBytes = encoder.encode(formData.password);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', passwordBytes);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      const { data: responseData, error } = await supabase.functions.invoke('send-affiliate-verification', {
         body: {
           name: formData.name.trim(),
           email: formData.email.toLowerCase().trim(),
-          whatsapp: formData.whatsapp.replace(/\D/g, ''),
-          password: formData.password
+          phone: formData.whatsapp.replace(/\D/g, ''),
+          password_hash: passwordHash
         }
       });
 
@@ -176,12 +183,12 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
         return;
       }
 
-      if (data?.error) {
-        toast.error(data.error);
+      if (responseData?.error) {
+        toast.error(responseData.error);
         return;
       }
 
-      setPhoneLast4(data?.phone || formData.whatsapp.slice(-4));
+      setPhoneLast4(responseData?.phone || formData.whatsapp.slice(-4));
       setStep(3);
       setResendCooldown(60);
       setOtpCode(['', '', '', '', '', '']);
@@ -269,12 +276,19 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
     
     setLoading(true);
     try {
+      // Hash password again for resend
+      const encoder = new TextEncoder();
+      const passwordBytes = encoder.encode(formData.password);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', passwordBytes);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      
       const { data, error } = await supabase.functions.invoke('send-affiliate-verification', {
         body: {
           name: formData.name.trim(),
           email: formData.email.toLowerCase().trim(),
-          whatsapp: formData.whatsapp.replace(/\D/g, ''),
-          password: formData.password
+          phone: formData.whatsapp.replace(/\D/g, ''),
+          password_hash: passwordHash
         }
       });
 
