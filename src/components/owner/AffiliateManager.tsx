@@ -132,39 +132,36 @@ const AffiliateManager = () => {
 
     setCreating(true);
     try {
-      const affiliateCode = generateAffiliateCode();
-      const password = generatePassword();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Sessão não encontrada');
+      }
 
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newAffiliate.email.toLowerCase().trim(),
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/afiliado/login`,
-          data: { is_affiliate: true }
-        }
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-affiliate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          name: newAffiliate.name,
+          email: newAffiliate.email,
+          whatsapp: newAffiliate.whatsapp
+        })
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Usuário não criado');
+      const result = await response.json();
 
-      const { error: affiliateError } = await supabase.from('affiliates').insert({
-        user_id: authData.user.id,
-        name: newAffiliate.name,
-        email: newAffiliate.email.toLowerCase().trim(),
-        whatsapp: newAffiliate.whatsapp,
-        affiliate_code: affiliateCode,
-        password_hash: password,
-        status: 'active'
-      });
-
-      if (affiliateError) throw affiliateError;
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao criar afiliado');
+      }
 
       toast.success(
         <div className="space-y-2">
           <p className="font-semibold">Afiliado criado com sucesso!</p>
-          <p className="text-sm">Email: {newAffiliate.email}</p>
-          <p className="text-sm">Senha: {password}</p>
-          <p className="text-sm">Código: {affiliateCode}</p>
+          <p className="text-sm">Email: {result.affiliate.email}</p>
+          <p className="text-sm">Senha: {result.affiliate.password}</p>
+          <p className="text-sm">Código: {result.affiliate.affiliate_code}</p>
         </div>,
         { duration: 15000 }
       );
