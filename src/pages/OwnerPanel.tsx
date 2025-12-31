@@ -30,6 +30,7 @@ import UsersOverview from '@/components/owner/UsersOverview';
 import SubscriptionManager from '@/components/owner/SubscriptionManager';
 import WhatsAppTemplatesManager from '@/components/owner/WhatsAppTemplatesManager';
 import UserDatabaseSection from '@/components/owner/UserDatabaseSection';
+import AffiliateChatProConfig from '@/components/owner/AffiliateChatProConfig';
 import LeadsManager from '@/components/owner/LeadsManager';
 import AffiliateManager from '@/components/owner/AffiliateManager';
 
@@ -62,6 +63,7 @@ const navSections: NavSection[] = [
       { id: 'subscriptions', label: 'Assinaturas', icon: CreditCard },
       { id: 'users', label: 'Usuários', icon: Users },
       { id: 'affiliates', label: 'Afiliados', icon: Users, badge: 'Novo', badgeVariant: 'default' },
+      { id: 'affiliate-chatpro', label: 'ChatPro Afiliados', icon: MessageCircle },
       { id: 'database', label: 'Banco de Dados', icon: HardDrive },
     ]
   },
@@ -134,6 +136,8 @@ const OwnerPanel = () => {
         return <UsersOverview />;
       case 'affiliates':
         return <AffiliateManager />;
+      case 'affiliate-chatpro':
+        return <AffiliateChatProConfig />;
       case 'database':
         return <UserDatabaseSection />;
       case 'emails':

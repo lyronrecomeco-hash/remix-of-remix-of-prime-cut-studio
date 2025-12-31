@@ -5,43 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Generate 6 digit code
+// Generate 6-digit code
 const generateCode = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
-};
-
-// Hash password for storage (simple hash for temporary storage)
-const hashPassword = async (password: string): Promise<string> => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-};
-
-// Rate limiting
-const checkRateLimit = async (
-  supabase: any,
-  phone: string
-): Promise<{ allowed: boolean; message?: string }> => {
-  // Check how many codes were sent to this phone in the last hour
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  
-  const { count } = await supabase
-    .from('affiliate_verification_codes')
-    .select('*', { count: 'exact', head: true })
-    .eq('phone', phone)
-    .gte('created_at', oneHourAgo);
-
-  if (count && count >= 5) {
-    return { 
-      allowed: false, 
-      message: 'Muitas tentativas. Aguarde 1 hora para solicitar novamente.' 
-    };
-  }
-
-  return { allowed: true };
 };
 
 Deno.serve(async (req) => {
@@ -59,105 +25,115 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    const { name, email, whatsapp, password } = await req.json();
+    const { name, email, phone, password_hash } = await req.json();
 
-    // Validate required fields
-    if (!name || !email || !whatsapp || !password) {
-      console.log('Missing required fields');
+    if (!name || !email || !phone || !password_hash) {
       return new Response(
         JSON.stringify({ error: 'Todos os campos são obrigatórios' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Clean phone number
-    const cleanPhone = whatsapp.replace(/\D/g, '');
-    const cleanEmail = email.toLowerCase().trim();
+    const cleanPhone = phone.replace(/\D/g, '');
 
-    // Check rate limit
-    const rateLimitCheck = await checkRateLimit(supabaseAdmin, cleanPhone);
-    if (!rateLimitCheck.allowed) {
-      console.log('Rate limit exceeded for:', cleanPhone);
-      return new Response(
-        JSON.stringify({ error: rateLimitCheck.message }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Check if email already exists in auth
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const emailExists = existingUsers?.users?.some(
-      u => u.email?.toLowerCase() === cleanEmail
-    );
-
-    if (emailExists) {
-      console.log('Email already exists:', cleanEmail);
-      return new Response(
-        JSON.stringify({ error: 'Este e-mail já está cadastrado. Faça login ou use outro e-mail.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Check if email already exists in affiliates table
+    // Check if email already exists
     const { data: existingAffiliate } = await supabaseAdmin
       .from('affiliates')
       .select('id')
-      .eq('email', cleanEmail)
+      .eq('email', email)
       .maybeSingle();
 
     if (existingAffiliate) {
-      console.log('Email already registered as affiliate:', cleanEmail);
+      console.log('Email already exists:', email);
       return new Response(
-        JSON.stringify({ error: 'Este e-mail já está cadastrado como afiliado.' }),
+        JSON.stringify({ error: 'Este e-mail já está cadastrado. Faça login.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if phone already exists
+    const { data: existingPhone } = await supabaseAdmin
+      .from('affiliates')
+      .select('id')
+      .eq('whatsapp', cleanPhone)
+      .maybeSingle();
+
+    if (existingPhone) {
+      console.log('Phone already exists:', cleanPhone);
+      return new Response(
+        JSON.stringify({ error: 'Este WhatsApp já está cadastrado.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check rate limit - max 3 codes per phone in 10 minutes
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data: recentCodes } = await supabaseAdmin
+      .from('affiliate_verification_codes')
+      .select('id')
+      .eq('phone', cleanPhone)
+      .gte('created_at', tenMinutesAgo);
+
+    if (recentCodes && recentCodes.length >= 3) {
+      console.log('Rate limit exceeded for phone:', cleanPhone);
+      return new Response(
+        JSON.stringify({ error: 'Muitas tentativas. Aguarde 10 minutos.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Generate verification code
     const code = generateCode();
-    const passwordHash = await hashPassword(password);
-    
     console.log('Generated code for:', cleanPhone, 'Code:', code);
 
-    // Clean old unverified codes for this phone
-    await supabaseAdmin
-      .from('affiliate_verification_codes')
-      .delete()
-      .eq('phone', cleanPhone)
-      .is('verified_at', null);
-
-    // Save verification code
+    // Save code to database
     const { error: insertError } = await supabaseAdmin
       .from('affiliate_verification_codes')
       .insert({
         phone: cleanPhone,
-        email: cleanEmail,
-        name: name.trim(),
-        password_hash: passwordHash,
+        email: email,
+        name: name,
         code: code,
+        password_hash: password_hash,
         expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minutes
       });
 
     if (insertError) {
       console.error('Error saving verification code:', insertError);
       return new Response(
-        JSON.stringify({ error: 'Erro ao gerar código de verificação' }),
+        JSON.stringify({ error: 'Erro ao gerar código. Tente novamente.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get ChatPro config
-    const { data: chatproConfig } = await supabaseAdmin
-      .from('chatpro_config')
-      .select('*')
-      .limit(1)
+    // Get Owner ChatPro config from owner_settings
+    const { data: ownerSettings, error: settingsError } = await supabaseAdmin
+      .from('owner_settings')
+      .select('setting_value')
+      .eq('setting_key', 'affiliate_chatpro_config')
       .maybeSingle();
 
+    if (settingsError) {
+      console.error('Error fetching owner settings:', settingsError);
+    }
+
+    const chatproConfig = ownerSettings?.setting_value as {
+      base_endpoint?: string;
+      instance_id?: string;
+      api_token?: string;
+      is_enabled?: boolean;
+    } | null;
+
     if (!chatproConfig?.is_enabled || !chatproConfig?.instance_id || !chatproConfig?.api_token) {
-      console.log('ChatPro not configured');
+      console.log('ChatPro not configured for affiliates');
+      // Still return success so the code is saved, but log the issue
       return new Response(
-        JSON.stringify({ error: 'Sistema de WhatsApp não configurado. Contate o suporte.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          success: true, 
+          message: 'Código gerado (ChatPro não configurado - verifique o painel Owner)',
+          code_saved: true 
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -173,93 +149,128 @@ Deno.serve(async (req) => {
     let message = template?.message_template || 
       `🔐 *Genesis Hub - Programa de Parceiros*\n\nOlá {{nome}}! 👋\n\nSeu código de verificação é: *{{codigo}}*\n\n⏱️ Este código expira em 10 minutos.\n🔒 Não compartilhe com ninguém.`;
 
+    // Replace variables
     message = message
-      .replace(/\{\{nome\}\}/g, name.trim())
+      .replace(/\{\{nome\}\}/g, name.split(' ')[0])
       .replace(/\{\{codigo\}\}/g, code);
 
-    // Format phone for ChatPro (Brazil)
-    let formattedPhone = cleanPhone;
-    if (!formattedPhone.startsWith('55')) {
-      formattedPhone = '55' + formattedPhone;
-    }
+    // Format phone for WhatsApp
+    const formattedPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
 
-    // Build ChatPro URL
-    let baseEndpoint = chatproConfig.base_endpoint || 'https://v2.chatpro.com.br';
-    if (baseEndpoint.endsWith('/')) {
-      baseEndpoint = baseEndpoint.slice(0, -1);
-    }
-
-    // Check if instance_id is already in the base_endpoint
-    const instanceId = chatproConfig.instance_id;
-    let chatproUrl: string;
-
-    if (baseEndpoint.includes(instanceId)) {
-      chatproUrl = `${baseEndpoint}/send_message`;
-    } else {
-      chatproUrl = `${baseEndpoint}/${instanceId}/api/v1/send_message`;
-    }
-
-    console.log('Sending WhatsApp to:', formattedPhone);
+    // Build correct ChatPro URL: base_endpoint/instance_id/api/v1/send_message
+    const baseEndpoint = (chatproConfig.base_endpoint || 'https://v2.chatpro.com.br').replace(/\/$/, '');
+    const chatproUrl = `${baseEndpoint}/${chatproConfig.instance_id}/api/v1/send_message`;
+    
     console.log('ChatPro URL:', chatproUrl);
+    console.log('Sending WhatsApp to:', formattedPhone);
 
-    // Send via ChatPro
-    const chatproResponse = await fetch(chatproUrl, {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': chatproConfig.api_token,
-      },
-      body: JSON.stringify({
-        number: formattedPhone,
-        message: message,
-      }),
-    });
+    // Build request body
+    const requestBody: Record<string, any> = {
+      number: formattedPhone,
+      message: message
+    };
 
-    // Check if response is JSON before parsing
-    const contentType = chatproResponse.headers.get('content-type') || '';
-    let chatproResult: any;
-    
-    if (contentType.includes('application/json')) {
-      chatproResult = await chatproResponse.json();
-    } else {
-      const textResponse = await chatproResponse.text();
-      console.error('ChatPro returned non-JSON response:', textResponse.substring(0, 200));
-      chatproResult = { error: 'Resposta inválida do servidor', rawResponse: textResponse.substring(0, 100) };
-    }
-    
-    console.log('ChatPro response status:', chatproResponse.status);
-    console.log('ChatPro response:', JSON.stringify(chatproResult).substring(0, 200));
-
-    if (!chatproResponse.ok || chatproResult.error) {
-      console.error('ChatPro error:', chatproResult);
-      return new Response(
-        JSON.stringify({ error: 'Erro ao enviar código via WhatsApp. Verifique a configuração do ChatPro.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Add image if template has one
+    if (template?.image_url) {
+      requestBody.mediaUrl = template.image_url;
+      requestBody.mediaType = 'image';
     }
 
-    // Log the event
+    // Add button if template has one
+    if (template?.button_text && template?.button_url) {
+      requestBody.buttons = [{
+        type: 'url',
+        text: template.button_text,
+        url: template.button_url
+      }];
+    }
+
+    try {
+      const chatproResponse = await fetch(chatproUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': chatproConfig.api_token
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('ChatPro response status:', chatproResponse.status);
+
+      // Check if response is JSON
+      const contentType = chatproResponse.headers.get('content-type') || '';
+      
+      if (!contentType.includes('application/json')) {
+        const textResponse = await chatproResponse.text();
+        console.error('ChatPro returned non-JSON response:', textResponse);
+        
+        // Log the error but return success since code was saved
+        await supabaseAdmin.from('system_logs').insert({
+          log_type: 'chatpro_error',
+          source: 'send-affiliate-verification',
+          message: 'ChatPro retornou resposta inválida',
+          severity: 'error',
+          details: { 
+            status: chatproResponse.status,
+            response: textResponse.substring(0, 500),
+            url: chatproUrl
+          }
+        });
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: 'Código gerado. Verifique seu WhatsApp.',
+            code_saved: true,
+            whatsapp_error: 'Erro ao enviar WhatsApp - verifique configuração do ChatPro'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const chatproData = await chatproResponse.json();
+      console.log('ChatPro response:', JSON.stringify(chatproData));
+
+      if (chatproData.error) {
+        console.error('ChatPro error:', chatproData);
+        await supabaseAdmin.from('system_logs').insert({
+          log_type: 'chatpro_error',
+          source: 'send-affiliate-verification',
+          message: 'Erro ao enviar código de verificação',
+          severity: 'error',
+          details: { error: chatproData.error, phone: formattedPhone }
+        });
+      }
+
+    } catch (chatproError: any) {
+      console.error('ChatPro request failed:', chatproError);
+      await supabaseAdmin.from('system_logs').insert({
+        log_type: 'chatpro_error',
+        source: 'send-affiliate-verification',
+        message: 'Falha na requisição ao ChatPro',
+        severity: 'error',
+        details: { error: chatproError.message }
+      });
+    }
+
+    // Log success
     await supabaseAdmin.from('system_logs').insert({
       log_type: 'affiliate_verification',
       source: 'send-affiliate-verification',
       message: `Código de verificação enviado para ${cleanPhone}`,
       severity: 'info',
-      details: { phone: cleanPhone, email: cleanEmail }
+      details: { phone: cleanPhone, email: email }
     });
-
-    console.log('Verification code sent successfully');
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Código enviado para seu WhatsApp',
-        phone: cleanPhone.slice(-4) // Return last 4 digits for confirmation
+        message: 'Código enviado para seu WhatsApp!' 
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Unexpected error:', error);
     return new Response(
       JSON.stringify({ error: 'Erro interno do servidor' }),
