@@ -40,6 +40,7 @@ const TEMPLATE_TYPE_LABELS: Record<string, string> = {
   appointment_confirmed: 'Agendamento Confirmado',
   appointment_reminder: 'Lembrete de Agendamento',
   appointment_cancelled: 'Agendamento Cancelado',
+  affiliate_verification: 'Verificação de Afiliado (código WhatsApp)',
 };
 
 const WhatsAppTemplatesManager = () => {
@@ -239,7 +240,7 @@ const WhatsAppTemplatesManager = () => {
                     className="min-h-[150px] font-mono text-sm"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Variáveis disponíveis: {'{{nome}}'}, {'{{telefone}}'}, {'{{email}}'}
+                    Variáveis disponíveis: {'{{nome}}'}, {'{{telefone}}'}, {'{{email}}'}, {'{{codigo}}'} (para verificação)
                   </p>
                 </div>
 

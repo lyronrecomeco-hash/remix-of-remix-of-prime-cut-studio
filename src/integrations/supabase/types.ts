@@ -207,6 +207,45 @@ export type Database = {
           },
         ]
       }
+      affiliate_verification_codes: {
+        Row: {
+          attempts: number
+          code: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          name: string
+          password_hash: string
+          phone: string
+          verified_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          code: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          name: string
+          password_hash: string
+          phone: string
+          verified_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          code?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          name?: string
+          password_hash?: string
+          phone?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       affiliate_withdrawals: {
         Row: {
           affiliate_id: string
@@ -1979,6 +2018,7 @@ export type Database = {
     }
     Functions: {
       check_ip_fraud: { Args: { check_ip: string }; Returns: boolean }
+      cleanup_expired_verification_codes: { Args: never; Returns: undefined }
       current_tenant_id: { Args: never; Returns: string }
       current_tenant_ids: { Args: never; Returns: string[] }
       get_affiliate_id: { Args: { _user_id: string }; Returns: string }

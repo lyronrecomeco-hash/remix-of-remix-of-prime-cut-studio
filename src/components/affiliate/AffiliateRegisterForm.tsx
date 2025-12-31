@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, 
@@ -11,7 +11,9 @@ import {
   CheckCircle2, 
   AlertCircle,
   Shield,
-  ArrowLeft
+  ArrowLeft,
+  MessageCircle,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,18 +37,7 @@ const step1Schema = z.object({
     .regex(/^\d+$/, 'Apenas números'),
 });
 
-const registerSchema = z.object({
-  name: z.string()
-    .min(3, 'Nome deve ter pelo menos 3 caracteres')
-    .max(100, 'Nome muito longo')
-    .regex(/^[a-zA-ZÀ-ÿ\s]+$/, 'Nome deve conter apenas letras'),
-  email: z.string()
-    .email('E-mail inválido')
-    .max(255, 'E-mail muito longo'),
-  whatsapp: z.string()
-    .min(10, 'WhatsApp inválido')
-    .max(15, 'WhatsApp inválido')
-    .regex(/^\d+$/, 'Apenas números'),
+const step2Schema = z.object({
   password: z.string()
     .min(8, 'Senha deve ter pelo menos 8 caracteres')
     .regex(/[A-Z]/, 'Senha deve conter letra maiúscula')
@@ -76,6 +67,20 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [step, setStep] = useState(1);
+  
+  // OTP state
+  const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [phoneLast4, setPhoneLast4] = useState('');
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   // Password strength indicator
   const getPasswordStrength = (password: string) => {
@@ -94,7 +99,6 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user types
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
@@ -130,19 +134,10 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
     return true;
   };
 
-  const handleNextStep = () => {
-    if (validateStep1()) {
-      setStep(2);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate all fields
-    const result = registerSchema.safeParse({
-      ...formData,
-      whatsapp: formData.whatsapp.replace(/\D/g, '')
+  const validateStep2 = () => {
+    const result = step2Schema.safeParse({
+      password: formData.password,
+      confirmPassword: formData.confirmPassword
     });
 
     if (!result.success) {
@@ -153,24 +148,35 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
         }
       });
       setErrors(newErrors);
-      return;
+      return false;
     }
+    
+    setErrors({});
+    return true;
+  };
 
+  const handleNextStep = () => {
+    if (step === 1 && validateStep1()) {
+      setStep(2);
+    }
+  };
+
+  const sendVerificationCode = async () => {
+    if (!validateStep2()) return;
+    
     setLoading(true);
-
     try {
-      const { data, error } = await supabase.functions.invoke('register-affiliate', {
+      const { data, error } = await supabase.functions.invoke('send-affiliate-verification', {
         body: {
           name: formData.name.trim(),
           email: formData.email.toLowerCase().trim(),
           whatsapp: formData.whatsapp.replace(/\D/g, ''),
-          password: formData.password,
-          confirmPassword: formData.confirmPassword
+          password: formData.password
         }
       });
 
       if (error) {
-        toast.error(error.message || 'Erro ao criar conta');
+        toast.error(error.message || 'Erro ao enviar código');
         return;
       }
 
@@ -179,11 +185,117 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
         return;
       }
 
+      setPhoneLast4(data?.phone || formData.whatsapp.slice(-4));
+      setStep(3);
+      setResendCooldown(60);
+      setOtpCode(['', '', '', '', '', '']);
+      toast.success('Código enviado para seu WhatsApp!');
+      
+      // Focus first input
+      setTimeout(() => inputRefs.current[0]?.focus(), 100);
+    } catch (error: any) {
+      console.error('Error sending code:', error);
+      toast.error('Erro ao enviar código. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+
+    const newOtp = [...otpCode];
+    newOtp[index] = value.slice(-1);
+    setOtpCode(newOtp);
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit when complete
+    if (newOtp.every(digit => digit !== '') && newOtp.join('').length === 6) {
+      verifyCode(newOtp.join(''));
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otpCode[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pastedData.length === 6) {
+      const newOtp = pastedData.split('');
+      setOtpCode(newOtp);
+      verifyCode(pastedData);
+    }
+  };
+
+  const verifyCode = async (code: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-affiliate-code', {
+        body: {
+          phone: formData.whatsapp.replace(/\D/g, ''),
+          code: code
+        }
+      });
+
+      if (error) {
+        toast.error(error.message || 'Erro ao verificar código');
+        setOtpCode(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+        return;
+      }
+
+      if (data?.error) {
+        toast.error(data.error);
+        setOtpCode(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+        return;
+      }
+
       toast.success('Cadastro realizado! Aguarde aprovação do administrador.');
       onSuccess();
     } catch (error: any) {
-      console.error('Registration error:', error);
-      toast.error('Erro ao criar conta. Tente novamente.');
+      console.error('Verification error:', error);
+      toast.error('Erro ao verificar código. Tente novamente.');
+      setOtpCode(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendCode = async () => {
+    if (resendCooldown > 0) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-affiliate-verification', {
+        body: {
+          name: formData.name.trim(),
+          email: formData.email.toLowerCase().trim(),
+          whatsapp: formData.whatsapp.replace(/\D/g, ''),
+          password: formData.password
+        }
+      });
+
+      if (error || data?.error) {
+        toast.error(data?.error || error?.message || 'Erro ao reenviar código');
+        return;
+      }
+
+      setResendCooldown(60);
+      setOtpCode(['', '', '', '', '', '']);
+      toast.success('Novo código enviado!');
+      inputRefs.current[0]?.focus();
+    } catch (error) {
+      toast.error('Erro ao reenviar código');
     } finally {
       setLoading(false);
     }
@@ -198,8 +310,9 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
     >
       {/* Progress Steps */}
       <div className="flex items-center justify-center gap-2 mb-6">
-        <div className={`h-2 w-16 rounded-full transition-colors ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
-        <div className={`h-2 w-16 rounded-full transition-colors ${step >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+        <div className={`h-2 w-12 rounded-full transition-colors ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
+        <div className={`h-2 w-12 rounded-full transition-colors ${step >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+        <div className={`h-2 w-12 rounded-full transition-colors ${step >= 3 ? 'bg-primary' : 'bg-muted'}`} />
       </div>
 
       <AnimatePresence mode="wait">
@@ -418,23 +531,98 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
               </Button>
               <Button
                 type="button"
-                onClick={handleSubmit}
+                onClick={sendVerificationCode}
                 disabled={loading}
                 className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6"
               >
                 {loading ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Criando...
+                    Enviando...
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    Criar Conta
-                    <ArrowRight className="w-4 h-4" />
+                    Enviar Código
+                    <MessageCircle className="w-4 h-4" />
                   </div>
                 )}
               </Button>
             </div>
+          </motion.div>
+        )}
+
+        {step === 3 && (
+          <motion.div
+            key="step3"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+          >
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 mx-auto bg-green-500/20 rounded-full flex items-center justify-center mb-4">
+                <MessageCircle className="w-8 h-8 text-green-500" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground">Verifique seu WhatsApp</h3>
+              <p className="text-sm text-muted-foreground">
+                Enviamos um código de 6 dígitos para o número terminado em ****{phoneLast4}
+              </p>
+            </div>
+
+            {/* OTP Input */}
+            <div className="flex justify-center gap-2">
+              {otpCode.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={el => inputRefs.current[index] = el}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(index, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                  onPaste={index === 0 ? handleOtpPaste : undefined}
+                  disabled={loading}
+                  className="w-12 h-14 text-center text-2xl font-bold rounded-lg border-2 border-border bg-input text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50"
+                />
+              ))}
+            </div>
+
+            {/* Timer and Resend */}
+            <div className="text-center space-y-3">
+              {resendCooldown > 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Reenviar código em <span className="font-mono text-primary">{resendCooldown}s</span>
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={resendCode}
+                  disabled={loading}
+                  className="text-sm text-primary hover:underline flex items-center gap-1 mx-auto"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Reenviar código
+                </button>
+              )}
+            </div>
+
+            {loading && (
+              <div className="flex justify-center">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStep(2)}
+              disabled={loading}
+              className="w-full py-6"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar e alterar dados
+            </Button>
           </motion.div>
         )}
       </AnimatePresence>
