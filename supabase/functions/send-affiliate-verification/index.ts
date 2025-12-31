@@ -157,11 +157,20 @@ Deno.serve(async (req) => {
     // Format phone for WhatsApp
     const formattedPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
 
-    // Build correct ChatPro URL: base_endpoint/instance_id/api/v1/send_message
-    const baseEndpoint = (chatproConfig.base_endpoint || 'https://v2.chatpro.com.br').replace(/\/$/, '');
-    const chatproUrl = `${baseEndpoint}/${chatproConfig.instance_id}/api/v1/send_message`;
+    // Build correct ChatPro URL - clean the base endpoint first
+    let baseEndpoint = (chatproConfig.base_endpoint || 'https://v2.chatpro.com.br').replace(/\/$/, '');
+    const instanceId = chatproConfig.instance_id!.trim();
     
-    console.log('ChatPro URL:', chatproUrl);
+    // Remove instance_id from endpoint if user pasted full URL
+    if (baseEndpoint.includes(instanceId)) {
+      baseEndpoint = baseEndpoint.replace(new RegExp(`/${instanceId}.*$`), '');
+    }
+    
+    const chatproUrl = `${baseEndpoint}/${instanceId}/api/v1/send_message`;
+    
+    console.log('ChatPro Base Endpoint:', baseEndpoint);
+    console.log('ChatPro Instance ID:', instanceId);
+    console.log('ChatPro Full URL:', chatproUrl);
     console.log('Sending WhatsApp to:', formattedPhone);
 
     // Build request body
