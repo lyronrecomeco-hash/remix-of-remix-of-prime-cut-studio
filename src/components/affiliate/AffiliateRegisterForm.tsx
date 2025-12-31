@@ -10,7 +10,6 @@ import {
   ArrowRight, 
   CheckCircle2, 
   AlertCircle,
-  Shield,
   ArrowLeft,
   MessageCircle,
   RefreshCw
@@ -106,9 +105,6 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
 
   const formatPhone = (value: string) => {
     const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 11) {
-      return numbers;
-    }
     return numbers.slice(0, 11);
   };
 
@@ -191,7 +187,6 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
       setOtpCode(['', '', '', '', '', '']);
       toast.success('Código enviado para seu WhatsApp!');
       
-      // Focus first input
       setTimeout(() => inputRefs.current[0]?.focus(), 100);
     } catch (error: any) {
       console.error('Error sending code:', error);
@@ -208,12 +203,10 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
     newOtp[index] = value.slice(-1);
     setOtpCode(newOtp);
 
-    // Auto-focus next input
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // Auto-submit when complete
     if (newOtp.every(digit => digit !== '') && newOtp.join('').length === 6) {
       verifyCode(newOtp.join(''));
     }
@@ -301,222 +294,250 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
     }
   };
 
+  const stepTitles = [
+    'Dados Pessoais',
+    'Criar Senha',
+    'Verificar WhatsApp'
+  ];
+
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className="space-y-6"
-    >
-      {/* Progress Steps */}
-      <div className="flex items-center justify-center gap-2 mb-6">
-        <div className={`h-2 w-12 rounded-full transition-colors ${step >= 1 ? 'bg-primary' : 'bg-muted'}`} />
-        <div className={`h-2 w-12 rounded-full transition-colors ${step >= 2 ? 'bg-primary' : 'bg-muted'}`} />
-        <div className={`h-2 w-12 rounded-full transition-colors ${step >= 3 ? 'bg-primary' : 'bg-muted'}`} />
+    <div className="space-y-6">
+      {/* Header with Step Info */}
+      <div className="text-center space-y-3">
+        <h2 className="text-xl font-bold text-foreground">Criar Conta de Parceiro</h2>
+        <p className="text-sm text-muted-foreground">
+          Etapa {step} de 3: {stepTitles[step - 1]}
+        </p>
+        
+        {/* Progress Bar */}
+        <div className="flex items-center gap-1 max-w-xs mx-auto">
+          {[1, 2, 3].map((s) => (
+            <div 
+              key={s}
+              className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                s <= step ? 'bg-primary' : 'bg-muted'
+              }`}
+            />
+          ))}
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
+        {/* Step 1: Personal Data */}
         {step === 1 && (
           <motion.div
             key="step1"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-4"
+            transition={{ duration: 0.2 }}
+            className="space-y-5"
           >
-            {/* Name Field */}
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-foreground">Nome Completo</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Seu nome completo"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  className={`pl-10 bg-input border-border ${errors.name ? 'border-destructive' : ''}`}
-                />
+            <div className="space-y-4">
+              {/* Name */}
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-sm font-medium">
+                  Nome Completo
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Digite seu nome completo"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className={`pl-10 h-11 ${errors.name ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                  />
+                </div>
+                {errors.name && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.name}
+                  </p>
+                )}
               </div>
-              {errors.name && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {errors.name}
-                </p>
-              )}
-            </div>
 
-            {/* Email Field */}
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-foreground">E-mail</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`pl-10 bg-input border-border ${errors.email ? 'border-destructive' : ''}`}
-                />
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium">
+                  E-mail
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className={`pl-10 h-11 ${errors.email ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                  />
+                </div>
+                {errors.email && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.email}
+                  </p>
+                )}
               </div>
-              {errors.email && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {errors.email}
-                </p>
-              )}
-            </div>
 
-            {/* WhatsApp Field */}
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp" className="text-foreground">WhatsApp</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="whatsapp"
-                  type="tel"
-                  placeholder="11999999999"
-                  value={formData.whatsapp}
-                  onChange={(e) => handleInputChange('whatsapp', formatPhone(e.target.value))}
-                  className={`pl-10 bg-input border-border ${errors.whatsapp ? 'border-destructive' : ''}`}
-                  maxLength={11}
-                />
+              {/* WhatsApp */}
+              <div className="space-y-2">
+                <Label htmlFor="whatsapp" className="text-sm font-medium">
+                  WhatsApp
+                </Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="whatsapp"
+                    type="tel"
+                    placeholder="11999999999"
+                    value={formData.whatsapp}
+                    onChange={(e) => handleInputChange('whatsapp', formatPhone(e.target.value))}
+                    className={`pl-10 h-11 ${errors.whatsapp ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                    maxLength={11}
+                  />
+                </div>
+                {errors.whatsapp ? (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.whatsapp}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    DDD + número, apenas números
+                  </p>
+                )}
               </div>
-              {errors.whatsapp && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {errors.whatsapp}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">DDD + número (apenas números)</p>
             </div>
 
             <Button
               type="button"
               onClick={handleNextStep}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6"
+              className="w-full h-11"
             >
-              Próximo
+              Continuar
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </motion.div>
         )}
 
+        {/* Step 2: Password */}
         {step === 2 && (
           <motion.div
             key="step2"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="space-y-4"
+            transition={{ duration: 0.2 }}
+            className="space-y-5"
           >
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 mb-4">
-              <Shield className="w-5 h-5 text-primary" />
-              <p className="text-sm text-foreground">Crie uma senha segura para sua conta</p>
-            </div>
-
-            {/* Password Field */}
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-foreground">Senha</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
-                  className={`pl-10 pr-10 bg-input border-border ${errors.password ? 'border-destructive' : ''}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {errors.password}
-                </p>
-              )}
-              
-              {/* Password Strength Indicator */}
-              {formData.password && (
-                <div className="space-y-1">
-                  <div className="flex gap-1">
-                    {[0, 1, 2, 3, 4].map((i) => (
-                      <div
-                        key={i}
-                        className={`h-1 flex-1 rounded-full transition-colors ${
-                          i < passwordStrength ? strengthColors[passwordStrength - 1] : 'bg-muted'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Força: {strengthLabels[Math.max(0, passwordStrength - 1)] || 'Muito fraca'}
+            <div className="space-y-4">
+              {/* Password */}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Senha
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Crie uma senha forte"
+                    value={formData.password}
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    className={`pl-10 pr-10 h-11 ${errors.password ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.password}
                   </p>
-                </div>
-              )}
+                )}
+                
+                {/* Password Strength */}
+                {formData.password && (
+                  <div className="space-y-2 pt-1">
+                    <div className="flex gap-1">
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className={`h-1 flex-1 rounded-full transition-colors ${
+                            i < passwordStrength ? strengthColors[passwordStrength - 1] : 'bg-muted'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {strengthLabels[Math.max(0, passwordStrength - 1)] || 'Muito fraca'}
+                    </p>
+                  </div>
+                )}
 
-              {/* Password Requirements */}
-              <div className="space-y-1 text-xs">
-                <div className={`flex items-center gap-1 ${formData.password.length >= 8 ? 'text-green-500' : 'text-muted-foreground'}`}>
-                  <CheckCircle2 className="w-3 h-3" />
-                  Mínimo 8 caracteres
-                </div>
-                <div className={`flex items-center gap-1 ${/[A-Z]/.test(formData.password) ? 'text-green-500' : 'text-muted-foreground'}`}>
-                  <CheckCircle2 className="w-3 h-3" />
-                  Letra maiúscula
-                </div>
-                <div className={`flex items-center gap-1 ${/[a-z]/.test(formData.password) ? 'text-green-500' : 'text-muted-foreground'}`}>
-                  <CheckCircle2 className="w-3 h-3" />
-                  Letra minúscula
-                </div>
-                <div className={`flex items-center gap-1 ${/\d/.test(formData.password) ? 'text-green-500' : 'text-muted-foreground'}`}>
-                  <CheckCircle2 className="w-3 h-3" />
-                  Número
+                {/* Requirements Checklist */}
+                <div className="grid grid-cols-2 gap-1 pt-2">
+                  {[
+                    { check: formData.password.length >= 8, label: '8+ caracteres' },
+                    { check: /[A-Z]/.test(formData.password), label: 'Maiúscula' },
+                    { check: /[a-z]/.test(formData.password), label: 'Minúscula' },
+                    { check: /\d/.test(formData.password), label: 'Número' },
+                  ].map((req, i) => (
+                    <div 
+                      key={i}
+                      className={`flex items-center gap-1 text-xs ${req.check ? 'text-green-500' : 'text-muted-foreground'}`}
+                    >
+                      <CheckCircle2 className="w-3 h-3" />
+                      {req.label}
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
 
-            {/* Confirm Password Field */}
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-foreground">Confirmar Senha</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={formData.confirmPassword}
-                  onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                  className={`pl-10 pr-10 bg-input border-border ${errors.confirmPassword ? 'border-destructive' : ''}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+              {/* Confirm Password */}
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-sm font-medium">
+                  Confirmar Senha
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="Digite a senha novamente"
+                    value={formData.confirmPassword}
+                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                    className={`pl-10 pr-10 h-11 ${errors.confirmPassword ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {errors.confirmPassword}
+                  </p>
+                )}
+                {formData.confirmPassword && formData.password === formData.confirmPassword && !errors.confirmPassword && (
+                  <p className="text-xs text-green-500 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Senhas coincidem
+                  </p>
+                )}
               </div>
-              {errors.confirmPassword && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {errors.confirmPassword}
-                </p>
-              )}
-              {formData.confirmPassword && formData.password === formData.confirmPassword && (
-                <p className="text-xs text-green-500 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Senhas coincidem
-                </p>
-              )}
             </div>
 
             <div className="flex gap-3">
@@ -524,7 +545,7 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
                 type="button"
                 variant="outline"
                 onClick={() => setStep(1)}
-                className="flex-1 py-6"
+                className="flex-1 h-11"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Voltar
@@ -533,40 +554,44 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
                 type="button"
                 onClick={sendVerificationCode}
                 disabled={loading}
-                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6"
+                className="flex-1 h-11"
               >
                 {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
                     Enviando...
-                  </div>
+                  </>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <>
                     Enviar Código
-                    <MessageCircle className="w-4 h-4" />
-                  </div>
+                    <MessageCircle className="w-4 h-4 ml-2" />
+                  </>
                 )}
               </Button>
             </div>
           </motion.div>
         )}
 
+        {/* Step 3: OTP Verification */}
         {step === 3 && (
           <motion.div
             key="step3"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
             className="space-y-6"
           >
-            <div className="text-center space-y-2">
-              <div className="w-16 h-16 mx-auto bg-green-500/20 rounded-full flex items-center justify-center mb-4">
-                <MessageCircle className="w-8 h-8 text-green-500" />
+            <div className="text-center space-y-3">
+              <div className="w-14 h-14 mx-auto bg-green-500/10 rounded-full flex items-center justify-center">
+                <MessageCircle className="w-7 h-7 text-green-500" />
               </div>
-              <h3 className="text-lg font-semibold text-foreground">Verifique seu WhatsApp</h3>
-              <p className="text-sm text-muted-foreground">
-                Enviamos um código de 6 dígitos para o número terminado em ****{phoneLast4}
-              </p>
+              <div>
+                <h3 className="font-semibold text-foreground">Verifique seu WhatsApp</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Código enviado para ****{phoneLast4}
+                </p>
+              </div>
             </div>
 
             {/* OTP Input */}
@@ -583,23 +608,23 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
                   onPaste={index === 0 ? handleOtpPaste : undefined}
                   disabled={loading}
-                  className="w-12 h-14 text-center text-2xl font-bold rounded-lg border-2 border-border bg-input text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50"
+                  className="w-11 h-12 text-center text-xl font-bold rounded-lg border-2 border-border bg-input text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50"
                 />
               ))}
             </div>
 
-            {/* Timer and Resend */}
-            <div className="text-center space-y-3">
+            {/* Resend */}
+            <div className="text-center">
               {resendCooldown > 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Reenviar código em <span className="font-mono text-primary">{resendCooldown}s</span>
+                  Reenviar em <span className="font-mono text-primary">{resendCooldown}s</span>
                 </p>
               ) : (
                 <button
                   type="button"
                   onClick={resendCode}
                   disabled={loading}
-                  className="text-sm text-primary hover:underline flex items-center gap-1 mx-auto"
+                  className="text-sm text-primary hover:underline inline-flex items-center gap-1"
                 >
                   <RefreshCw className="w-3 h-3" />
                   Reenviar código
@@ -609,7 +634,7 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
 
             {loading && (
               <div className="flex justify-center">
-                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
             )}
 
@@ -618,26 +643,26 @@ const AffiliateRegisterForm = ({ onBackToLogin, onSuccess }: AffiliateRegisterFo
               variant="outline"
               onClick={() => setStep(2)}
               disabled={loading}
-              className="w-full py-6"
+              className="w-full h-11"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar e alterar dados
+              Alterar dados
             </Button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Back to Login */}
+      {/* Back to Login Link */}
       <div className="text-center pt-4 border-t border-border">
         <button
           type="button"
           onClick={onBackToLogin}
-          className="text-sm text-primary hover:underline"
+          className="text-sm text-muted-foreground hover:text-primary transition-colors"
         >
-          Já tem uma conta? Faça login
+          Já tem conta? <span className="text-primary font-medium">Fazer login</span>
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 };
 

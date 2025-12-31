@@ -216,13 +216,25 @@ Deno.serve(async (req) => {
       }),
     });
 
-    const chatproResult = await chatproResponse.json();
-    console.log('ChatPro response:', chatproResult);
+    // Check if response is JSON before parsing
+    const contentType = chatproResponse.headers.get('content-type') || '';
+    let chatproResult: any;
+    
+    if (contentType.includes('application/json')) {
+      chatproResult = await chatproResponse.json();
+    } else {
+      const textResponse = await chatproResponse.text();
+      console.error('ChatPro returned non-JSON response:', textResponse.substring(0, 200));
+      chatproResult = { error: 'Resposta inválida do servidor', rawResponse: textResponse.substring(0, 100) };
+    }
+    
+    console.log('ChatPro response status:', chatproResponse.status);
+    console.log('ChatPro response:', JSON.stringify(chatproResult).substring(0, 200));
 
-    if (!chatproResponse.ok) {
+    if (!chatproResponse.ok || chatproResult.error) {
       console.error('ChatPro error:', chatproResult);
       return new Response(
-        JSON.stringify({ error: 'Erro ao enviar código via WhatsApp. Verifique o número.' }),
+        JSON.stringify({ error: 'Erro ao enviar código via WhatsApp. Verifique a configuração do ChatPro.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
