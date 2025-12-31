@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.verify-affiliate-code]
 verify_jwt = false
+
+[functions.whatsapp-api]
+verify_jwt = false

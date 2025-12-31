@@ -16,7 +16,8 @@ import {
   UserPlus,
   ChevronRight,
   Sparkles,
-  Activity
+  Activity,
+  Bot
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -33,6 +34,7 @@ import UserDatabaseSection from '@/components/owner/UserDatabaseSection';
 import AffiliateChatProConfig from '@/components/owner/AffiliateChatProConfig';
 import LeadsManager from '@/components/owner/LeadsManager';
 import AffiliateManager from '@/components/owner/AffiliateManager';
+import WhatsAppAutomation from '@/components/owner/WhatsAppAutomation';
 
 const OWNER_EMAIL = 'lyronrp@gmail.com';
 
@@ -72,6 +74,12 @@ const navSections: NavSection[] = [
     items: [
       { id: 'emails', label: 'Templates Email', icon: Mail },
       { id: 'whatsapp', label: 'Templates WhatsApp', icon: MessageCircle },
+    ]
+  },
+  {
+    title: 'Automação',
+    items: [
+      { id: 'whatsapp-automation', label: 'WhatsApp Automação', icon: Bot, badge: 'Novo', badgeVariant: 'default' },
     ]
   },
   {
@@ -144,6 +152,8 @@ const OwnerPanel = () => {
         return <EmailTemplatesManager />;
       case 'whatsapp':
         return <WhatsAppTemplatesManager />;
+      case 'whatsapp-automation':
+        return <WhatsAppAutomation />;
       case 'logs':
         return <GlobalLogsViewer />;
       case 'settings':

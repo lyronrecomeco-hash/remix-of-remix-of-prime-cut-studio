@@ -1967,6 +1967,119 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_backend_config: {
+        Row: {
+          backend_url: string | null
+          created_at: string
+          id: string
+          is_connected: boolean
+          last_health_check: string | null
+          master_token: string | null
+          updated_at: string
+        }
+        Insert: {
+          backend_url?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean
+          last_health_check?: string | null
+          master_token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          backend_url?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean
+          last_health_check?: string | null
+          master_token?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      whatsapp_instances: {
+        Row: {
+          auto_reply_enabled: boolean
+          auto_reply_message: string | null
+          created_at: string
+          id: string
+          instance_token: string
+          last_seen: string | null
+          message_delay_ms: number
+          name: string
+          phone_number: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          auto_reply_enabled?: boolean
+          auto_reply_message?: string | null
+          created_at?: string
+          id?: string
+          instance_token?: string
+          last_seen?: string | null
+          message_delay_ms?: number
+          name: string
+          phone_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          auto_reply_enabled?: boolean
+          auto_reply_message?: string | null
+          created_at?: string
+          id?: string
+          instance_token?: string
+          last_seen?: string | null
+          message_delay_ms?: number
+          name?: string
+          phone_number?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      whatsapp_message_logs: {
+        Row: {
+          created_at: string
+          direction: string
+          error_message: string | null
+          id: string
+          instance_id: string
+          message: string
+          phone_to: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          error_message?: string | null
+          id?: string
+          instance_id: string
+          message: string
+          phone_to: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          error_message?: string | null
+          id?: string
+          instance_id?: string
+          message?: string
+          phone_to?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_message_logs_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_templates: {
         Row: {
           ai_prompt: string | null
