@@ -493,7 +493,7 @@ const WhatsAppAutomation = () => {
   const generateQRCode = async (instanceId: string) => {
     setIsGeneratingQR(true);
     addConsoleLog('info', `Gerando QR Code para instância ${instanceId}...`);
-    
+
     try {
       const fullUrl = `${localEndpoint}:${localPort}`;
       const response = await fetch(`${fullUrl}/api/instance/${instanceId}/qrcode`, {
@@ -506,18 +506,34 @@ const WhatsAppAutomation = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Falha ao gerar QR Code');
+        const text = await response.text().catch(() => '');
+        throw new Error(text || 'Falha ao gerar QR Code');
       }
 
       const data = await response.json();
+
+      // If the instance is already authenticated, backend may return connected without QR.
+      if (data?.status === 'connected') {
+        addConsoleLog('success', `WhatsApp conectado! Número: ${data.phone || newInstancePhone}`);
+        toast.success('WhatsApp conectado com sucesso!');
+        setIsNewInstanceOpen(false);
+        fetchData();
+        return;
+      }
+
+      if (!data?.qrcode) {
+        throw new Error('QR Code não gerado (tente novamente)');
+      }
+
       setQrCodeData(data.qrcode);
       addConsoleLog('success', 'QR Code gerado com sucesso! Escaneie com seu WhatsApp');
-      
+
       // Start polling for connection status
       pollConnectionStatus(instanceId);
     } catch (error) {
-      addConsoleLog('error', 'Erro ao gerar QR Code. Verifique se o backend local está rodando.');
-      toast.error('Erro ao gerar QR Code');
+      const message = error instanceof Error ? error.message : 'Erro ao gerar QR Code';
+      addConsoleLog('error', message);
+      toast.error(message);
     } finally {
       setIsGeneratingQR(false);
     }
