@@ -35,8 +35,8 @@ const AffiliateDashboard = ({ affiliate }: AffiliateDashboardProps) => {
   const [referralsCount, setReferralsCount] = useState(0);
   const [recentSales, setRecentSales] = useState<any[]>([]);
 
-  // Link direto para login ao invés do site comercial
-  const affiliateLink = `https://app.genesishub.cloud/admin-login?ref=${affiliate.affiliate_code}`;
+  // Link direto para login ao invés do site comercial - rota correta
+  const affiliateLink = `https://app.genesishub.cloud/admin/login?ref=${affiliate.affiliate_code}`;
 
   useEffect(() => {
     fetchStats();

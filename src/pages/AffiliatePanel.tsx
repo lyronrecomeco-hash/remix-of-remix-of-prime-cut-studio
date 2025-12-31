@@ -10,8 +10,7 @@ import {
   LogOut,
   Menu,
   X,
-  Sparkles,
-  HelpCircle
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +22,7 @@ import AffiliateWithdrawals from '@/components/affiliate/AffiliateWithdrawals';
 import AffiliateProfile from '@/components/affiliate/AffiliateProfile';
 import AIContentGenerator from '@/components/affiliate/AIContentGenerator';
 import HowItWorksModal from '@/components/affiliate/HowItWorksModal';
+import AffiliateWelcomeModal from '@/components/affiliate/AffiliateWelcomeModal';
 
 interface Affiliate {
   id: string;
@@ -54,10 +54,22 @@ const AffiliatePanel = () => {
   const [affiliate, setAffiliate] = useState<Affiliate | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   useEffect(() => {
     checkAffiliateAuth();
   }, []);
+
+  // Check if this is the first login for welcome modal
+  const checkFirstLogin = (affiliateId: string) => {
+    const welcomeKey = `affiliate_welcome_shown_${affiliateId}`;
+    const hasSeenWelcome = localStorage.getItem(welcomeKey);
+    
+    if (!hasSeenWelcome) {
+      setShowWelcomeModal(true);
+      localStorage.setItem(welcomeKey, 'true');
+    }
+  };
 
   const checkAffiliateAuth = async () => {
     const isAffiliateSubdomain = window.location.hostname === 'parceiros.genesishub.cloud';
@@ -92,6 +104,9 @@ const AffiliatePanel = () => {
       }
 
       setAffiliate(affiliateData as Affiliate);
+      
+      // Check for first login welcome modal
+      checkFirstLogin(affiliateData.id);
     } catch (error) {
       console.error('Erro ao verificar autenticação:', error);
       navigate(loginPath);
@@ -140,6 +155,16 @@ const AffiliatePanel = () => {
 
   return (
     <div className="theme-affiliate-blue min-h-screen bg-background flex">
+      {/* Welcome Modal for first login */}
+      {affiliate && (
+        <AffiliateWelcomeModal
+          isOpen={showWelcomeModal}
+          onClose={() => setShowWelcomeModal(false)}
+          affiliateName={affiliate.name}
+          affiliateCode={affiliate.affiliate_code}
+        />
+      )}
+      
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border h-14 flex items-center justify-between px-4">
         <button
