@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.generate-affiliate-text]
 verify_jwt = false
+
+[functions.register-affiliate]
+verify_jwt = false

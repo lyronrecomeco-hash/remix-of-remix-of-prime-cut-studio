@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Users, Lock, Mail, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Users, Lock, Mail, Eye, EyeOff, ArrowRight, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import AffiliateRegisterForm from '@/components/affiliate/AffiliateRegisterForm';
+import RegistrationSuccessModal from '@/components/affiliate/RegistrationSuccessModal';
+
+type ViewMode = 'login' | 'register';
 
 const AffiliateLogin = () => {
   const navigate = useNavigate();
@@ -15,6 +19,8 @@ const AffiliateLogin = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('login');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +77,11 @@ const AffiliateLogin = () => {
     }
   };
 
+  const handleRegistrationSuccess = () => {
+    setShowSuccessModal(true);
+    setViewMode('login');
+  };
+
   return (
     <div className="theme-affiliate-blue min-h-screen bg-background flex items-center justify-center p-4">
       {/* Background Effect */}
@@ -78,6 +89,12 @@ const AffiliateLogin = () => {
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
       </div>
+
+      {/* Registration Success Modal */}
+      <RegistrationSuccessModal 
+        isOpen={showSuccessModal} 
+        onClose={() => setShowSuccessModal(false)} 
+      />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -92,90 +109,130 @@ const AffiliateLogin = () => {
             </div>
             <div>
               <CardTitle className="text-2xl font-bold text-foreground">
-                Portal de Parceiros
+                {viewMode === 'login' ? 'Portal de Parceiros' : 'Criar Conta'}
               </CardTitle>
               <CardDescription className="text-muted-foreground mt-2">
-                Genesis Hub - Área exclusiva para afiliados
+                {viewMode === 'login' 
+                  ? 'Genesis Hub - Área exclusiva para afiliados'
+                  : 'Torne-se um parceiro e comece a ganhar'
+                }
               </CardDescription>
             </div>
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-foreground">
-                  E-mail
-                </Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-input border-border"
-                    required
+            <AnimatePresence mode="wait">
+              {viewMode === 'login' && (
+                <motion.div
+                  key="login"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                >
+                  <form onSubmit={handleLogin} className="space-y-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-foreground">
+                        E-mail
+                      </Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="seu@email.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="pl-10 bg-input border-border"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="password" className="text-foreground">
+                        Senha
+                      </Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="password"
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="pl-10 pr-10 bg-input border-border"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6"
+                    >
+                      {loading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          Entrando...
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          Acessar Painel
+                          <ArrowRight className="w-4 h-4" />
+                        </div>
+                      )}
+                    </Button>
+
+                    {/* Divider */}
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-border"></div>
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">ou</span>
+                      </div>
+                    </div>
+
+                    {/* Register Button */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setViewMode('register')}
+                      className="w-full py-6"
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Criar Conta de Afiliado
+                    </Button>
+                  </form>
+                </motion.div>
+              )}
+
+              {viewMode === 'register' && (
+                <motion.div
+                  key="register"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                >
+                  <AffiliateRegisterForm
+                    onBackToLogin={() => setViewMode('login')}
+                    onSuccess={handleRegistrationSuccess}
                   />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-foreground">
-                  Senha
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 bg-input border-border"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6"
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Entrando...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    Acessar Painel
-                    <ArrowRight className="w-4 h-4" />
-                  </div>
-                )}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Credenciais de acesso fornecidas pelo administrador.
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Em caso de problemas, entre em contato com o suporte.
-              </p>
-            </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </CardContent>
         </Card>
 
