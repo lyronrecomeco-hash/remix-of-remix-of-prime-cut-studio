@@ -542,7 +542,7 @@ const WhatsAppAutomation = () => {
   const pollConnectionStatus = async (instanceId: string) => {
     const fullUrl = `${localEndpoint}:${localPort}`;
     let attempts = 0;
-    const maxAttempts = 60; // 2 minutes with 2 second intervals
+    const maxAttempts = 90; // 3 minutes with 2 second intervals
 
     const checkStatus = async () => {
       try {
@@ -554,10 +554,10 @@ const WhatsAppAutomation = () => {
 
         if (response.ok) {
           const data = await response.json();
-          
+
           if (data.status === 'connected') {
-            addConsoleLog('success', `WhatsApp conectado! Número: ${data.phone || newInstancePhone}`);
-            
+            addConsoleLog('success', `✓ WhatsApp conectado! Número: ${data.phone || newInstancePhone}`);
+
             // Update instance in database
             await supabase
               .from('whatsapp_instances')
@@ -570,8 +570,31 @@ const WhatsAppAutomation = () => {
 
             toast.success('WhatsApp conectado com sucesso!');
             setIsNewInstanceOpen(false);
+            setQrCodeData(null);
             fetchData();
             return;
+          }
+
+          // Se ainda está em qr_pending, pode ter um novo QR (expirado)
+          if (data.status === 'qr_pending' && attempts > 0 && attempts % 20 === 0) {
+            addConsoleLog('info', 'Atualizando QR Code...');
+            try {
+              const qrResponse = await fetch(`${fullUrl}/api/instance/${instanceId}/qrcode`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${localToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ phone: newInstancePhone }),
+              });
+              if (qrResponse.ok) {
+                const qrData = await qrResponse.json();
+                if (qrData.qrcode) {
+                  setQrCodeData(qrData.qrcode);
+                  addConsoleLog('info', 'Novo QR Code gerado.');
+                }
+              }
+            } catch {}
           }
         }
 
@@ -579,9 +602,10 @@ const WhatsAppAutomation = () => {
         if (attempts < maxAttempts) {
           setTimeout(checkStatus, 2000);
         } else {
-          addConsoleLog('warning', 'Tempo limite para conexão atingido');
+          addConsoleLog('warning', 'Tempo limite para conexão atingido (3 min). Tente novamente.');
+          toast.warning('Tempo limite atingido. Tente gerar o QR novamente.');
         }
-      } catch (error) {
+      } catch {
         attempts++;
         if (attempts < maxAttempts) {
           setTimeout(checkStatus, 2000);
@@ -666,209 +690,408 @@ const WhatsAppAutomation = () => {
   const getLocalScript = () => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
     const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'YOUR_SUPABASE_KEY';
-    
+
     return `// ===============================================
-// WhatsApp Backend Local - Script para PC
+// WhatsApp Backend Local (PC Local) v2.0
 // ===============================================
-// Execute no Terminal/CMD: node whatsapp-local.js
+// Corrige: QR via painel, reconnect automático,
+// backoff exponencial para erro 515, logs em /logs
+// ===============================================
+// INSTALAR: npm install express cors qrcode @whiskeysockets/baileys @supabase/supabase-js
+// EXECUTAR: node whatsapp-local.js
 // ===============================================
 
 const express = require('express');
 const cors = require('cors');
-const { makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode');
+const fs = require('fs');
+const path = require('path');
+const {
+  makeWASocket,
+  DisconnectReason,
+  useMultiFileAuthState,
+  fetchLatestBaileysVersion,
+} = require('@whiskeysockets/baileys');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = ${localPort};
 const TOKEN = '${localToken}';
 
-// Supabase client
-const supabase = createClient(
-  '${supabaseUrl}',
-  '${supabaseKey}'
-);
+const supabase = createClient('${supabaseUrl}', '${supabaseKey}');
 
-app.use(cors());
-app.use(express.json());
+// ===== LOGS =====
+const serverLogs = [];
+const pushLog = (type, message) => {
+  const payload = { timestamp: new Date().toISOString(), type, message };
+  serverLogs.push(payload);
+  if (serverLogs.length > 500) serverLogs.shift();
+  const colors = { success: '\\x1b[32m', error: '\\x1b[31m', warning: '\\x1b[33m', info: '\\x1b[36m' };
+  const reset = '\\x1b[0m';
+  console.log(\`\${colors[type] || ''}[\${type.toUpperCase()}]\${reset} \${message}\`);
+};
 
-// Auth middleware
+// ===== MIDDLEWARES =====
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json({ limit: '5mb' }));
+app.options('*', cors({ origin: true }));
+
 const authMiddleware = (req, res, next) => {
+  if (req.method === 'OPTIONS') return next();
   const auth = req.headers.authorization;
   if (!auth || auth !== \`Bearer \${TOKEN}\`) {
+    pushLog('warning', \`Requisição não autorizada: \${req.method} \${req.path}\`);
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
 };
-
 app.use(authMiddleware);
 
-// Store connections
+// ===== ESTADO DAS CONEXÕES =====
 const connections = new Map();
+
+const setConn = (id, patch) => {
+  const prev = connections.get(id) || {
+    sock: null,
+    status: 'disconnected',
+    phone: null,
+    me: null,
+    qrDataUrl: null,
+    updatedAt: new Date().toISOString(),
+    reconnecting: false,
+    reconnectAttempts: 0,
+  };
+  const next = { ...prev, ...patch, updatedAt: new Date().toISOString() };
+  connections.set(id, next);
+  return next;
+};
+
+const safeDbUpdate = async (id, patch) => {
+  try {
+    await supabase.from('whatsapp_instances').update(patch).eq('id', id);
+  } catch (e) {
+    pushLog('warning', \`Falha ao atualizar DB para \${id}: \${e?.message || e}\`);
+  }
+};
+
+// Aguarda condição com timeout
+const waitFor = async (fn, timeoutMs = 35000, intervalMs = 300) => {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const result = fn();
+    if (result) return result;
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+  return null;
+};
+
+// ===== INICIAR INSTÂNCIA (com reconnect automático) =====
+const startInstance = async (id, phone) => {
+  const existing = connections.get(id);
+
+  // Fecha socket anterior se existir
+  if (existing?.sock) {
+    try { existing.sock.end?.(new Error('Restarting')); } catch {}
+  }
+
+  setConn(id, {
+    status: 'starting',
+    phone: phone ?? existing?.phone ?? null,
+    qrDataUrl: null,
+    reconnecting: false,
+  });
+
+  pushLog('info', \`Iniciando instância \${id}...\`);
+
+  const sessionsDir = path.join(process.cwd(), 'sessions', id);
+  if (!fs.existsSync(sessionsDir)) {
+    fs.mkdirSync(sessionsDir, { recursive: true });
+  }
+
+  const { state, saveCreds } = await useMultiFileAuthState(sessionsDir);
+  const { version } = await fetchLatestBaileysVersion();
+
+  const sock = makeWASocket({
+    version,
+    auth: state,
+    printQRInTerminal: false, // QR vai pro painel, não pro terminal
+    markOnlineOnConnect: true,
+    syncFullHistory: false,
+  });
+
+  setConn(id, { sock });
+
+  sock.ev.on('creds.update', async () => {
+    await saveCreds();
+    pushLog('info', \`Credenciais salvas para \${id}\`);
+  });
+
+  sock.ev.on('connection.update', async (update) => {
+    const { connection, lastDisconnect, qr } = update;
+
+    // QR Code gerado
+    if (qr) {
+      try {
+        const qrDataUrl = await qrcode.toDataURL(qr, { margin: 1, width: 300 });
+        setConn(id, { status: 'qr_pending', qrDataUrl });
+        pushLog('info', \`QR Code gerado para \${id}. Escaneie no WhatsApp.\`);
+      } catch (e) {
+        pushLog('error', \`Erro ao gerar QR: \${e?.message || e}\`);
+      }
+      return;
+    }
+
+    // Conexão aberta
+    if (connection === 'open') {
+      const me = sock.user?.id || null;
+      setConn(id, { status: 'connected', me, qrDataUrl: null, reconnectAttempts: 0 });
+      pushLog('success', \`✓ Instância \${id} conectada! \${me ? \`(\${me})\` : ''}\`);
+      
+      await safeDbUpdate(id, {
+        status: 'connected',
+        phone_number: phone ?? me ?? null,
+        last_seen: new Date().toISOString(),
+      });
+      return;
+    }
+
+    // Conexão fechada
+    if (connection === 'close') {
+      const code = lastDisconnect?.error?.output?.statusCode;
+      const isLoggedOut = code === DisconnectReason.loggedOut;
+
+      setConn(id, { status: 'disconnected' });
+      pushLog('warning', \`Instância \${id} desconectou (code=\${code ?? 'n/a'})\`);
+
+      if (isLoggedOut) {
+        pushLog('error', \`Instância \${id} fez logout. Gere o QR novamente.\`);
+        await safeDbUpdate(id, { status: 'disconnected' });
+        // Limpa sessão para novo QR
+        try {
+          fs.rmSync(sessionsDir, { recursive: true, force: true });
+          pushLog('info', \`Sessão limpa para \${id}\`);
+        } catch {}
+        return;
+      }
+
+      // Reconnect automático com backoff (resolve erro 515)
+      const cur = connections.get(id);
+      if (!cur || cur.reconnecting) return;
+
+      const attempt = (cur.reconnectAttempts ?? 0) + 1;
+      setConn(id, { reconnecting: true, reconnectAttempts: attempt });
+
+      const delay = Math.min(30000, 1500 * attempt);
+      pushLog('info', \`Reconectando \${id} em \${delay}ms (tentativa \${attempt})...\`);
+
+      setTimeout(async () => {
+        try {
+          setConn(id, { reconnecting: false });
+          await startInstance(id, phone);
+        } catch (e) {
+          setConn(id, { reconnecting: false });
+          pushLog('error', \`Falha ao reconectar \${id}: \${e?.message || e}\`);
+        }
+      }, delay);
+    }
+  });
+
+  sock.ev.on('messages.upsert', (m) => {
+    if (!m?.messages?.length) return;
+    const msg = m.messages[0];
+    const from = msg.key?.remoteJid || 'desconhecido';
+    pushLog('info', \`Mensagem recebida de \${from} na instância \${id}\`);
+  });
+
+  return sock;
+};
+
+// ===== ROTAS =====
 
 // Health check
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     name: 'WhatsApp Local Backend',
-    version: '1.0.0',
+    version: '2.0.0',
     instances: connections.size,
-    uptime: process.uptime()
+    uptime: Math.floor(process.uptime()),
+    uptimeFormatted: formatUptime(process.uptime()),
   });
 });
 
-// Generate QR Code
+function formatUptime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  return \`\${h}h \${m}m \${s}s\`;
+}
+
+// Gerar QR Code (ou retornar se já conectado)
 app.post('/api/instance/:id/qrcode', async (req, res) => {
   const { id } = req.params;
-  const { phone } = req.body;
-  
+  const { phone } = req.body || {};
+
   try {
-    const { state, saveCreds } = await useMultiFileAuthState(\`./sessions/\${id}\`);
-    
-    const sock = makeWASocket({
-      auth: state,
-      printQRInTerminal: true,
-    });
+    await startInstance(id, phone);
 
-    sock.ev.on('creds.update', saveCreds);
-
-    sock.ev.on('connection.update', async (update) => {
-      const { connection, lastDisconnect, qr } = update;
-      
-      if (qr) {
-        const qrDataUrl = await qrcode.toDataURL(qr);
-        connections.set(id, { sock, qr: qrDataUrl, status: 'qr_pending', phone });
+    // Aguarda QR ou conexão
+    const result = await waitFor(() => {
+      const c = connections.get(id);
+      if (!c) return null;
+      if (c.status === 'connected') {
+        return { status: 'connected', phone: c.me || c.phone || phone || null };
       }
-      
-      if (connection === 'close') {
-        const reason = lastDisconnect?.error?.output?.statusCode;
-        if (reason !== DisconnectReason.loggedOut) {
-          console.log('Reconectando...');
-        }
-      } else if (connection === 'open') {
-        console.log('Conectado!');
-        connections.set(id, { sock, status: 'connected', phone });
-        
-        // Update database
-        await supabase
-          .from('whatsapp_instances')
-          .update({
-            status: 'connected',
-            phone_number: phone,
-            last_seen: new Date().toISOString()
-          })
-          .eq('id', id);
+      if (c.qrDataUrl) {
+        return { status: 'qr_pending', qrcode: c.qrDataUrl, phone: c.phone || phone || null };
       }
-    });
+      return null;
+    }, 35000, 300);
 
-    // Wait for QR generation
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    const conn = connections.get(id);
-    if (conn?.qr) {
-      res.json({ qrcode: conn.qr });
-    } else {
-      res.status(500).json({ error: 'QR Code não gerado' });
+    if (!result) {
+      pushLog('warning', \`Timeout ao gerar QR para \${id}\`);
+      return res.status(504).json({ error: 'Timeout ao gerar QR (tente novamente)' });
     }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+
+    return res.json(result);
+  } catch (e) {
+    pushLog('error', \`Erro ao iniciar instância \${id}: \${e?.message || e}\`);
+    return res.status(500).json({ error: e?.message || String(e) });
   }
 });
 
-// Get instance status
+// Status da instância
 app.get('/api/instance/:id/status', (req, res) => {
   const { id } = req.params;
-  const conn = connections.get(id);
-  
+  const c = connections.get(id);
+
   res.json({
-    status: conn?.status || 'inactive',
-    phone: conn?.phone || null,
-    connected: conn?.status === 'connected'
+    status: c?.status || 'inactive',
+    phone: c?.me || c?.phone || null,
+    connected: c?.status === 'connected',
+    updatedAt: c?.updatedAt || null,
+    reconnectAttempts: c?.reconnectAttempts || 0,
   });
 });
 
-// Send message
+// Enviar mensagem
 app.post('/api/instance/:id/send', async (req, res) => {
   const { id } = req.params;
-  const { phone, message } = req.body;
-  
-  const conn = connections.get(id);
-  if (!conn || conn.status !== 'connected') {
+  const { phone, message, imageUrl, buttons } = req.body || {};
+
+  const c = connections.get(id);
+  if (!c || c.status !== 'connected' || !c.sock) {
     return res.status(400).json({ error: 'Instância não conectada' });
   }
-  
+  if (!phone || !message) {
+    return res.status(400).json({ error: 'phone e message são obrigatórios' });
+  }
+
   try {
-    const jid = phone.includes('@s.whatsapp.net') ? phone : \`\${phone}@s.whatsapp.net\`;
-    await conn.sock.sendMessage(jid, { text: message });
-    
-    // Log message
-    await supabase
-      .from('whatsapp_message_logs')
-      .insert({
+    const jid = String(phone).includes('@s.whatsapp.net') 
+      ? String(phone) 
+      : \`\${String(phone).replace(/\\D/g, '')}@s.whatsapp.net\`;
+
+    if (imageUrl) {
+      await c.sock.sendMessage(jid, { image: { url: imageUrl }, caption: message });
+    } else {
+      await c.sock.sendMessage(jid, { text: message });
+    }
+
+    pushLog('success', \`Mensagem enviada para \${phone} via \${id}\`);
+
+    // Log no banco
+    try {
+      await supabase.from('whatsapp_message_logs').insert({
         instance_id: id,
         direction: 'outgoing',
         phone_to: phone,
         message: message,
         status: 'sent'
       });
-    
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    } catch {}
+
+    return res.json({ success: true });
+  } catch (e) {
+    pushLog('error', \`Erro ao enviar mensagem: \${e?.message || e}\`);
+    return res.status(500).json({ error: e?.message || String(e) });
   }
 });
 
-// Store logs in memory for polling
-const serverLogs = [];
-const addLog = (type, message) => {
-  const log = { timestamp: new Date().toISOString(), type, message };
-  serverLogs.push(log);
-  if (serverLogs.length > 100) serverLogs.shift();
-  console.log(\`[\${type.toUpperCase()}] \${message}\`);
-};
-
-// Get logs endpoint
-app.get('/logs', (req, res) => {
-  const since = req.query.since ? new Date(req.query.since) : null;
-  const filtered = since 
-    ? serverLogs.filter(l => new Date(l.timestamp) > since)
-    : serverLogs.slice(-50);
-  res.json({ logs: filtered });
-});
-
-// Disconnect instance
+// Desconectar instância
 app.post('/api/instance/:id/disconnect', async (req, res) => {
   const { id } = req.params;
-  const conn = connections.get(id);
-  
-  if (conn?.sock) {
-    await conn.sock.logout();
-    connections.delete(id);
-    addLog('info', \`Instância \${id} desconectada\`);
-  }
-  
-  await supabase
-    .from('whatsapp_instances')
-    .update({ status: 'disconnected' })
-    .eq('id', id);
-  
+  const c = connections.get(id);
+
+  try {
+    if (c?.sock) {
+      await c.sock.logout?.();
+    }
+  } catch {}
+
+  connections.delete(id);
+  pushLog('warning', \`Instância \${id} desconectada (logout)\`);
+
+  await safeDbUpdate(id, { status: 'disconnected' });
+
+  // Limpa sessão
+  const sessionsDir = path.join(process.cwd(), 'sessions', id);
+  try {
+    fs.rmSync(sessionsDir, { recursive: true, force: true });
+  } catch {}
+
   res.json({ success: true });
 });
 
+// Logs para o painel
+app.get('/logs', (req, res) => {
+  const since = req.query.since ? new Date(String(req.query.since)) : null;
+  const logs = since
+    ? serverLogs.filter(l => new Date(l.timestamp) > since)
+    : serverLogs.slice(-100);
+  res.json({ logs });
+});
+
+// Limpar logs
+app.delete('/logs', (req, res) => {
+  serverLogs.length = 0;
+  pushLog('info', 'Logs limpos');
+  res.json({ success: true });
+});
+
+// Lista de instâncias ativas
+app.get('/api/instances', (req, res) => {
+  const list = [];
+  connections.forEach((c, id) => {
+    list.push({
+      id,
+      status: c.status,
+      phone: c.me || c.phone,
+      connected: c.status === 'connected',
+      reconnectAttempts: c.reconnectAttempts,
+    });
+  });
+  res.json({ instances: list });
+});
+
+// ===== START =====
 app.listen(PORT, () => {
-  console.log('='.repeat(50));
-  console.log('  WhatsApp Local Backend');
-  console.log('='.repeat(50));
-  console.log(\`  Porta: \${PORT}\`);
-  console.log(\`  Token: \${TOKEN.substring(0, 8)}...\`);
-  console.log('='.repeat(50));
-  console.log('  Status: ONLINE');
-  console.log('='.repeat(50));
-  addLog('success', 'Backend iniciado com sucesso');
-  addLog('info', \`Servidor rodando na porta \${PORT}\`);
-  addLog('info', 'Aguardando conexões...');
-});`;
+  console.log('');
+  console.log('\\x1b[36m' + '='.repeat(56) + '\\x1b[0m');
+  console.log('\\x1b[36m   WhatsApp Backend Local (PC Local) v2.0\\x1b[0m');
+  console.log('\\x1b[36m' + '='.repeat(56) + '\\x1b[0m');
+  console.log(\`   Porta: \\x1b[33m\${PORT}\\x1b[0m\`);
+  console.log(\`   Token: \\x1b[33m\${TOKEN}\\x1b[0m\`);
+  console.log('\\x1b[36m' + '='.repeat(56) + '\\x1b[0m');
+  console.log('   \\x1b[32m✓ Backend ONLINE e pronto!\\x1b[0m');
+  console.log('\\x1b[36m' + '='.repeat(56) + '\\x1b[0m');
+  console.log('');
+
+  pushLog('success', 'Backend iniciado com sucesso!');
+  pushLog('info', \`Servidor rodando em http://localhost:\${PORT}\`);
+  pushLog('info', 'Aguardando conexões do painel...');
+});
+`;
   };
 
   const downloadScript = () => {
