@@ -9,7 +9,9 @@ import {
   User, 
   LogOut,
   Menu,
-  X
+  X,
+  Sparkles,
+  HelpCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +21,8 @@ import AffiliateSales from '@/components/affiliate/AffiliateSales';
 import AffiliateMaterials from '@/components/affiliate/AffiliateMaterials';
 import AffiliateWithdrawals from '@/components/affiliate/AffiliateWithdrawals';
 import AffiliateProfile from '@/components/affiliate/AffiliateProfile';
+import AIContentGenerator from '@/components/affiliate/AIContentGenerator';
+import HowItWorksModal from '@/components/affiliate/HowItWorksModal';
 
 interface Affiliate {
   id: string;
@@ -38,6 +42,7 @@ interface Affiliate {
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'sales', label: 'Minhas Vendas', icon: TrendingUp },
+  { id: 'ai', label: 'Criar com IA', icon: Sparkles },
   { id: 'materials', label: 'Materiais', icon: FileText },
   { id: 'withdrawals', label: 'Saques', icon: Wallet },
   { id: 'profile', label: 'Meu Perfil', icon: User },
@@ -112,6 +117,8 @@ const AffiliatePanel = () => {
         return <AffiliateDashboard affiliate={affiliate} />;
       case 'sales':
         return <AffiliateSales affiliateId={affiliate.id} />;
+      case 'ai':
+        return <AIContentGenerator affiliateCode={affiliate.affiliate_code} />;
       case 'materials':
         return <AffiliateMaterials />;
       case 'withdrawals':
@@ -133,31 +140,35 @@ const AffiliatePanel = () => {
 
   return (
     <div className="theme-affiliate-blue min-h-screen bg-background flex">
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-card rounded-lg border border-border"
-      >
-        {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border h-14 flex items-center justify-between px-4">
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="p-2 rounded-lg hover:bg-secondary transition-colors"
+        >
+          {sidebarOpen ? <X className="w-5 h-5 text-foreground" /> : <Menu className="w-5 h-5 text-foreground" />}
+        </button>
+        <h1 className="font-bold text-foreground">Genesis Hub</h1>
+        <div className="w-9" /> {/* Spacer for centering */}
+      </div>
 
       {/* Sidebar Overlay */}
       {sidebarOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          className="lg:hidden fixed inset-0 bg-black/50 z-40 pt-14"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-sidebar-background border-r border-sidebar-border z-40 transform transition-transform duration-300 ${
+        className={`fixed lg:sticky top-0 lg:top-0 left-0 h-screen w-64 bg-card border-r border-border z-40 transform transition-transform duration-300 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}
+        } pt-14 lg:pt-0`}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="p-6 border-b border-sidebar-border">
+          {/* Logo - Hidden on mobile since we have the header */}
+          <div className="hidden lg:block p-6 border-b border-border">
             <h1 className="text-xl font-bold text-foreground">
               Genesis Hub
             </h1>
@@ -167,7 +178,7 @@ const AffiliatePanel = () => {
           </div>
 
           {/* Affiliate Info */}
-          <div className="p-4 mx-4 mt-4 bg-secondary/50 rounded-lg">
+          <div className="p-4 mx-4 mt-4 lg:mt-4 bg-secondary/50 rounded-lg">
             <p className="text-sm font-medium text-foreground truncate">
               {affiliate?.name}
             </p>
@@ -175,6 +186,16 @@ const AffiliatePanel = () => {
               Código: {affiliate?.affiliate_code}
             </p>
           </div>
+
+          {/* How it Works Button */}
+          {affiliate && (
+            <div className="px-4 mt-4">
+              <HowItWorksModal 
+                commissionMonthly={affiliate.commission_rate_monthly}
+                commissionLifetime={affiliate.commission_rate_lifetime}
+              />
+            </div>
+          )}
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -203,7 +224,7 @@ const AffiliatePanel = () => {
           </nav>
 
           {/* Logout */}
-          <div className="p-4 border-t border-sidebar-border">
+          <div className="p-4 border-t border-border">
             <Button
               variant="ghost"
               onClick={handleLogout}
@@ -217,7 +238,7 @@ const AffiliatePanel = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 min-h-screen overflow-y-auto">
+      <main className="flex-1 min-h-screen overflow-y-auto pt-14 lg:pt-0">
         <div className="p-4 lg:p-8">
           <motion.div
             key={activeTab}

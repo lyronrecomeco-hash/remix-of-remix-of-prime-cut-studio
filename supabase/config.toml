@@ -65,3 +65,9 @@ verify_jwt = false
 
 [functions.create-affiliate]
 verify_jwt = false
+
+[functions.generate-affiliate-image]
+verify_jwt = false
+
+[functions.generate-affiliate-text]
+verify_jwt = false

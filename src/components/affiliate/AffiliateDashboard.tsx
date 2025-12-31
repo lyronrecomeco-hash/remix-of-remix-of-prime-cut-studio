@@ -35,7 +35,8 @@ const AffiliateDashboard = ({ affiliate }: AffiliateDashboardProps) => {
   const [referralsCount, setReferralsCount] = useState(0);
   const [recentSales, setRecentSales] = useState<any[]>([]);
 
-  const affiliateLink = `${window.location.origin}/?ref=${affiliate.affiliate_code}`;
+  // Link direto para login ao invés do site comercial
+  const affiliateLink = `https://app.genesishub.cloud/admin-login?ref=${affiliate.affiliate_code}`;
 
   useEffect(() => {
     fetchStats();
@@ -126,31 +127,31 @@ const AffiliateDashboard = ({ affiliate }: AffiliateDashboardProps) => {
   return (
     <div className="space-y-6">
       {/* Welcome Message */}
-      <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent p-6 rounded-xl border border-primary/20">
-        <h1 className="text-2xl font-bold text-foreground">
+      <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent p-4 sm:p-6 rounded-xl border border-primary/20">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">
           Bem-vindo, {affiliate.name.split(' ')[0]}! 👋
         </h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Acompanhe suas vendas e comissões no painel abaixo.
         </p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
             <Card key={index} className="bg-card border-border">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{stat.title}</p>
-                    <p className="text-2xl font-bold mt-1 text-foreground">
+              <CardContent className="p-3 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="order-2 sm:order-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground">{stat.title}</p>
+                    <p className="text-lg sm:text-2xl font-bold mt-1 text-foreground">
                       {stat.value}
                     </p>
                   </div>
-                  <div className={`w-12 h-12 rounded-xl ${stat.bgColor} flex items-center justify-center`}>
-                    <Icon className={`w-6 h-6 ${stat.color}`} />
+                  <div className={`order-1 sm:order-2 w-10 h-10 sm:w-12 sm:h-12 rounded-xl ${stat.bgColor} flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.color}`} />
                   </div>
                 </div>
               </CardContent>
@@ -161,17 +162,17 @@ const AffiliateDashboard = ({ affiliate }: AffiliateDashboardProps) => {
 
       {/* Affiliate Link */}
       <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-lg text-foreground">Seu Link de Afiliado</CardTitle>
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="text-base sm:text-lg text-foreground">Seu Link de Afiliado</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 bg-secondary/50 rounded-lg px-4 py-3 font-mono text-sm text-foreground break-all">
+        <CardContent className="px-4 sm:px-6">
+          <div className="flex flex-col gap-3">
+            <div className="bg-secondary/50 rounded-lg px-3 sm:px-4 py-3 font-mono text-xs sm:text-sm text-foreground break-all">
               {affiliateLink}
             </div>
             <Button
               onClick={copyLink}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto"
             >
               {copied ? (
                 <>
@@ -186,9 +187,16 @@ const AffiliateDashboard = ({ affiliate }: AffiliateDashboardProps) => {
               )}
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground mt-3">
-            Comissões: <span className="text-primary font-medium">{affiliate.commission_rate_monthly}%</span> (Mensal) | <span className="text-primary font-medium">{affiliate.commission_rate_lifetime}%</span> (Vitalício)
-          </p>
+          <div className="mt-4 p-3 bg-primary/10 rounded-lg border border-primary/20">
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Comissões:</span>{' '}
+              <span className="text-primary font-bold">{affiliate.commission_rate_monthly}%</span> (Mensal) |{' '}
+              <span className="text-primary font-bold">{affiliate.commission_rate_lifetime}%</span> (Vitalício)
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              O link leva direto para a página de cadastro. Cookies válidos por 30 dias.
+            </p>
+          </div>
         </CardContent>
       </Card>
 
