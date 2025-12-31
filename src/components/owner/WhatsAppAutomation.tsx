@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,9 +33,18 @@ import {
   Link2,
   AlertTriangle,
   Power,
-  PowerOff
+  PowerOff,
+  Monitor,
+  Terminal,
+  Play,
+  Pause,
+  Circle,
+  CheckCircle2,
+  XCircle,
+  Download
 } from 'lucide-react';
 
+// Types
 interface BackendConfig {
   id: string;
   backend_url: string | null;
@@ -57,6 +66,14 @@ interface WhatsAppInstance {
   created_at: string;
 }
 
+interface ConsoleLog {
+  timestamp: Date;
+  type: 'info' | 'success' | 'error' | 'warning';
+  message: string;
+}
+
+type BackendMode = 'vps' | 'local';
+
 const statusConfig = {
   inactive: { label: 'Inativo', color: 'bg-gray-500', icon: PowerOff },
   awaiting_backend: { label: 'Aguardando Backend', color: 'bg-yellow-500', icon: Clock },
@@ -73,14 +90,33 @@ const WhatsAppAutomation = () => {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   
-  // Form states
+  // Backend mode
+  const [backendMode, setBackendMode] = useState<BackendMode>('vps');
+  
+  // VPS Form states
   const [backendUrl, setBackendUrl] = useState('');
   const [masterToken, setMasterToken] = useState('');
   
+  // PC Local Form states
+  const [localEndpoint, setLocalEndpoint] = useState('http://localhost');
+  const [localPort, setLocalPort] = useState('3001');
+  const [localToken, setLocalToken] = useState('');
+  const [isLocalConnected, setIsLocalConnected] = useState(false);
+  const [isTestingLocal, setIsTestingLocal] = useState(false);
+  
+  // Console logs
+  const [consoleLogs, setConsoleLogs] = useState<ConsoleLog[]>([]);
+  const consoleRef = useRef<HTMLDivElement>(null);
+  
   // New instance dialog
   const [isNewInstanceOpen, setIsNewInstanceOpen] = useState(false);
+  const [instanceCreationStep, setInstanceCreationStep] = useState<'choose' | 'form' | 'qrcode'>('choose');
+  const [selectedBackendType, setSelectedBackendType] = useState<'vps' | 'local' | null>(null);
   const [newInstanceName, setNewInstanceName] = useState('');
+  const [newInstancePhone, setNewInstancePhone] = useState('');
   const [isCreatingInstance, setIsCreatingInstance] = useState(false);
+  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
   
   // Edit instance dialog
   const [editingInstance, setEditingInstance] = useState<WhatsAppInstance | null>(null);
@@ -91,6 +127,23 @@ const WhatsAppAutomation = () => {
 
   const currentDomain = typeof window !== 'undefined' ? window.location.origin : '';
 
+  // Generate a token if not exists
+  useEffect(() => {
+    if (!localToken) {
+      setLocalToken(crypto.randomUUID());
+    }
+  }, []);
+
+  // Console log helper
+  const addConsoleLog = useCallback((type: ConsoleLog['type'], message: string) => {
+    setConsoleLogs(prev => [...prev.slice(-99), { timestamp: new Date(), type, message }]);
+    setTimeout(() => {
+      if (consoleRef.current) {
+        consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+      }
+    }, 50);
+  }, []);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -98,7 +151,6 @@ const WhatsAppAutomation = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch backend config
       const { data: configData, error: configError } = await supabase
         .from('whatsapp_backend_config')
         .select('*')
@@ -114,7 +166,6 @@ const WhatsAppAutomation = () => {
         setMasterToken(configData.master_token || '');
       }
 
-      // Fetch instances
       const { data: instancesData, error: instancesError } = await supabase
         .from('whatsapp_instances')
         .select('*')
@@ -181,7 +232,6 @@ const WhatsAppAutomation = () => {
       });
 
       if (response.ok) {
-        // Update connection status
         if (backendConfig?.id) {
           await supabase
             .from('whatsapp_backend_config')
@@ -213,26 +263,126 @@ const WhatsAppAutomation = () => {
     }
   };
 
+  const testLocalConnection = async () => {
+    const fullUrl = `${localEndpoint}:${localPort}`;
+    setIsTestingLocal(true);
+    addConsoleLog('info', `Testando conexão com ${fullUrl}...`);
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(`${fullUrl}/health`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localToken}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        setIsLocalConnected(true);
+        addConsoleLog('success', `Conectado! Backend: ${data.name || 'WhatsApp Local'} v${data.version || '1.0.0'}`);
+        toast.success('PC Local conectado com sucesso!');
+        
+        // Reset instances state when connecting to local
+        await resetInstancesState();
+      } else {
+        throw new Error('Backend local não respondeu corretamente');
+      }
+    } catch (error: unknown) {
+      setIsLocalConnected(false);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      
+      if (errorMessage.includes('abort')) {
+        addConsoleLog('error', 'Timeout: Backend local não respondeu em 5 segundos');
+      } else {
+        addConsoleLog('error', `Falha na conexão: ${errorMessage}`);
+      }
+      
+      toast.error('PC Local não está respondendo. Verifique se o script está rodando.');
+    } finally {
+      setIsTestingLocal(false);
+    }
+  };
+
+  const disconnectLocal = () => {
+    setIsLocalConnected(false);
+    addConsoleLog('warning', 'Desconectado do backend local');
+    toast.info('PC Local desconectado');
+  };
+
+  const resetInstancesState = async () => {
+    addConsoleLog('info', 'Resetando estado das instâncias...');
+    try {
+      const { error } = await supabase
+        .from('whatsapp_instances')
+        .update({ status: 'inactive', phone_number: null })
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+
+      if (error) throw error;
+      addConsoleLog('success', 'Instâncias resetadas com sucesso');
+      fetchData();
+    } catch (error) {
+      addConsoleLog('error', 'Erro ao resetar instâncias');
+    }
+  };
+
+  const openNewInstanceDialog = () => {
+    setInstanceCreationStep('choose');
+    setSelectedBackendType(null);
+    setNewInstanceName('');
+    setNewInstancePhone('');
+    setQrCodeData(null);
+    setIsNewInstanceOpen(true);
+  };
+
+  const handleBackendTypeSelection = (type: 'vps' | 'local') => {
+    setSelectedBackendType(type);
+    setInstanceCreationStep('form');
+  };
+
   const createInstance = async () => {
     if (!newInstanceName.trim()) {
       toast.error('Digite um nome para a instância');
       return;
     }
 
+    if (selectedBackendType === 'local' && !newInstancePhone.trim()) {
+      toast.error('Digite o número para conexão');
+      return;
+    }
+
     setIsCreatingInstance(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('whatsapp_instances')
         .insert({
           name: newInstanceName.trim(),
-          status: backendConfig?.is_connected ? 'awaiting_backend' : 'inactive',
-        });
+          phone_number: selectedBackendType === 'local' ? newInstancePhone.trim() : null,
+          status: selectedBackendType === 'local' ? 'qr_pending' : (backendConfig?.is_connected ? 'awaiting_backend' : 'inactive'),
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
       toast.success('Instância criada com sucesso');
-      setNewInstanceName('');
-      setIsNewInstanceOpen(false);
+      
+      if (selectedBackendType === 'local' && isLocalConnected) {
+        // Generate QR Code
+        setInstanceCreationStep('qrcode');
+        await generateQRCode(data.id);
+      } else {
+        setIsNewInstanceOpen(false);
+        setNewInstanceName('');
+        setNewInstancePhone('');
+      }
+      
       fetchData();
     } catch (error) {
       console.error('Error creating instance:', error);
@@ -240,6 +390,92 @@ const WhatsAppAutomation = () => {
     } finally {
       setIsCreatingInstance(false);
     }
+  };
+
+  const generateQRCode = async (instanceId: string) => {
+    setIsGeneratingQR(true);
+    addConsoleLog('info', `Gerando QR Code para instância ${instanceId}...`);
+    
+    try {
+      const fullUrl = `${localEndpoint}:${localPort}`;
+      const response = await fetch(`${fullUrl}/api/instance/${instanceId}/qrcode`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phone: newInstancePhone }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao gerar QR Code');
+      }
+
+      const data = await response.json();
+      setQrCodeData(data.qrcode);
+      addConsoleLog('success', 'QR Code gerado com sucesso! Escaneie com seu WhatsApp');
+      
+      // Start polling for connection status
+      pollConnectionStatus(instanceId);
+    } catch (error) {
+      addConsoleLog('error', 'Erro ao gerar QR Code. Verifique se o backend local está rodando.');
+      toast.error('Erro ao gerar QR Code');
+    } finally {
+      setIsGeneratingQR(false);
+    }
+  };
+
+  const pollConnectionStatus = async (instanceId: string) => {
+    const fullUrl = `${localEndpoint}:${localPort}`;
+    let attempts = 0;
+    const maxAttempts = 60; // 2 minutes with 2 second intervals
+
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`${fullUrl}/api/instance/${instanceId}/status`, {
+          headers: {
+            'Authorization': `Bearer ${localToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.status === 'connected') {
+            addConsoleLog('success', `WhatsApp conectado! Número: ${data.phone || newInstancePhone}`);
+            
+            // Update instance in database
+            await supabase
+              .from('whatsapp_instances')
+              .update({
+                status: 'connected',
+                phone_number: data.phone || newInstancePhone,
+                last_seen: new Date().toISOString(),
+              })
+              .eq('id', instanceId);
+
+            toast.success('WhatsApp conectado com sucesso!');
+            setIsNewInstanceOpen(false);
+            fetchData();
+            return;
+          }
+        }
+
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(checkStatus, 2000);
+        } else {
+          addConsoleLog('warning', 'Tempo limite para conexão atingido');
+        }
+      } catch (error) {
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(checkStatus, 2000);
+        }
+      }
+    };
+
+    checkStatus();
   };
 
   const updateInstance = async () => {
@@ -304,10 +540,213 @@ const WhatsAppAutomation = () => {
   };
 
   const getInstanceEndpoint = (instanceId: string) => {
+    if (backendMode === 'local' && isLocalConnected) {
+      return `${localEndpoint}:${localPort}/api/instance/${instanceId}`;
+    }
     if (backendUrl) {
       return `${backendUrl}/api/instance/${instanceId}`;
     }
     return `${currentDomain}/api/whatsapp/${instanceId}`;
+  };
+
+  const getLocalScript = () => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'YOUR_SUPABASE_KEY';
+    
+    return `// ===============================================
+// WhatsApp Backend Local - Script para PC
+// ===============================================
+// Execute no Terminal/CMD: node whatsapp-local.js
+// ===============================================
+
+const express = require('express');
+const cors = require('cors');
+const { makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const qrcode = require('qrcode');
+const { createClient } = require('@supabase/supabase-js');
+
+const app = express();
+const PORT = ${localPort};
+const TOKEN = '${localToken}';
+
+// Supabase client
+const supabase = createClient(
+  '${supabaseUrl}',
+  '${supabaseKey}'
+);
+
+app.use(cors());
+app.use(express.json());
+
+// Auth middleware
+const authMiddleware = (req, res, next) => {
+  const auth = req.headers.authorization;
+  if (!auth || auth !== \`Bearer \${TOKEN}\`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+};
+
+app.use(authMiddleware);
+
+// Store connections
+const connections = new Map();
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    name: 'WhatsApp Local Backend',
+    version: '1.0.0',
+    instances: connections.size,
+    uptime: process.uptime()
+  });
+});
+
+// Generate QR Code
+app.post('/api/instance/:id/qrcode', async (req, res) => {
+  const { id } = req.params;
+  const { phone } = req.body;
+  
+  try {
+    const { state, saveCreds } = await useMultiFileAuthState(\`./sessions/\${id}\`);
+    
+    const sock = makeWASocket({
+      auth: state,
+      printQRInTerminal: true,
+    });
+
+    sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('connection.update', async (update) => {
+      const { connection, lastDisconnect, qr } = update;
+      
+      if (qr) {
+        const qrDataUrl = await qrcode.toDataURL(qr);
+        connections.set(id, { sock, qr: qrDataUrl, status: 'qr_pending', phone });
+      }
+      
+      if (connection === 'close') {
+        const reason = lastDisconnect?.error?.output?.statusCode;
+        if (reason !== DisconnectReason.loggedOut) {
+          console.log('Reconectando...');
+        }
+      } else if (connection === 'open') {
+        console.log('Conectado!');
+        connections.set(id, { sock, status: 'connected', phone });
+        
+        // Update database
+        await supabase
+          .from('whatsapp_instances')
+          .update({
+            status: 'connected',
+            phone_number: phone,
+            last_seen: new Date().toISOString()
+          })
+          .eq('id', id);
+      }
+    });
+
+    // Wait for QR generation
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    const conn = connections.get(id);
+    if (conn?.qr) {
+      res.json({ qrcode: conn.qr });
+    } else {
+      res.status(500).json({ error: 'QR Code não gerado' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get instance status
+app.get('/api/instance/:id/status', (req, res) => {
+  const { id } = req.params;
+  const conn = connections.get(id);
+  
+  res.json({
+    status: conn?.status || 'inactive',
+    phone: conn?.phone || null,
+    connected: conn?.status === 'connected'
+  });
+});
+
+// Send message
+app.post('/api/instance/:id/send', async (req, res) => {
+  const { id } = req.params;
+  const { phone, message } = req.body;
+  
+  const conn = connections.get(id);
+  if (!conn || conn.status !== 'connected') {
+    return res.status(400).json({ error: 'Instância não conectada' });
+  }
+  
+  try {
+    const jid = phone.includes('@s.whatsapp.net') ? phone : \`\${phone}@s.whatsapp.net\`;
+    await conn.sock.sendMessage(jid, { text: message });
+    
+    // Log message
+    await supabase
+      .from('whatsapp_message_logs')
+      .insert({
+        instance_id: id,
+        direction: 'outgoing',
+        phone_to: phone,
+        message: message,
+        status: 'sent'
+      });
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Disconnect instance
+app.post('/api/instance/:id/disconnect', async (req, res) => {
+  const { id } = req.params;
+  const conn = connections.get(id);
+  
+  if (conn?.sock) {
+    await conn.sock.logout();
+    connections.delete(id);
+  }
+  
+  await supabase
+    .from('whatsapp_instances')
+    .update({ status: 'disconnected' })
+    .eq('id', id);
+  
+  res.json({ success: true });
+});
+
+app.listen(PORT, () => {
+  console.log('='.repeat(50));
+  console.log('  WhatsApp Local Backend');
+  console.log('='.repeat(50));
+  console.log(\`  Porta: \${PORT}\`);
+  console.log(\`  Token: \${TOKEN.substring(0, 8)}...\`);
+  console.log('='.repeat(50));
+  console.log('  Status: ONLINE');
+  console.log('='.repeat(50));
+});`;
+  };
+
+  const downloadScript = () => {
+    const script = getLocalScript();
+    const blob = new Blob([script], { type: 'text/javascript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'whatsapp-local.js';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Script baixado!');
   };
 
   if (isLoading) {
@@ -317,6 +756,8 @@ const WhatsAppAutomation = () => {
       </div>
     );
   }
+
+  const isBackendActive = backendMode === 'vps' ? backendConfig?.is_connected : isLocalConnected;
 
   return (
     <div className="space-y-6">
@@ -349,7 +790,7 @@ const WhatsAppAutomation = () => {
         {/* Instances Tab */}
         <TabsContent value="instances" className="space-y-6">
           {/* Backend Status Alert */}
-          {!backendConfig?.is_connected && (
+          {!isBackendActive && (
             <Card className="border-yellow-500/50 bg-yellow-500/5">
               <CardContent className="flex items-center gap-4 py-4">
                 <AlertTriangle className="w-5 h-5 text-yellow-500" />
@@ -358,7 +799,24 @@ const WhatsAppAutomation = () => {
                     Backend não configurado
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Configure o backend Node.js na aba "Backend" para ativar as automações
+                    Configure o backend na aba "Backend" para ativar as automações
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Active Backend Indicator */}
+          {isBackendActive && (
+            <Card className="border-green-500/50 bg-green-500/5">
+              <CardContent className="flex items-center gap-4 py-4">
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                <div className="flex-1">
+                  <p className="font-medium text-green-600 dark:text-green-400">
+                    Backend Ativo: {backendMode === 'vps' ? 'VPS' : 'PC Local'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {backendMode === 'vps' ? backendUrl : `${localEndpoint}:${localPort}`}
                   </p>
                 </div>
               </CardContent>
@@ -369,45 +827,145 @@ const WhatsAppAutomation = () => {
           <div className="flex justify-end">
             <Dialog open={isNewInstanceOpen} onOpenChange={setIsNewInstanceOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button onClick={openNewInstanceDialog}>
                   <Plus className="w-4 h-4 mr-2" />
                   Nova Instância
                 </Button>
               </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Criar Nova Instância</DialogTitle>
-                  <DialogDescription>
-                    Cada instância representa um número de WhatsApp diferente
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Nome da Instância</Label>
-                    <Input
-                      placeholder="Ex: WhatsApp Principal"
-                      value={newInstanceName}
-                      onChange={(e) => setNewInstanceName(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsNewInstanceOpen(false)}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    onClick={createInstance}
-                    disabled={isCreatingInstance}
-                  >
-                    {isCreatingInstance && (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    )}
-                    Criar Instância
-                  </Button>
-                </DialogFooter>
+              <DialogContent className="max-w-md">
+                {instanceCreationStep === 'choose' && (
+                  <>
+                    <DialogHeader>
+                      <DialogTitle>Escolha o Tipo de Backend</DialogTitle>
+                      <DialogDescription>
+                        Selecione onde a instância será executada
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <Button
+                        variant="outline"
+                        className="h-24 flex flex-col items-center justify-center gap-2"
+                        onClick={() => handleBackendTypeSelection('vps')}
+                      >
+                        <Server className="w-8 h-8 text-primary" />
+                        <span className="font-medium">VPS / Servidor</span>
+                        <span className="text-xs text-muted-foreground">Servidor remoto Node.js</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className={`h-24 flex flex-col items-center justify-center gap-2 ${isLocalConnected ? 'border-green-500' : ''}`}
+                        onClick={() => handleBackendTypeSelection('local')}
+                        disabled={!isLocalConnected}
+                      >
+                        <Monitor className="w-8 h-8 text-primary" />
+                        <span className="font-medium">PC Local</span>
+                        <span className="text-xs text-muted-foreground">
+                          {isLocalConnected ? 'Conectado' : 'Conecte primeiro na aba Backend'}
+                        </span>
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                {instanceCreationStep === 'form' && (
+                  <>
+                    <DialogHeader>
+                      <DialogTitle>Criar Nova Instância</DialogTitle>
+                      <DialogDescription>
+                        {selectedBackendType === 'local' 
+                          ? 'Configure a instância para conexão via PC Local'
+                          : 'Configure a instância para o servidor VPS'
+                        }
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Nome da Instância</Label>
+                        <Input
+                          placeholder="Ex: WhatsApp Principal"
+                          value={newInstanceName}
+                          onChange={(e) => setNewInstanceName(e.target.value)}
+                        />
+                      </div>
+                      
+                      {selectedBackendType === 'local' && (
+                        <div className="space-y-2">
+                          <Label>Número para Conexão</Label>
+                          <Input
+                            placeholder="Ex: 5511999999999"
+                            value={newInstancePhone}
+                            onChange={(e) => setNewInstancePhone(e.target.value)}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Número com DDD e código do país (sem + ou espaços)
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setInstanceCreationStep('choose')}
+                      >
+                        Voltar
+                      </Button>
+                      <Button
+                        onClick={createInstance}
+                        disabled={isCreatingInstance}
+                      >
+                        {isCreatingInstance && (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        )}
+                        {selectedBackendType === 'local' ? 'Gerar QR Code' : 'Criar Instância'}
+                      </Button>
+                    </DialogFooter>
+                  </>
+                )}
+
+                {instanceCreationStep === 'qrcode' && (
+                  <>
+                    <DialogHeader>
+                      <DialogTitle>Conectar WhatsApp</DialogTitle>
+                      <DialogDescription>
+                        Escaneie o QR Code com seu WhatsApp
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-col items-center py-6">
+                      {isGeneratingQR ? (
+                        <div className="flex flex-col items-center gap-4">
+                          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                          <p className="text-sm text-muted-foreground">Gerando QR Code...</p>
+                        </div>
+                      ) : qrCodeData ? (
+                        <div className="flex flex-col items-center gap-4">
+                          <div className="p-4 bg-white rounded-lg">
+                            <img src={qrCodeData} alt="QR Code" className="w-64 h-64" />
+                          </div>
+                          <p className="text-sm text-muted-foreground text-center">
+                            Abra o WhatsApp no seu celular, vá em<br />
+                            <strong>Configurações → Aparelhos Conectados → Conectar</strong>
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-4">
+                          <XCircle className="w-12 h-12 text-destructive" />
+                          <p className="text-sm text-muted-foreground">Erro ao gerar QR Code</p>
+                          <Button onClick={() => generateQRCode(instances[0]?.id || '')} variant="outline">
+                            Tentar Novamente
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsNewInstanceOpen(false)}
+                      >
+                        Fechar
+                      </Button>
+                    </DialogFooter>
+                  </>
+                )}
               </DialogContent>
             </Dialog>
           </div>
@@ -421,7 +979,7 @@ const WhatsAppAutomation = () => {
                 <p className="text-muted-foreground mb-4">
                   Crie sua primeira instância para começar
                 </p>
-                <Button onClick={() => setIsNewInstanceOpen(true)}>
+                <Button onClick={openNewInstanceDialog}>
                   <Plus className="w-4 h-4 mr-2" />
                   Criar Instância
                 </Button>
@@ -539,6 +1097,19 @@ const WhatsAppAutomation = () => {
                         </div>
                       </div>
 
+                      {/* Last Seen */}
+                      {instance.last_seen && (
+                        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm">Última Atividade</span>
+                          </div>
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(instance.last_seen).toLocaleString('pt-BR')}
+                          </span>
+                        </div>
+                      )}
+
                       {/* Auto Reply Status */}
                       <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                         <div className="flex items-center gap-2">
@@ -551,7 +1122,7 @@ const WhatsAppAutomation = () => {
                       </div>
 
                       {/* Actions */}
-                      {!backendConfig?.is_connected && (
+                      {!isBackendActive && (
                         <p className="text-xs text-muted-foreground text-center">
                           Configure o backend para ativar ações de conexão e QR Code
                         </p>
@@ -566,129 +1137,363 @@ const WhatsAppAutomation = () => {
 
         {/* Backend Tab */}
         <TabsContent value="backend" className="space-y-6">
+          {/* Backend Mode Selector */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Server className="w-5 h-5" />
-                Configuração do Backend
-              </CardTitle>
+              <CardTitle>Modo de Backend</CardTitle>
               <CardDescription>
-                Configure a conexão com seu servidor Node.js de automação WhatsApp
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Connection Status */}
-              <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
-                <div className={`w-3 h-3 rounded-full ${backendConfig?.is_connected ? 'bg-green-500' : 'bg-gray-400'}`} />
-                <div className="flex-1">
-                  <p className="font-medium">
-                    {backendConfig?.is_connected ? 'Backend Conectado' : 'Backend Desconectado'}
-                  </p>
-                  {backendConfig?.last_health_check && (
-                    <p className="text-xs text-muted-foreground">
-                      Última verificação: {new Date(backendConfig.last_health_check).toLocaleString('pt-BR')}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={testBackendConnection}
-                  disabled={isTestingConnection || !backendUrl}
-                >
-                  {isTestingConnection ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )}
-                </Button>
-              </div>
-
-              <Separator />
-
-              {/* Backend URL */}
-              <div className="space-y-2">
-                <Label>URL do Backend (VPS)</Label>
-                <Input
-                  placeholder="https://seu-servidor.com"
-                  value={backendUrl}
-                  onChange={(e) => setBackendUrl(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  URL do seu servidor Node.js com WhatsApp Web (Baileys)
-                </p>
-              </div>
-
-              {/* Master Token */}
-              <div className="space-y-2">
-                <Label>Token Master</Label>
-                <Input
-                  type="password"
-                  placeholder="Token de autenticação do backend"
-                  value={masterToken}
-                  onChange={(e) => setMasterToken(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Token para autenticar requisições ao backend
-                </p>
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={testBackendConnection}
-                  disabled={isTestingConnection || !backendUrl}
-                >
-                  {isTestingConnection && (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  )}
-                  Testar Conexão
-                </Button>
-                <Button onClick={saveBackendConfig} disabled={isSaving}>
-                  {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Salvar Configuração
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* API Documentation */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings2 className="w-5 h-5" />
-                Endpoints da API
-              </CardTitle>
-              <CardDescription>
-                Endpoints que seu backend deve implementar
+                Escolha entre usar um servidor VPS ou seu PC local
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[300px]">
-                <div className="space-y-4">
-                  {[
-                    { method: 'GET', path: '/health', desc: 'Health check do backend' },
-                    { method: 'GET', path: '/api/instance/:id/status', desc: 'Status da instância' },
-                    { method: 'GET', path: '/api/instance/:id/qrcode', desc: 'Obter QR Code' },
-                    { method: 'POST', path: '/api/instance/:id/connect', desc: 'Conectar instância' },
-                    { method: 'POST', path: '/api/instance/:id/disconnect', desc: 'Desconectar instância' },
-                    { method: 'POST', path: '/api/instance/:id/send', desc: 'Enviar mensagem' },
-                  ].map((endpoint, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                      <Badge
-                        variant={endpoint.method === 'GET' ? 'secondary' : 'default'}
-                        className="font-mono text-xs"
-                      >
-                        {endpoint.method}
-                      </Badge>
-                      <code className="flex-1 text-sm font-mono">{endpoint.path}</code>
-                      <span className="text-sm text-muted-foreground">{endpoint.desc}</span>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
+              <div className="flex gap-4">
+                <Button
+                  variant={backendMode === 'vps' ? 'default' : 'outline'}
+                  className="flex-1 h-20 flex flex-col gap-2"
+                  onClick={() => setBackendMode('vps')}
+                >
+                  <Server className="w-6 h-6" />
+                  <span>VPS / Servidor</span>
+                </Button>
+                <Button
+                  variant={backendMode === 'local' ? 'default' : 'outline'}
+                  className="flex-1 h-20 flex flex-col gap-2"
+                  onClick={() => setBackendMode('local')}
+                >
+                  <Monitor className="w-6 h-6" />
+                  <span>PC Local</span>
+                </Button>
+              </div>
             </CardContent>
           </Card>
+
+          {backendMode === 'vps' ? (
+            /* VPS Configuration */
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Server className="w-5 h-5" />
+                    Configuração VPS
+                  </CardTitle>
+                  <CardDescription>
+                    Configure a conexão com seu servidor Node.js de automação WhatsApp
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Connection Status */}
+                  <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
+                    <div className={`w-3 h-3 rounded-full ${backendConfig?.is_connected ? 'bg-green-500' : 'bg-gray-400'}`} />
+                    <div className="flex-1">
+                      <p className="font-medium">
+                        {backendConfig?.is_connected ? 'Backend Conectado' : 'Backend Desconectado'}
+                      </p>
+                      {backendConfig?.last_health_check && (
+                        <p className="text-xs text-muted-foreground">
+                          Última verificação: {new Date(backendConfig.last_health_check).toLocaleString('pt-BR')}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={testBackendConnection}
+                      disabled={isTestingConnection || !backendUrl}
+                    >
+                      {isTestingConnection ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+
+                  <Separator />
+
+                  {/* Backend URL */}
+                  <div className="space-y-2">
+                    <Label>URL do Backend (VPS)</Label>
+                    <Input
+                      placeholder="https://seu-servidor.com"
+                      value={backendUrl}
+                      onChange={(e) => setBackendUrl(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      URL do seu servidor Node.js com WhatsApp Web (Baileys)
+                    </p>
+                  </div>
+
+                  {/* Master Token */}
+                  <div className="space-y-2">
+                    <Label>Token Master</Label>
+                    <Input
+                      type="password"
+                      placeholder="Token de autenticação do backend"
+                      value={masterToken}
+                      onChange={(e) => setMasterToken(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Token para autenticar requisições ao backend
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={testBackendConnection}
+                      disabled={isTestingConnection || !backendUrl}
+                    >
+                      {isTestingConnection && (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      )}
+                      Testar Conexão
+                    </Button>
+                    <Button onClick={saveBackendConfig} disabled={isSaving}>
+                      {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Salvar Configuração
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* API Documentation */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings2 className="w-5 h-5" />
+                    Endpoints da API
+                  </CardTitle>
+                  <CardDescription>
+                    Endpoints que seu backend deve implementar
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[200px]">
+                    <div className="space-y-3">
+                      {[
+                        { method: 'GET', path: '/health', desc: 'Health check do backend' },
+                        { method: 'GET', path: '/api/instance/:id/status', desc: 'Status da instância' },
+                        { method: 'POST', path: '/api/instance/:id/qrcode', desc: 'Gerar QR Code' },
+                        { method: 'POST', path: '/api/instance/:id/send', desc: 'Enviar mensagem' },
+                        { method: 'POST', path: '/api/instance/:id/disconnect', desc: 'Desconectar instância' },
+                      ].map((endpoint, idx) => (
+                        <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                          <Badge
+                            variant={endpoint.method === 'GET' ? 'secondary' : 'default'}
+                            className="font-mono text-xs"
+                          >
+                            {endpoint.method}
+                          </Badge>
+                          <code className="flex-1 text-sm font-mono">{endpoint.path}</code>
+                          <span className="text-sm text-muted-foreground">{endpoint.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            /* PC Local Configuration */
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Monitor className="w-5 h-5" />
+                    Configuração PC Local
+                  </CardTitle>
+                  <CardDescription>
+                    Execute o script no seu computador para conectar como backend
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Connection Status */}
+                  <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
+                    <div className={`w-3 h-3 rounded-full ${isLocalConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+                    <div className="flex-1">
+                      <p className="font-medium">
+                        {isLocalConnected ? 'PC Local Conectado' : 'PC Local Desconectado'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {isLocalConnected ? `${localEndpoint}:${localPort}` : 'Execute o script para conectar'}
+                      </p>
+                    </div>
+                    {isLocalConnected ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={disconnectLocal}
+                        className="text-destructive"
+                      >
+                        <PowerOff className="w-4 h-4 mr-1" />
+                        Desconectar
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={testLocalConnection}
+                        disabled={isTestingLocal}
+                      >
+                        {isTestingLocal ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Power className="w-4 h-4 mr-1" />
+                        )}
+                        Conectar
+                      </Button>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* Local Settings */}
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label>Endpoint Local</Label>
+                      <Input
+                        value={localEndpoint}
+                        onChange={(e) => setLocalEndpoint(e.target.value)}
+                        placeholder="http://localhost"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Porta</Label>
+                      <Input
+                        value={localPort}
+                        onChange={(e) => setLocalPort(e.target.value)}
+                        placeholder="3001"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Token</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={localToken}
+                          onChange={(e) => setLocalToken(e.target.value)}
+                          className="font-mono text-xs"
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => copyToClipboard(localToken, 'local-token')}
+                        >
+                          {copiedToken === 'local-token' ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={testLocalConnection}
+                      disabled={isTestingLocal}
+                    >
+                      {isTestingLocal && (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      )}
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Testar Conexão
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Script Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Terminal className="w-5 h-5" />
+                    Script de Execução
+                  </CardTitle>
+                  <CardDescription>
+                    Baixe e execute este script no seu PC para iniciar o backend local
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">1</Badge>
+                        <span className="text-sm">Instale as dependências:</span>
+                      </div>
+                      <code className="block text-xs bg-background p-2 rounded font-mono">
+                        npm install express cors @whiskeysockets/baileys qrcode @supabase/supabase-js
+                      </code>
+                      
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">2</Badge>
+                        <span className="text-sm">Baixe o script e execute:</span>
+                      </div>
+                      <code className="block text-xs bg-background p-2 rounded font-mono">
+                        node whatsapp-local.js
+                      </code>
+                    </div>
+                    <Button onClick={downloadScript} className="shrink-0">
+                      <Download className="w-4 h-4 mr-2" />
+                      Baixar Script
+                    </Button>
+                  </div>
+
+                  <ScrollArea className="h-[300px] rounded-lg border">
+                    <pre className="p-4 text-xs font-mono whitespace-pre-wrap">
+                      {getLocalScript()}
+                    </pre>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+
+              {/* Console */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Terminal className="w-5 h-5" />
+                    Console
+                  </CardTitle>
+                  <CardDescription>
+                    Logs em tempo real da conexão
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div 
+                    ref={consoleRef}
+                    className="h-[200px] rounded-lg bg-black p-4 overflow-y-auto font-mono text-xs"
+                  >
+                    {consoleLogs.length === 0 ? (
+                      <div className="text-gray-500">
+                        Aguardando conexão...
+                      </div>
+                    ) : (
+                      consoleLogs.map((log, idx) => (
+                        <div key={idx} className="flex items-start gap-2">
+                          <span className="text-gray-500">
+                            [{log.timestamp.toLocaleTimeString('pt-BR')}]
+                          </span>
+                          <span className={
+                            log.type === 'success' ? 'text-green-400' :
+                            log.type === 'error' ? 'text-red-400' :
+                            log.type === 'warning' ? 'text-yellow-400' :
+                            'text-blue-400'
+                          }>
+                            {log.message}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                    <div className="flex items-center gap-1 mt-2 text-green-400">
+                      <Circle className="w-2 h-2 fill-current animate-pulse" />
+                      <span>_</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
       </Tabs>
 
