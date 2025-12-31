@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Mail, Eye, EyeOff, AlertCircle, Loader2, Scissors, UserPlus, LogIn, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
 import RegisterForm from '@/components/auth/RegisterForm';
 import EmailConfirmation from '@/components/auth/EmailConfirmation';
-
+import useAffiliateTracking from '@/hooks/useAffiliateTracking';
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
@@ -28,10 +28,14 @@ type ViewMode = 'login' | 'register' | 'confirmation' | 'forgot';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signIn, user, isAdmin, isLoading: authLoading } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mouseRef = useRef({ x: 0, y: 0 });
   const particlesRef = useRef<Particle[]>([]);
+  
+  // Track affiliate ref code from URL
+  useAffiliateTracking();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,6 +44,9 @@ const AdminLogin = () => {
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('login');
   const [registeredEmail, setRegisteredEmail] = useState('');
+
+  // Check if coming from affiliate link
+  const refCode = searchParams.get('ref');
 
   // Redirect if already logged in
   useEffect(() => {
