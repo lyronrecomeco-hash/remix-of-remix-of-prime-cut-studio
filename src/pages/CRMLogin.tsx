@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Building2, Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Building2, Lock, Mail, ArrowRight, Eye, EyeOff, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -144,8 +144,19 @@ export default function CRMLogin() {
               </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-border/50">
+            <div className="mt-6 pt-6 border-t border-border/50 space-y-3">
               <p className="text-xs text-center text-muted-foreground">
+                Você é colaborador? Acesse com seu token.
+              </p>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate('/crm/token')}
+              >
+                <Key className="w-4 h-4 mr-2" />
+                Acessar com Token
+              </Button>
+              <p className="text-xs text-center text-muted-foreground mt-4">
                 Acesso exclusivo para usuários cadastrados.
                 <br />
                 Entre em contato com o administrador para obter credenciais.

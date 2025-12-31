@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.whatsapp-api]
 verify_jwt = false
+
+[functions.send-collaborator-token]
+verify_jwt = false

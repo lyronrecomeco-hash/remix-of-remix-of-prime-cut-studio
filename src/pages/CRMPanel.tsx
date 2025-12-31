@@ -15,6 +15,7 @@ import {
   X,
   ChevronLeft,
   Building2,
+  LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCRM } from '@/contexts/CRMContext';
@@ -67,14 +68,20 @@ export default function CRMPanel() {
     navigate('/crm/login');
   };
 
+  const handleProfileNavigate = (tab: string) => {
+    setActiveTab(tab);
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando CRM...</p>
+      <CRMSecurityProvider>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Carregando CRM...</p>
+          </div>
         </div>
-      </div>
+      </CRMSecurityProvider>
     );
   }
 
@@ -106,13 +113,19 @@ export default function CRMPanel() {
         return <CRMReports />;
       case 'settings':
         return <CRMSettings />;
+      case 'company':
+        return <CRMCompanyAccount />;
+      case 'collaborators':
+        return <CRMCollaborators />;
+      case 'profile':
+        return <CRMUserProfile />;
       default:
         return <CRMDashboard />;
     }
   };
 
   return (
-    <>
+    <CRMSecurityProvider>
       {/* Onboarding Modal */}
       {!crmTenant.onboarding_completed && <CRMOnboardingModal />}
 
@@ -205,23 +218,32 @@ export default function CRMPanel() {
           </div>
         </motion.aside>
 
+        {/* Desktop Top Header with Profile Menu */}
+        <div className="hidden lg:flex fixed top-0 right-0 h-16 bg-card/95 backdrop-blur-sm border-b border-border z-30 items-center justify-end px-6"
+             style={{ left: isSidebarOpen ? '256px' : '72px', transition: 'left 0.3s' }}>
+          <CRMProfileMenu onNavigate={handleProfileNavigate} onLogout={handleLogout} />
+        </div>
+
         {/* Mobile Header */}
         <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card/95 backdrop-blur-sm border-b border-border z-40 flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <Building2 className="w-6 h-6 text-primary" />
             <span className="font-semibold">{crmTenant.name || 'CRM'}</span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            {isMobileMenuOpen ? (
-              <X className="w-5 h-5" />
-            ) : (
-              <Menu className="w-5 h-5" />
-            )}
-          </Button>
+          <div className="flex items-center gap-2">
+            <CRMProfileMenu onNavigate={handleProfileNavigate} onLogout={handleLogout} />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Mobile Menu Overlay */}
@@ -305,11 +327,11 @@ export default function CRMPanel() {
         <main
           className={cn(
             'flex-1 min-h-screen transition-all duration-300',
-            'pt-16 lg:pt-0',
+            'pt-16',
             isSidebarOpen ? 'lg:ml-64' : 'lg:ml-[72px]'
           )}
         >
-          <div className="p-4 md:p-6 lg:p-8">
+          <div className="p-4 md:p-6 lg:p-8 lg:pt-20">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -324,6 +346,6 @@ export default function CRMPanel() {
           </div>
         </main>
       </div>
-    </>
+    </CRMSecurityProvider>
   );
 }
