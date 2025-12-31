@@ -34,7 +34,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    const cleanPhone = phone.replace(/\D/g, '');
+    let cleanPhone = phone.replace(/\D/g, '');
+    // Accept phone with country code and normalize to DDD+number (11 digits)
+    if (cleanPhone.startsWith('55') && cleanPhone.length === 13) {
+      cleanPhone = cleanPhone.slice(2);
+    }
+
+    if (cleanPhone.length !== 11) {
+      return new Response(
+        JSON.stringify({ error: 'WhatsApp deve ter 11 dígitos (DDD + número)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Check if email already exists
     const { data: existingAffiliate } = await supabaseAdmin
@@ -206,20 +217,18 @@ Deno.serve(async (req) => {
 
       console.log('ChatPro response status:', chatproResponse.status);
 
-      // Check if response is JSON
       const contentType = chatproResponse.headers.get('content-type') || '';
-      
+
       if (!contentType.includes('application/json')) {
         const textResponse = await chatproResponse.text();
         console.error('ChatPro returned non-JSON response:', textResponse);
-        
-        // Log the error but return success since code was saved
+
         await supabaseAdmin.from('system_logs').insert({
           log_type: 'chatpro_error',
           source: 'send-affiliate-verification',
-          message: 'ChatPro retornou resposta inválida',
+          message: 'ChatPro retornou resposta inválida (não-JSON)',
           severity: 'error',
-          details: { 
+          details: {
             status: chatproResponse.status,
             response: textResponse.substring(0, 500),
             url: chatproUrl
@@ -227,11 +236,9 @@ Deno.serve(async (req) => {
         });
 
         return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: 'Código gerado. Verifique seu WhatsApp.',
-            code_saved: true,
-            whatsapp_error: 'Erro ao enviar WhatsApp - verifique configuração do ChatPro'
+          JSON.stringify({
+            error: 'Falha ao enviar o código no WhatsApp. Verifique a configuração do ChatPro.',
+            code_saved: true
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -240,16 +247,55 @@ Deno.serve(async (req) => {
       const chatproData = await chatproResponse.json();
       console.log('ChatPro response:', JSON.stringify(chatproData));
 
-      if (chatproData.error) {
+      const hasStatusCodeError = typeof chatproData?.statusCode === 'number' && chatproData.statusCode >= 400;
+      const hasErrorField = Boolean(chatproData?.error);
+      const isError = !chatproResponse.ok || hasStatusCodeError || hasErrorField;
+
+      if (isError) {
+        const rawMessage = typeof chatproData?.message === 'string' ? chatproData.message : '';
+
+        let userMessage = 'Não foi possível enviar o código no WhatsApp. Verifique o número e tente novamente.';
+        if (rawMessage.includes('getUserJid') && rawMessage.includes('não está cadastrado no WhatsApp')) {
+          userMessage = 'O número informado não está cadastrado no WhatsApp. Verifique o número e tente novamente.';
+        } else if (rawMessage) {
+          userMessage = rawMessage;
+        }
+
         console.error('ChatPro error:', chatproData);
         await supabaseAdmin.from('system_logs').insert({
           log_type: 'chatpro_error',
           source: 'send-affiliate-verification',
           message: 'Erro ao enviar código de verificação',
           severity: 'error',
-          details: { error: chatproData.error, phone: formattedPhone }
+          details: { error: chatproData, phone: formattedPhone, url: chatproUrl }
         });
+
+        return new Response(
+          JSON.stringify({
+            error: userMessage,
+            code_saved: true
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
+
+      // Log success only when ChatPro accepted the request
+      await supabaseAdmin.from('system_logs').insert({
+        log_type: 'affiliate_verification',
+        source: 'send-affiliate-verification',
+        message: `Código de verificação enviado para ${cleanPhone}`,
+        severity: 'info',
+        details: { phone: cleanPhone, email: email }
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Código enviado para seu WhatsApp!',
+          phone: cleanPhone
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
 
     } catch (chatproError: any) {
       console.error('ChatPro request failed:', chatproError);
@@ -258,26 +304,17 @@ Deno.serve(async (req) => {
         source: 'send-affiliate-verification',
         message: 'Falha na requisição ao ChatPro',
         severity: 'error',
-        details: { error: chatproError.message }
+        details: { error: chatproError.message, url: chatproUrl }
       });
+
+      return new Response(
+        JSON.stringify({
+          error: 'Falha ao enviar o código no WhatsApp. Tente novamente em instantes.',
+          code_saved: true
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
-
-    // Log success
-    await supabaseAdmin.from('system_logs').insert({
-      log_type: 'affiliate_verification',
-      source: 'send-affiliate-verification',
-      message: `Código de verificação enviado para ${cleanPhone}`,
-      severity: 'info',
-      details: { phone: cleanPhone, email: email }
-    });
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Código enviado para seu WhatsApp!' 
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
 
   } catch (error: any) {
     console.error('Unexpected error:', error);

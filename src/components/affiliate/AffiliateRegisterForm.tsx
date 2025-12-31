@@ -31,8 +31,8 @@ const step1Schema = z.object({
     .email('E-mail inválido')
     .max(255, 'E-mail muito longo'),
   whatsapp: z.string()
-    .min(10, 'WhatsApp inválido')
-    .max(15, 'WhatsApp inválido')
+    .min(11, 'WhatsApp deve ter 11 dígitos (DDD + número)')
+    .max(11, 'WhatsApp deve ter 11 dígitos (DDD + número)')
     .regex(/^\d+$/, 'Apenas números'),
 });
 
