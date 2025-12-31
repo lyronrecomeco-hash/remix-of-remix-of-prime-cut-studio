@@ -732,9 +732,8 @@ const pushLog = (type, message) => {
 };
 
 // ===== MIDDLEWARES =====
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ origin: true, credentials: true, methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
 app.use(express.json({ limit: '5mb' }));
-app.options('*', cors({ origin: true }));
 
 const authMiddleware = (req, res, next) => {
   if (req.method === 'OPTIONS') return next();
