@@ -144,58 +144,40 @@ export default function CRMUsersManager() {
 
     setIsSubmitting(true);
     try {
-      // 1. Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userForm.email,
-        password: userForm.password,
-        options: {
-          data: {
-            name: userForm.name,
-            user_type: 'crm',
-          },
+      // Use edge function to create CRM user (avoids session swap and RLS issues)
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('create-crm-user', {
+        body: {
+          email: userForm.email,
+          password: userForm.password,
+          name: userForm.name,
         },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Usuário não criado');
+      if (response.error) {
+        throw new Error(response.error.message || 'Erro ao criar login');
+      }
 
-      // 2. Create a new CRM tenant for this user (with placeholder name)
-      const { data: tenantData, error: tenantError } = await supabase
-        .from('crm_tenants')
-        .insert({
-          name: `Empresa de ${userForm.name}`,
-          owner_user_id: authData.user.id,
-          onboarding_completed: false, // Will be completed when user fills company info
-        })
-        .select()
-        .single();
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || 'Erro ao criar login');
+      }
 
-      if (tenantError) throw tenantError;
-
-      // 3. Create CRM user linked to the tenant
-      const { data: crmUserData, error: crmError } = await supabase
-        .from('crm_users')
-        .insert({
-          crm_tenant_id: tenantData.id,
-          auth_user_id: authData.user.id,
-          name: userForm.name,
-          email: userForm.email,
-          role: 'admin', // First user is always admin
-          is_active: true,
-        })
-        .select()
-        .single();
-
-      if (crmError) throw crmError;
-
-      setTenants([tenantData, ...tenants]);
-      setUsers([crmUserData, ...users]);
+      const { tenant, crmUser } = response.data;
+      
+      if (tenant) {
+        setTenants([tenant, ...tenants]);
+      }
+      if (crmUser) {
+        setUsers([crmUser, ...users]);
+      }
+      
       setUserForm({ name: '', email: '', password: '', role: 'admin' });
       setIsCreateUserOpen(false);
       toast.success('Login CRM criado com sucesso! O usuário completará o cadastro no primeiro acesso.');
     } catch (error: any) {
       console.error('Error creating user:', error);
-      if (error.message?.includes('already registered')) {
+      if (error.message?.includes('already registered') || error.message?.includes('já está cadastrado')) {
         toast.error('Este email já está cadastrado');
       } else {
         toast.error(error.message || 'Erro ao criar login');
@@ -218,45 +200,37 @@ export default function CRMUsersManager() {
 
     setIsSubmitting(true);
     try {
-      // 1. Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userForm.email,
-        password: userForm.password,
-        options: {
-          data: {
-            name: userForm.name,
-            user_type: 'crm',
-          },
+      // Use edge function to create CRM user for existing tenant
+      const response = await supabase.functions.invoke('create-crm-user', {
+        body: {
+          email: userForm.email,
+          password: userForm.password,
+          name: userForm.name,
+          tenantId: addingToTenant.id,
         },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Usuário não criado');
+      if (response.error) {
+        throw new Error(response.error.message || 'Erro ao adicionar usuário');
+      }
 
-      // 2. Create CRM user linked to existing tenant
-      const { data: crmUserData, error: crmError } = await supabase
-        .from('crm_users')
-        .insert({
-          crm_tenant_id: addingToTenant.id,
-          auth_user_id: authData.user.id,
-          name: userForm.name,
-          email: userForm.email,
-          role: userForm.role,
-          is_active: true,
-        })
-        .select()
-        .single();
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || 'Erro ao adicionar usuário');
+      }
 
-      if (crmError) throw crmError;
-
-      setUsers([crmUserData, ...users]);
+      const { crmUser } = response.data;
+      
+      if (crmUser) {
+        setUsers([crmUser, ...users]);
+      }
+      
       setUserForm({ name: '', email: '', password: '', role: 'admin' });
       setIsAddUserToTenantOpen(false);
       setAddingToTenant(null);
       toast.success('Usuário adicionado à empresa com sucesso!');
     } catch (error: any) {
       console.error('Error adding user:', error);
-      if (error.message?.includes('already registered')) {
+      if (error.message?.includes('already registered') || error.message?.includes('já está cadastrado')) {
         toast.error('Este email já está cadastrado');
       } else {
         toast.error(error.message || 'Erro ao adicionar usuário');

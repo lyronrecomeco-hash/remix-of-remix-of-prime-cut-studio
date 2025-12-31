@@ -41,7 +41,9 @@ import {
   Circle,
   CheckCircle2,
   XCircle,
-  Download
+  Download,
+  FileText,
+  Save
 } from 'lucide-react';
 
 // Types
@@ -152,6 +154,21 @@ const WhatsAppAutomation = () => {
   const [editAutoReply, setEditAutoReply] = useState(false);
   const [editAutoReplyMessage, setEditAutoReplyMessage] = useState('');
   const [editMessageDelay, setEditMessageDelay] = useState(1000);
+  
+  // Templates state
+  interface AutomationTemplate {
+    id: string;
+    template_type: string;
+    name: string;
+    message_template: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+  }
+  const [templates, setTemplates] = useState<AutomationTemplate[]>([]);
+  const [editingTemplate, setEditingTemplate] = useState<AutomationTemplate | null>(null);
+  const [templateMessage, setTemplateMessage] = useState('');
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   const currentDomain = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -263,11 +280,82 @@ const WhatsAppAutomation = () => {
 
       if (instancesError) throw instancesError;
       setInstances((instancesData || []) as WhatsAppInstance[]);
+      
+      // Fetch templates
+      const { data: templatesData, error: templatesError } = await supabase
+        .from('whatsapp_automation_templates')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (templatesError) throw templatesError;
+      setTemplates((templatesData || []) as AutomationTemplate[]);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Erro ao carregar dados');
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  const fetchTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('whatsapp_automation_templates')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setTemplates((data || []) as AutomationTemplate[]);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+  
+  const openEditTemplate = (template: AutomationTemplate) => {
+    setEditingTemplate(template);
+    setTemplateMessage(template.message_template);
+  };
+  
+  const saveTemplate = async () => {
+    if (!editingTemplate) return;
+    
+    setIsSavingTemplate(true);
+    try {
+      const { error } = await supabase
+        .from('whatsapp_automation_templates')
+        .update({
+          message_template: templateMessage,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingTemplate.id);
+
+      if (error) throw error;
+      
+      toast.success('Template salvo com sucesso!');
+      setEditingTemplate(null);
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error saving template:', error);
+      toast.error('Erro ao salvar template');
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
+  
+  const toggleTemplateActive = async (template: AutomationTemplate) => {
+    try {
+      const { error } = await supabase
+        .from('whatsapp_automation_templates')
+        .update({ is_active: !template.is_active })
+        .eq('id', template.id);
+
+      if (error) throw error;
+      
+      toast.success(`Template ${template.is_active ? 'desativado' : 'ativado'}!`);
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error toggling template:', error);
+      toast.error('Erro ao alterar template');
     }
   };
 
@@ -1134,10 +1222,14 @@ app.listen(PORT, () => {
       </div>
 
       <Tabs defaultValue="instances" className="space-y-6">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="instances" className="gap-2">
             <Smartphone className="w-4 h-4" />
             Instâncias
+          </TabsTrigger>
+          <TabsTrigger value="templates" className="gap-2">
+            <FileText className="w-4 h-4" />
+            Templates
           </TabsTrigger>
           <TabsTrigger value="backend" className="gap-2">
             <Server className="w-4 h-4" />
@@ -1491,6 +1583,91 @@ app.listen(PORT, () => {
               })}
             </div>
           )}
+        </TabsContent>
+
+        {/* Templates Tab */}
+        <TabsContent value="templates" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Templates de Mensagem
+              </CardTitle>
+              <CardDescription>
+                Configure templates usados para envio automático via WhatsApp Automação
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {templates.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum template configurado</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {templates.map((template) => (
+                    <Card key={template.id} className="border-border">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-base">{template.name}</CardTitle>
+                            <CardDescription className="text-xs">
+                              Tipo: {template.template_type}
+                            </CardDescription>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={template.is_active ? 'default' : 'secondary'}>
+                              {template.is_active ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                            <Switch
+                              checked={template.is_active}
+                              onCheckedChange={() => toggleTemplateActive(template)}
+                            />
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {/* Preview */}
+                        <div className="p-4 bg-[#0b141a] rounded-lg border border-border">
+                          <div className="bg-[#005c4b] text-white p-3 rounded-lg max-w-[90%] ml-auto">
+                            <p className="text-sm whitespace-pre-wrap font-mono">
+                              {template.message_template
+                                .replace(/\{\{empresa\}\}/g, 'Minha Empresa')
+                                .replace(/\{\{nome\}\}/g, 'João Silva')
+                                .replace(/\{\{token\}\}/g, 'crm@genesishub-token-ABC123')
+                                .replace(/\{\{link\}\}/g, window.location.origin + '/crm/token')
+                                .slice(0, 300)}
+                              {template.message_template.length > 300 && '...'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-end">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => openEditTemplate(template)}
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Editar Template
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+              
+              <div className="p-4 bg-muted/30 rounded-lg border border-border">
+                <h4 className="font-medium text-sm mb-2">Variáveis Disponíveis</h4>
+                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                  <span><code className="bg-muted px-1 rounded">{'{{nome}}'}</code> - Nome do colaborador</span>
+                  <span><code className="bg-muted px-1 rounded">{'{{empresa}}'}</code> - Nome da empresa</span>
+                  <span><code className="bg-muted px-1 rounded">{'{{token}}'}</code> - Token de acesso</span>
+                  <span><code className="bg-muted px-1 rounded">{'{{link}}'}</code> - Link de acesso</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Backend Tab */}
@@ -1948,6 +2125,65 @@ app.listen(PORT, () => {
             </Button>
             <Button onClick={updateInstance}>
               Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Template Dialog */}
+      <Dialog open={!!editingTemplate} onOpenChange={(open) => !open && setEditingTemplate(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Template</DialogTitle>
+            <DialogDescription>
+              {editingTemplate?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Mensagem do Template</Label>
+              <Textarea
+                value={templateMessage}
+                onChange={(e) => setTemplateMessage(e.target.value)}
+                placeholder="Digite a mensagem..."
+                className="min-h-[250px] font-mono text-sm"
+              />
+            </div>
+            
+            <div className="p-4 bg-muted/30 rounded-lg border border-border">
+              <h4 className="font-medium text-sm mb-2">Variáveis Disponíveis</h4>
+              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                <span><code className="bg-muted px-1 rounded">{'{{nome}}'}</code> - Nome do colaborador</span>
+                <span><code className="bg-muted px-1 rounded">{'{{empresa}}'}</code> - Nome da empresa</span>
+                <span><code className="bg-muted px-1 rounded">{'{{token}}'}</code> - Token de acesso</span>
+                <span><code className="bg-muted px-1 rounded">{'{{link}}'}</code> - Link de acesso</span>
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="space-y-2">
+              <Label>Preview</Label>
+              <div className="p-4 bg-[#0b141a] rounded-lg border border-border">
+                <div className="bg-[#005c4b] text-white p-3 rounded-lg max-w-[90%] ml-auto">
+                  <p className="text-sm whitespace-pre-wrap">
+                    {templateMessage
+                      .replace(/\{\{empresa\}\}/g, 'Minha Empresa')
+                      .replace(/\{\{nome\}\}/g, 'João Silva')
+                      .replace(/\{\{token\}\}/g, 'crm@genesishub-token-ABC123')
+                      .replace(/\{\{link\}\}/g, window.location.origin + '/crm/token')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingTemplate(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={saveTemplate} disabled={isSavingTemplate}>
+              {isSavingTemplate && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              <Save className="w-4 h-4 mr-2" />
+              Salvar Template
             </Button>
           </DialogFooter>
         </DialogContent>

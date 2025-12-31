@@ -42,7 +42,15 @@ serve(async (req) => {
       );
     }
 
-    // Check for owner settings for WhatsApp automation endpoint
+    // Get template from database
+    const { data: templateData } = await supabaseAdmin
+      .from("whatsapp_automation_templates")
+      .select("*")
+      .eq("template_type", "collaborator_token")
+      .eq("is_active", true)
+      .single();
+
+    // Get WhatsApp Automation settings
     const { data: waSettings } = await supabaseAdmin
       .from("owner_settings")
       .select("*")
@@ -55,8 +63,20 @@ serve(async (req) => {
       formattedPhone = "55" + formattedPhone;
     }
 
-    // Build message
-    const message = `🔐 *Acesso CRM - ${companyName}*
+    // Build access link
+    const accessLink = `${supabaseUrl?.replace('.supabase.co', '.lovable.dev')}/crm/token`;
+
+    // Use template or fallback to default message
+    let message: string;
+    if (templateData?.message_template) {
+      message = templateData.message_template
+        .replace(/\{\{empresa\}\}/g, companyName)
+        .replace(/\{\{nome\}\}/g, name)
+        .replace(/\{\{token\}\}/g, token)
+        .replace(/\{\{link\}\}/g, accessLink);
+    } else {
+      // Fallback default message
+      message = `🔐 *Acesso CRM - ${companyName}*
 
 Olá, *${name}*! 👋
 
@@ -68,8 +88,8 @@ ${token}
 \`\`\`
 
 📲 *Para acessar o sistema:*
-1. Acesse: ${supabaseUrl?.replace('supabase', 'lovable').replace('.co', '.dev')}/crm/token
-2. Digite o token acima
+1. Acesse: ${accessLink}
+2. Cole o token acima
 3. Pronto! Você terá acesso ao CRM
 
 ⚠️ *Importante:*
@@ -78,8 +98,9 @@ ${token}
 - Use apenas uma vez
 
 Em caso de dúvidas, entre em contato com a empresa.`;
+    }
 
-    // Try to send via WhatsApp automation if configured
+    // Send ONLY via WhatsApp Automation (NO ChatPro fallback)
     if (waSettings?.setting_value) {
       const waConfig = waSettings.setting_value as { 
         mode: string; 
@@ -107,70 +128,42 @@ Em caso de dúvidas, entre em contato com a empresa.`;
           if (waResponse.ok) {
             console.log("Token sent successfully via WhatsApp Automation!");
             return new Response(
-              JSON.stringify({ success: true, message: "Token sent via WhatsApp Automation" }),
+              JSON.stringify({ success: true, message: "Token enviado via WhatsApp Automação" }),
               { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
             );
           } else {
-            console.error("WhatsApp Automation failed:", await waResponse.text());
+            const errorText = await waResponse.text();
+            console.error("WhatsApp Automation failed:", errorText);
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                message: "Falha ao enviar via WhatsApp Automação",
+                error: errorText,
+                token: token // Return token so it can be copied manually
+              }),
+              { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+            );
           }
         } catch (waError) {
           console.error("WhatsApp Automation error:", waError);
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              message: "Erro de conexão com WhatsApp Automação",
+              token: token
+            }),
+            { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
         }
       }
     }
 
-    // Fallback to ChatPro if available
-    const { data: chatproConfig } = await supabaseAdmin
-      .from("chatpro_config")
-      .select("*")
-      .single();
-
-    if (chatproConfig?.is_enabled && chatproConfig?.api_token) {
-      console.log("Fallback to ChatPro...");
-      
-      let baseEndpoint = chatproConfig.base_endpoint || "https://v2.chatpro.com.br";
-      if (baseEndpoint.endsWith("/")) {
-        baseEndpoint = baseEndpoint.slice(0, -1);
-      }
-      
-      const instanceId = chatproConfig.instance_id;
-      let chatProUrl: string;
-      
-      if (instanceId && !baseEndpoint.includes(instanceId)) {
-        chatProUrl = `${baseEndpoint}/${instanceId}/api/v1/send_message`;
-      } else {
-        chatProUrl = `${baseEndpoint}/api/v1/send_message`;
-      }
-
-      const chatProResponse = await fetch(chatProUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: chatproConfig.api_token,
-        },
-        body: JSON.stringify({
-          number: formattedPhone,
-          message: message,
-        }),
-      });
-
-      if (chatProResponse.ok) {
-        console.log("Token sent successfully via ChatPro!");
-        return new Response(
-          JSON.stringify({ success: true, message: "Token sent via ChatPro" }),
-          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      } else {
-        console.error("ChatPro failed:", await chatProResponse.text());
-      }
-    }
-
-    // No WhatsApp provider configured or all failed
-    console.log("No WhatsApp provider available or all failed");
+    // No WhatsApp Automation configured
+    console.log("WhatsApp Automation not configured");
     return new Response(
       JSON.stringify({ 
         success: false, 
-        message: "No WhatsApp provider configured",
+        message: "WhatsApp Automação não configurado. Configure em Painel Owner > WhatsApp Automação",
         token: token // Return token so it can be shown/copied
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }

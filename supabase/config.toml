@@ -1,5 +1,8 @@
 project_id = "wvnszzrvrrueuycrpgyc"
 
+[functions.create-crm-user]
+verify_jwt = false
+
 [functions.create-admin-user]
 verify_jwt = false
 
