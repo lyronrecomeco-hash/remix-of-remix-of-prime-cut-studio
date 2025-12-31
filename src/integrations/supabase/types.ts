@@ -901,6 +901,63 @@ export type Database = {
           },
         ]
       }
+      crm_collaborator_tokens: {
+        Row: {
+          access_level: string
+          created_at: string | null
+          created_by: string | null
+          crm_tenant_id: string
+          expires_at: string | null
+          id: string
+          is_used: boolean | null
+          name: string
+          token: string
+          used_at: string | null
+          whatsapp: string
+        }
+        Insert: {
+          access_level?: string
+          created_at?: string | null
+          created_by?: string | null
+          crm_tenant_id: string
+          expires_at?: string | null
+          id?: string
+          is_used?: boolean | null
+          name: string
+          token: string
+          used_at?: string | null
+          whatsapp: string
+        }
+        Update: {
+          access_level?: string
+          created_at?: string | null
+          created_by?: string | null
+          crm_tenant_id?: string
+          expires_at?: string | null
+          id?: string
+          is_used?: boolean | null
+          name?: string
+          token?: string
+          used_at?: string | null
+          whatsapp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_collaborator_tokens_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "crm_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_collaborator_tokens_crm_tenant_id_fkey"
+            columns: ["crm_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "crm_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_custom_fields: {
         Row: {
           created_at: string | null
@@ -1307,6 +1364,54 @@ export type Database = {
           },
         ]
       }
+      crm_notifications: {
+        Row: {
+          created_at: string | null
+          crm_tenant_id: string
+          id: string
+          is_read: boolean | null
+          message: string
+          title: string
+          type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          crm_tenant_id: string
+          id?: string
+          is_read?: boolean | null
+          message: string
+          title: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          crm_tenant_id?: string
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          title?: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_notifications_crm_tenant_id_fkey"
+            columns: ["crm_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "crm_tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "crm_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_pipelines: {
         Row: {
           created_at: string | null
@@ -1475,8 +1580,10 @@ export type Database = {
       }
       crm_tenants: {
         Row: {
+          company_data: Json | null
           created_at: string | null
           id: string
+          logo_url: string | null
           name: string
           onboarding_completed: boolean | null
           owner_user_id: string
@@ -1485,8 +1592,10 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          company_data?: Json | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           name: string
           onboarding_completed?: boolean | null
           owner_user_id: string
@@ -1495,8 +1604,10 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          company_data?: Json | null
           created_at?: string | null
           id?: string
+          logo_url?: string | null
           name?: string
           onboarding_completed?: boolean | null
           owner_user_id?: string
