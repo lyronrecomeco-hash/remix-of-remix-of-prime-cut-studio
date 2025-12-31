@@ -123,9 +123,17 @@ const AffiliateChatProConfig = () => {
 
     setIsTesting(true);
     try {
+      // Extract clean base endpoint (remove instance_id if user pasted full URL)
+      let cleanEndpoint = config.base_endpoint.replace(/\/$/, '');
+      const instanceId = config.instance_id.trim();
+      
+      // Remove instance_id from endpoint if it was included
+      if (cleanEndpoint.includes(instanceId)) {
+        cleanEndpoint = cleanEndpoint.replace(new RegExp(`/${instanceId}.*$`), '');
+      }
+      
       // Build correct URL: base_endpoint/instance_id/api/v1/send_message
-      const cleanEndpoint = config.base_endpoint.replace(/\/$/, '');
-      const url = `${cleanEndpoint}/${config.instance_id}/api/v1/send_message`;
+      const url = `${cleanEndpoint}/${instanceId}/api/v1/send_message`;
 
       const cleanPhone = testPhone.replace(/\D/g, '');
       const formattedPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
