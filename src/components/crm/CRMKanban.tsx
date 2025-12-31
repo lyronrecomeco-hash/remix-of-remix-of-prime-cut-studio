@@ -408,36 +408,28 @@ export default function CRMKanban() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <div className="space-y-3">
+      {/* Header - Compact */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold">Funis & Kanban</h1>
-          <p className="text-muted-foreground">
-            {leads.length} leads • {formatCurrency(totalKanbanValue)} em pipeline
+          <h1 className="text-xl font-bold">Pipeline de Vendas</h1>
+          <p className="text-sm text-muted-foreground">
+            {leads.length} leads • {formatCurrency(totalKanbanValue)}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="h-8 w-8 p-0">
             <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
           </Button>
           <Select value={selectedFunnel} onValueChange={setSelectedFunnel}>
-            <SelectTrigger className="w-60">
-              <SelectValue placeholder="Selecione um funil" />
+            <SelectTrigger className="w-48 h-8 text-sm">
+              <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent>
               {funnels.map((funnel) => (
                 <SelectItem key={funnel.id} value={funnel.id}>
                   <div className="flex items-center gap-2">
-                    <div
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: funnel.color }}
-                    />
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: funnel.color }} />
                     {funnel.name}
                   </div>
                 </SelectItem>
@@ -447,19 +439,19 @@ export default function CRMKanban() {
         </div>
       </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Stats Summary - More compact */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {stages.slice(0, 4).map((stage) => {
           const stageLeads = getLeadsForStage(stage.id);
           const stageValue = getTotalValue(stage.id);
           return (
-            <Card key={stage.id} className="border-l-4" style={{ borderLeftColor: stage.color }}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground truncate">{stage.name}</span>
-                  <Badge variant="secondary" className="shrink-0">{stageLeads.length}</Badge>
+            <Card key={stage.id} className="border-l-2" style={{ borderLeftColor: stage.color }}>
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted-foreground truncate">{stage.name}</span>
+                  <Badge variant="secondary" className="h-5 text-xs">{stageLeads.length}</Badge>
                 </div>
-                <p className="text-lg font-semibold">{formatCurrency(stageValue)}</p>
+                <p className="text-sm font-semibold">{formatCurrency(stageValue)}</p>
               </CardContent>
             </Card>
           );
@@ -468,7 +460,7 @@ export default function CRMKanban() {
 
       {/* Kanban Board */}
       {stages.length > 0 ? (
-        <div className="flex gap-4 overflow-x-auto pb-4 min-h-[500px]">
+        <div className="flex gap-3 overflow-x-auto pb-3 min-h-[450px]">
           {stages.map((stage, stageIndex) => {
             const stageLeads = getLeadsForStage(stage.id);
             const totalValue = getTotalValue(stage.id);

@@ -44,8 +44,8 @@ import CRMGlobalSearch from '@/components/crm/CRMGlobalSearch';
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'leads', label: 'Leads', icon: Users },
-  { id: 'kanban', label: 'Funis & Kanban', icon: Kanban },
-  { id: 'pipelines', label: 'Pipelines', icon: GitBranch },
+  { id: 'kanban', label: 'Pipeline de Vendas', icon: Kanban },
+  { id: 'pipelines', label: 'Funis', icon: GitBranch },
   { id: 'tasks', label: 'Tarefas', icon: CheckSquare },
   { id: 'financial', label: 'Financeiro', icon: DollarSign },
   { id: 'users', label: 'Usuários', icon: UserCog, adminOnly: true },
@@ -350,14 +350,14 @@ export default function CRMPanel() {
             isSidebarOpen ? 'lg:ml-64' : 'lg:ml-[72px]'
           )}
         >
-          <div className="p-4 md:p-6 lg:p-8 lg:pt-20">
+          <div className="p-3 md:p-4 lg:p-6 lg:pt-[72px]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15 }}
               >
                 {renderContent()}
               </motion.div>

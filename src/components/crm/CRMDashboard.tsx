@@ -375,54 +375,45 @@ export default function CRMDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-4">
+      {/* Header - Compact */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <BarChart3 className="w-7 h-7 text-primary" />
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-primary" />
             Dashboard
           </h1>
-          <p className="text-muted-foreground">
-            Bem-vindo de volta, {crmUser?.name?.split(' ')[0]}! 
-            <span className="ml-2 text-xs">
-              {new Date().toLocaleDateString('pt-BR', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-              })}
-            </span>
+          <p className="text-sm text-muted-foreground">
+            Olá, {crmUser?.name?.split(' ')[0]} • {new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-40">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Últimos 7 dias</SelectItem>
-              <SelectItem value="30">Últimos 30 dias</SelectItem>
-              <SelectItem value="90">Últimos 90 dias</SelectItem>
-              <SelectItem value="365">Último ano</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={period} onValueChange={setPeriod}>
+          <SelectTrigger className="w-36 h-8 text-sm">
+            <Filter className="w-3 h-3 mr-1" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7">7 dias</SelectItem>
+            <SelectItem value="30">30 dias</SelectItem>
+            <SelectItem value="90">90 dias</SelectItem>
+            <SelectItem value="365">1 ano</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Quick Stats Row 1 */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Quick Stats Row 1 - Compact */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total de Leads"
+          title="Total Leads"
           value={stats.totalLeads}
           icon={Users}
-          trend={{ value: stats.weekLeads > 0 ? 12 : 0, label: 'vs semana passada' }}
+          trend={stats.weekLeads > 0 ? { value: 12, label: 'semana' } : undefined}
           color="text-blue-500"
           bgColor="bg-blue-500/10"
           delay={0}
         />
         <StatCard
-          title="Leads Ativos"
+          title="Ativos"
           value={stats.activeLeads}
           icon={Activity}
           color="text-amber-500"
@@ -430,16 +421,16 @@ export default function CRMDashboard() {
           delay={0.05}
         />
         <StatCard
-          title="Leads Ganhos"
+          title="Ganhos"
           value={stats.wonLeads}
           icon={TrendingUp}
-          trend={{ value: stats.conversionRate, label: 'taxa de conversão' }}
+          trend={{ value: stats.conversionRate, label: 'conversão' }}
           color="text-green-500"
           bgColor="bg-green-500/10"
           delay={0.1}
         />
         <StatCard
-          title="Leads Perdidos"
+          title="Perdidos"
           value={stats.lostLeads}
           icon={ArrowDown}
           color="text-red-500"
@@ -448,10 +439,10 @@ export default function CRMDashboard() {
         />
       </div>
 
-      {/* Quick Stats Row 2 */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Quick Stats Row 2 - Compact */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Valor em Negociação"
+          title="Em Negociação"
           value={formatCurrency(stats.totalValue - stats.wonValue)}
           icon={DollarSign}
           color="text-purple-500"
@@ -459,7 +450,7 @@ export default function CRMDashboard() {
           delay={0.2}
         />
         <StatCard
-          title="Receita (Ganhos)"
+          title="Receita"
           value={formatCurrency(stats.wonValue)}
           icon={Target}
           color="text-emerald-500"
@@ -467,7 +458,7 @@ export default function CRMDashboard() {
           delay={0.25}
         />
         <StatCard
-          title="Tarefas Pendentes"
+          title="Tarefas"
           value={stats.pendingTasks}
           icon={CheckSquare}
           trend={stats.overdueTasks > 0 ? { value: -stats.overdueTasks, label: 'atrasadas' } : undefined}
@@ -476,8 +467,8 @@ export default function CRMDashboard() {
           delay={0.3}
         />
         <StatCard
-          title="Tempo Médio (dias)"
-          value={stats.avgDealTime || '—'}
+          title="Tempo Médio"
+          value={`${stats.avgDealTime || 0}d`}
           icon={Clock}
           color="text-cyan-500"
           bgColor="bg-cyan-500/10"

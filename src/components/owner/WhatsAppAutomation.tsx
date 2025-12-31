@@ -43,7 +43,8 @@ import {
   XCircle,
   Download,
   FileText,
-  Save
+  Save,
+  Activity
 } from 'lucide-react';
 
 // Types
@@ -169,6 +170,12 @@ const WhatsAppAutomation = () => {
   const [editingTemplate, setEditingTemplate] = useState<AutomationTemplate | null>(null);
   const [templateMessage, setTemplateMessage] = useState('');
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  
+  // Test send state
+  const [testPhone, setTestPhone] = useState('');
+  const [testMessage, setTestMessage] = useState('🔔 Teste de envio via WhatsApp Automação!\n\nEsta é uma mensagem de teste para verificar se o sistema está funcionando corretamente.');
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [messageLogs, setMessageLogs] = useState<{ id: string; phone_to: string; message: string; status: string; created_at: string; error_message: string | null }[]>([]);
 
   const currentDomain = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -208,6 +215,7 @@ const WhatsAppAutomation = () => {
 
   useEffect(() => {
     fetchData();
+    fetchMessageLogs();
   }, []);
 
   // Polling for local backend logs
@@ -356,6 +364,153 @@ const WhatsAppAutomation = () => {
     } catch (error) {
       console.error('Error toggling template:', error);
       toast.error('Erro ao alterar template');
+    }
+  };
+
+  // Fetch message logs
+  const fetchMessageLogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('whatsapp_message_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+      setMessageLogs(data || []);
+    } catch (error) {
+      console.error('Error fetching message logs:', error);
+    }
+  };
+
+  // Save WA config to owner_settings for edge function use
+  const saveWAConfigToSettings = async () => {
+    try {
+      const configData = {
+        mode: backendMode,
+        endpoint: backendMode === 'local' ? `${localEndpoint}:${localPort}` : backendUrl,
+        token: backendMode === 'local' ? localToken : masterToken,
+        is_connected: backendMode === 'local' ? isLocalConnected : (backendConfig?.is_connected || false),
+      };
+
+      const { data: existing } = await supabase
+        .from('owner_settings')
+        .select('id')
+        .eq('setting_key', 'whatsapp_automation')
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          .from('owner_settings')
+          .update({ setting_value: configData, updated_at: new Date().toISOString() })
+          .eq('setting_key', 'whatsapp_automation');
+      } else {
+        await supabase
+          .from('owner_settings')
+          .insert({
+            setting_key: 'whatsapp_automation',
+            setting_value: configData,
+            description: 'WhatsApp Automation configuration',
+          });
+      }
+      
+      console.log('WA config saved to owner_settings:', configData);
+    } catch (error) {
+      console.error('Error saving WA config:', error);
+    }
+  };
+
+  // Update config when connection state changes
+  useEffect(() => {
+    if (isLocalConnected || backendConfig?.is_connected) {
+      saveWAConfigToSettings();
+    }
+  }, [isLocalConnected, backendConfig?.is_connected, backendMode]);
+
+  // Send test message
+  const sendTestMessage = async () => {
+    if (!testPhone.trim()) {
+      toast.error('Digite o número de telefone');
+      return;
+    }
+
+    if (!isBackendActive) {
+      toast.error('Backend não conectado');
+      return;
+    }
+
+    setIsSendingTest(true);
+    addConsoleLog('info', `Enviando mensagem de teste para ${testPhone}...`);
+
+    try {
+      let formattedPhone = testPhone.replace(/\D/g, '');
+      if (!formattedPhone.startsWith('55')) {
+        formattedPhone = '55' + formattedPhone;
+      }
+
+      const endpoint = backendMode === 'local'
+        ? `${localEndpoint}:${localPort}/api/instance`
+        : backendUrl;
+      
+      const token = backendMode === 'local' ? localToken : masterToken;
+
+      // Get first connected instance
+      const connectedInstance = instances.find(i => i.status === 'connected');
+      if (!connectedInstance) {
+        throw new Error('Nenhuma instância conectada. Conecte uma instância primeiro.');
+      }
+
+      const response = await fetch(`${endpoint}/${connectedInstance.id}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          phone: formattedPhone,
+          message: testMessage,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success !== false) {
+        addConsoleLog('success', `✓ Mensagem enviada com sucesso para ${testPhone}!`);
+        toast.success('Mensagem de teste enviada!');
+
+        // Log to database
+        await supabase.from('whatsapp_message_logs').insert({
+          instance_id: connectedInstance.id,
+          direction: 'outgoing',
+          phone_to: formattedPhone,
+          message: testMessage,
+          status: 'sent',
+        });
+
+        fetchMessageLogs();
+      } else {
+        throw new Error(result.error || 'Falha ao enviar mensagem');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      addConsoleLog('error', `✗ Falha ao enviar: ${errorMessage}`);
+      toast.error(errorMessage);
+
+      // Log error
+      const connectedInstance = instances.find(i => i.status === 'connected');
+      if (connectedInstance) {
+        await supabase.from('whatsapp_message_logs').insert({
+          instance_id: connectedInstance.id,
+          direction: 'outgoing',
+          phone_to: testPhone.replace(/\D/g, ''),
+          message: testMessage,
+          status: 'failed',
+          error_message: errorMessage,
+        });
+        fetchMessageLogs();
+      }
+    } finally {
+      setIsSendingTest(false);
     }
   };
 
@@ -1222,10 +1377,14 @@ app.listen(PORT, () => {
       </div>
 
       <Tabs defaultValue="instances" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="instances" className="gap-2">
             <Smartphone className="w-4 h-4" />
             Instâncias
+          </TabsTrigger>
+          <TabsTrigger value="test" className="gap-2">
+            <MessageSquare className="w-4 h-4" />
+            Testar
           </TabsTrigger>
           <TabsTrigger value="templates" className="gap-2">
             <FileText className="w-4 h-4" />
@@ -1583,6 +1742,149 @@ app.listen(PORT, () => {
               })}
             </div>
           )}
+        </TabsContent>
+
+        {/* Test Send Tab */}
+        <TabsContent value="test" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Send Test Message Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  Enviar Mensagem de Teste
+                </CardTitle>
+                <CardDescription>
+                  Teste o envio de mensagens pela instância conectada
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!isBackendActive ? (
+                  <div className="py-8 text-center">
+                    <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-yellow-500" />
+                    <p className="font-medium text-yellow-600 dark:text-yellow-400 mb-2">
+                      Backend não conectado
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Configure e conecte o backend primeiro
+                    </p>
+                  </div>
+                ) : instances.filter(i => i.status === 'connected').length === 0 ? (
+                  <div className="py-8 text-center">
+                    <Smartphone className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="font-medium mb-2">Nenhuma instância conectada</p>
+                    <p className="text-sm text-muted-foreground">
+                      Conecte uma instância via QR Code para enviar mensagens
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Número de Telefone</Label>
+                      <Input
+                        placeholder="Ex: 11999999999"
+                        value={testPhone}
+                        onChange={(e) => setTestPhone(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        DDD + número (sem +55)
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Mensagem</Label>
+                      <Textarea
+                        placeholder="Digite a mensagem de teste..."
+                        value={testMessage}
+                        onChange={(e) => setTestMessage(e.target.value)}
+                        rows={4}
+                      />
+                    </div>
+                    
+                    <Button 
+                      onClick={sendTestMessage} 
+                      disabled={isSendingTest || !testPhone.trim()}
+                      className="w-full"
+                    >
+                      {isSendingTest ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          Enviar Teste
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Message Logs Card */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Activity className="w-5 h-5" />
+                      Logs de Mensagens
+                    </CardTitle>
+                    <CardDescription>
+                      Histórico de envios recentes
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={fetchMessageLogs}>
+                    <RefreshCw className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[350px]">
+                  {messageLogs.length === 0 ? (
+                    <div className="py-8 text-center text-muted-foreground">
+                      <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Nenhum log encontrado</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {messageLogs.map((log) => (
+                        <div
+                          key={log.id}
+                          className={`p-3 rounded-lg border ${
+                            log.status === 'sent' 
+                              ? 'border-green-500/30 bg-green-500/5'
+                              : 'border-red-500/30 bg-red-500/5'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-mono text-sm">{log.phone_to}</span>
+                            <Badge 
+                              variant={log.status === 'sent' ? 'default' : 'destructive'}
+                              className="text-xs"
+                            >
+                              {log.status === 'sent' ? 'Enviado' : 'Falhou'}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {log.message.slice(0, 50)}{log.message.length > 50 ? '...' : ''}
+                          </p>
+                          {log.error_message && (
+                            <p className="text-xs text-red-500 mt-1">{log.error_message}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(log.created_at).toLocaleString('pt-BR')}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Templates Tab */}
