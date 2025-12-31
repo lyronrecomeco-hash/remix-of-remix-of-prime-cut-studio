@@ -181,19 +181,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if WhatsApp already exists
-    const { data: existingWhatsapp } = await supabaseAdmin
-      .from('affiliates')
-      .select('id')
-      .eq('whatsapp', sanitizedWhatsapp)
-      .maybeSingle();
-
-    if (existingWhatsapp) {
-      return new Response(
-        JSON.stringify({ error: 'Este WhatsApp já está cadastrado' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Note: WhatsApp uniqueness check removed - email uniqueness is sufficient
+    // This allows users to update their WhatsApp later if needed
 
     // Generate unique affiliate code (check for collisions)
     let affiliateCode = generateAffiliateCode();
