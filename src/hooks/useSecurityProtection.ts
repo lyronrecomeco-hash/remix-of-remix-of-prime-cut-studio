@@ -2,6 +2,10 @@ import { useEffect } from 'react';
 
 export const useSecurityProtection = () => {
   useEffect(() => {
+    // Check if we're in CRM - skip protection there (CRM has its own)
+    const isCRM = window.location.pathname.startsWith('/crmpainel');
+    if (isCRM) return;
+
     // Disable right-click
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
@@ -53,16 +57,18 @@ export const useSecurityProtection = () => {
       }
     };
 
-    // Disable drag
+    // Disable drag only for images
     const handleDragStart = (e: DragEvent) => {
-      e.preventDefault();
-      return false;
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'IMG') {
+        e.preventDefault();
+        return false;
+      }
     };
 
-    // Disable select
+    // Disable select on non-input elements
     const handleSelectStart = (e: Event) => {
       const target = e.target as HTMLElement;
-      // Allow selection in inputs
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
         return true;
       }

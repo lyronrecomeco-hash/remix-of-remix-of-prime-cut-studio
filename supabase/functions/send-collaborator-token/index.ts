@@ -144,7 +144,12 @@ Em caso de dúvidas, entre em contato com a empresa.`;
       );
     }
 
-    const sendUrl = `${waConfig.endpoint}/api/instance/${instance.id}/send`;
+    // Normalize endpoint - remove trailing slash and avoid double /api/instance
+    let baseEndpoint = waConfig.endpoint.replace(/\/+$/, '');
+    // If endpoint already contains /api/instance, use it directly
+    const sendUrl = baseEndpoint.includes('/api/instance')
+      ? `${baseEndpoint}/${instance.id}/send`
+      : `${baseEndpoint}/api/instance/${instance.id}/send`;
 
     try {
       console.log("Sending collaborator token via WhatsApp Automation:", sendUrl);

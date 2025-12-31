@@ -1,5 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 
+/**
+ * CRM Interactive Background - Medium intensity with visible particles and glow
+ */
 export default function CRMInteractiveBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -27,17 +30,17 @@ export default function CRMInteractiveBackground() {
 
     const createParticles = () => {
       particles = [];
-      // Mais discreto + melhor performance
-      const particleCount = Math.floor((canvas.width * canvas.height) / 40000);
+      // Medium density for visible but not overwhelming effect
+      const particleCount = Math.floor((canvas.width * canvas.height) / 25000);
 
       for (let i = 0; i < particleCount; i++) {
         particles.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
-          vx: (Math.random() - 0.5) * 0.25,
-          vy: (Math.random() - 0.5) * 0.25,
-          radius: Math.random() * 1.5 + 0.5,
-          opacity: Math.random() * 0.22 + 0.06,
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: (Math.random() - 0.5) * 0.3,
+          radius: Math.random() * 2 + 0.8,
+          opacity: Math.random() * 0.35 + 0.1,
         });
       }
     };
@@ -45,10 +48,25 @@ export default function CRMInteractiveBackground() {
     const drawParticles = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Cor primária (formato shadcn: "H S% L%")
+      // Get primary color from CSS
       const primary = getComputedStyle(document.documentElement)
         .getPropertyValue('--primary')
         .trim();
+
+      // Draw glow effect in center
+      const gradient = ctx.createRadialGradient(
+        canvas.width / 2,
+        canvas.height / 3,
+        0,
+        canvas.width / 2,
+        canvas.height / 3,
+        canvas.width * 0.6
+      );
+      gradient.addColorStop(0, `hsl(${primary} / 0.08)`);
+      gradient.addColorStop(0.5, `hsl(${primary} / 0.03)`);
+      gradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       particles.forEach((particle, i) => {
         // Update position
@@ -73,13 +91,13 @@ export default function CRMInteractiveBackground() {
           const dy = particle.y - otherParticle.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
-          if (distance < 120) {
+          if (distance < 150) {
             ctx.beginPath();
             ctx.moveTo(particle.x, particle.y);
             ctx.lineTo(otherParticle.x, otherParticle.y);
-            const alpha = 0.09 * (1 - distance / 120);
+            const alpha = 0.12 * (1 - distance / 150);
             ctx.strokeStyle = `hsl(${primary} / ${alpha})`;
-            ctx.lineWidth = 0.5;
+            ctx.lineWidth = 0.6;
             ctx.stroke();
           }
         });
@@ -109,7 +127,7 @@ export default function CRMInteractiveBackground() {
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-0"
-      style={{ opacity: 0.22 }}
+      style={{ opacity: 0.45 }}
     />
   );
 }

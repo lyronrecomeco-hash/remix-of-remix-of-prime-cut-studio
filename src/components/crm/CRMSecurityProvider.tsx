@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 /**
  * CRM Security Protection Hook
  * Implements advanced security measures to protect the CRM panel
+ * IMPORTANT: Allows drag-and-drop for elements with data-allow-drag attribute
  */
 export function useCRMSecurity() {
   useEffect(() => {
@@ -51,9 +52,15 @@ export function useCRMSecurity() {
       }
     };
 
-    // Detect DevTools opening via timing
+    // Detect DevTools opening via timing - less aggressive
     let devtoolsOpen = false;
+    let lastCheck = Date.now();
     const detectDevTools = () => {
+      // Only check if enough time has passed (prevents performance issues)
+      const now = Date.now();
+      if (now - lastCheck < 2000) return;
+      lastCheck = now;
+
       const threshold = 160;
       const widthThreshold = window.outerWidth - window.innerWidth > threshold;
       const heightThreshold = window.outerHeight - window.innerHeight > threshold;
@@ -62,16 +69,15 @@ export function useCRMSecurity() {
         if (!devtoolsOpen) {
           devtoolsOpen = true;
           console.clear();
-          console.log('%cAcesso não autorizado detectado!', 'color: red; font-size: 24px; font-weight: bold;');
+          console.log('%cAcesso não autorizado!', 'color: red; font-size: 20px; font-weight: bold;');
         }
       } else {
         devtoolsOpen = false;
       }
     };
 
-    // Block selection
+    // Block selection on non-input elements
     const handleSelect = (e: Event) => {
-      // Allow selection in input fields
       const target = e.target as HTMLElement;
       if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA' && !target.isContentEditable) {
         e.preventDefault();
@@ -83,16 +89,22 @@ export function useCRMSecurity() {
     const handleCopy = (e: ClipboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
-        // Allow copying from specific elements with copy functionality
         if (!target.closest('[data-allow-copy]')) {
           e.preventDefault();
         }
       }
     };
 
-    // Block drag
+    // Block drag ONLY for images - allow drag for elements with data-allow-drag
     const handleDragStart = (e: DragEvent) => {
       const target = e.target as HTMLElement;
+      
+      // Allow drag if element or ancestor has data-allow-drag
+      if (target.closest('[data-allow-drag]') || target.hasAttribute('draggable')) {
+        return true;
+      }
+      
+      // Block only for images
       if (target.tagName === 'IMG') {
         e.preventDefault();
         return false;
@@ -106,8 +118,8 @@ export function useCRMSecurity() {
     document.addEventListener('copy', handleCopy);
     document.addEventListener('dragstart', handleDragStart);
     
-    // DevTools detection interval
-    const devToolsInterval = setInterval(detectDevTools, 1000);
+    // DevTools detection interval - less aggressive (every 3 seconds)
+    const devToolsInterval = setInterval(detectDevTools, 3000);
 
     // Add CSS to prevent selection on non-input elements
     const style = document.createElement('style');

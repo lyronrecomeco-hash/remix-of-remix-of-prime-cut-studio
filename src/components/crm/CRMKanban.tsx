@@ -13,27 +13,15 @@ import {
   History,
   RefreshCw,
   Search,
-  Filter,
-  SlidersHorizontal,
   ChevronDown,
-  Users,
   Phone,
-  Mail,
+  Kanban,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,6 +43,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import CRMLeadDetailModal from './CRMLeadDetailModal';
 import CRMLeadEditModal from './CRMLeadEditModal';
+import CRMPageHeader from './CRMPageHeader';
 
 interface Lead {
   id: string;
@@ -123,7 +112,6 @@ export default function CRMKanban() {
   const [viewLead, setViewLead] = useState<Lead | null>(null);
   const [editLead, setEditLead] = useState<Lead | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
 
   // Real-time subscription
   useEffect(() => {
@@ -277,10 +265,12 @@ export default function CRMKanban() {
   const handleDragStart = (e: React.DragEvent, lead: Lead) => {
     setDraggedLead(lead);
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', lead.id);
   };
 
   const handleDragOver = (e: React.DragEvent, stageId: string) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     setDragOverStage(stageId);
   };
 
@@ -422,14 +412,10 @@ export default function CRMKanban() {
   if (isLoading) {
     return (
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-8 w-60" />
-        </div>
-        <Skeleton className="h-10 w-full" />
-        <div className="flex gap-4 overflow-hidden">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="w-72 h-[500px] shrink-0" />
+            <Skeleton key={i} className="h-[400px] rounded-lg" />
           ))}
         </div>
       </div>
@@ -438,59 +424,55 @@ export default function CRMKanban() {
 
   return (
     <div className="space-y-3 h-full flex flex-col">
-      {/* Header Row - Compact Professional */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" className="h-9 px-3 gap-2 font-semibold text-lg">
-                {currentFunnel?.name || 'Pipeline'}
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-2" align="start">
-              {funnels.map((funnel) => (
-                <Button
-                  key={funnel.id}
-                  variant={funnel.id === selectedFunnel ? 'secondary' : 'ghost'}
-                  className="w-full justify-start gap-2 h-9"
-                  onClick={() => setSelectedFunnel(funnel.id)}
-                >
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: funnel.color }} />
-                  {funnel.name}
+      {/* Header */}
+      <CRMPageHeader
+        title="Pipeline de Vendas"
+        icon={Kanban}
+        actions={
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: currentFunnel?.color }} />
+                  {currentFunnel?.name || 'Pipeline'}
+                  <ChevronDown className="w-3 h-3" />
                 </Button>
-              ))}
-            </PopoverContent>
-          </Popover>
-          <Badge variant="secondary" className="font-normal">
-            {leads.length} leads
-          </Badge>
-          <Badge variant="outline" className="font-normal text-primary">
-            {formatCurrency(totalKanbanValue)}
-          </Badge>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 h-8 w-48"
-            />
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-1" align="end">
+                {funnels.map((funnel) => (
+                  <Button
+                    key={funnel.id}
+                    variant={funnel.id === selectedFunnel ? 'secondary' : 'ghost'}
+                    className="w-full justify-start gap-2 h-8 text-sm"
+                    onClick={() => setSelectedFunnel(funnel.id)}
+                  >
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: funnel.color }} />
+                    {funnel.name}
+                  </Button>
+                ))}
+              </PopoverContent>
+            </Popover>
+            <Badge variant="secondary" className="h-6 text-xs">{leads.length} leads</Badge>
+            <Badge variant="outline" className="h-6 text-xs text-primary">{formatCurrency(totalKanbanValue)}</Badge>
+            <div className="relative hidden sm:block">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-7 h-8 w-40 text-sm"
+              />
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleRefresh} disabled={isRefreshing} className="h-8 w-8">
+              <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
+            </Button>
           </div>
+        }
+      />
 
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing} className="h-8 w-8 p-0">
-            <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
-          </Button>
-        </div>
-      </div>
-
-      {/* Kanban Board - Full Width Professional Layout */}
+      {/* Kanban Board - Auto-fit Grid (no horizontal scroll) */}
       {stages.length > 0 ? (
-        <div className="flex gap-3 overflow-x-auto pb-2 flex-1 min-h-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 flex-1">
           {stages.map((stage) => {
             const stageLeads = getLeadsForStage(stage.id);
             const totalValue = getTotalValue(stage.id);
@@ -498,35 +480,37 @@ export default function CRMKanban() {
             return (
               <div
                 key={stage.id}
-                className="w-72 shrink-0 flex flex-col"
+                className="flex flex-col min-h-[400px] max-h-[calc(100vh-200px)]"
                 onDragOver={(e) => handleDragOver(e, stage.id)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, stage.id)}
+                data-allow-drag="true"
               >
-                {/* Column Header - Clean */}
+                {/* Column Header */}
                 <div className={cn(
-                  "p-3 rounded-t-lg border border-b-0 bg-card transition-all",
+                  "p-2.5 rounded-t-lg border border-b-0 bg-card transition-all",
                   dragOverStage === stage.id && "ring-2 ring-primary bg-primary/5"
                 )}>
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{stage.name}</span>
-                      <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
+                      <span className="font-medium text-xs truncate">{stage.name}</span>
+                      <Badge variant="secondary" className="h-4 px-1 text-[10px]">
                         {stageLeads.length}
                       </Badge>
                     </div>
                     {stage.is_final && (
-                      <Badge variant={stage.is_won ? "default" : "destructive"} className="text-[10px] h-5">
+                      <Badge variant={stage.is_won ? "default" : "destructive"} className="text-[10px] h-4 px-1">
                         {stage.is_won ? 'Ganho' : 'Perdido'}
                       </Badge>
                     )}
                   </div>
-                  <p className="text-sm font-semibold text-primary">{formatCurrency(totalValue)}</p>
+                  <p className="text-xs font-semibold text-primary">{formatCurrency(totalValue)}</p>
                 </div>
 
-                {/* Cards Container */}
-                <ScrollArea className="flex-1 border border-t-0 rounded-b-lg bg-muted/30">
-                  <div className="p-2 space-y-2 min-h-[400px]">
+                {/* Cards Container with internal scroll */}
+                <ScrollArea className="flex-1 border border-t-0 rounded-b-lg bg-muted/20">
+                  <div className="p-2 space-y-2">
                     <AnimatePresence>
                       {stageLeads.map((lead) => {
                         const slaStatus = getSLAStatus(lead.stage_entered_at || lead.created_at);
@@ -540,7 +524,7 @@ export default function CRMKanban() {
                             draggable
                             onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent, lead)}
                             className={cn(
-                              'p-3 rounded-lg border bg-card cursor-grab active:cursor-grabbing',
+                              'p-2.5 rounded-lg border bg-card cursor-grab active:cursor-grabbing',
                               'hover:shadow-md transition-all group',
                               draggedLead?.id === lead.id && 'opacity-50 scale-95',
                               slaStatus === 'critical' && 'border-l-2 border-l-red-500',
@@ -548,27 +532,27 @@ export default function CRMKanban() {
                             )}
                           >
                             {/* Lead Card Header */}
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <Avatar className="w-8 h-8 shrink-0">
-                                  <AvatarFallback className={cn("text-xs text-white", getRandomColor(lead.name))}>
+                            <div className="flex items-start justify-between gap-1.5 mb-1.5">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <Avatar className="w-6 h-6 shrink-0">
+                                  <AvatarFallback className={cn("text-[10px] text-white", getRandomColor(lead.name))}>
                                     {getInitials(lead.name)}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0">
-                                  <p className="font-medium text-sm truncate">{lead.name}</p>
+                                  <p className="font-medium text-xs truncate">{lead.name}</p>
                                   {lead.company && (
-                                    <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
+                                    <p className="text-[10px] text-muted-foreground truncate">{lead.company}</p>
                                   )}
                                 </div>
                               </div>
 
-                              {/* Actions - Show on hover */}
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {/* Actions */}
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-6 w-6"
+                                  className="h-5 w-5"
                                   onClick={(e) => { e.stopPropagation(); setViewLead(lead); }}
                                 >
                                   <Eye className="w-3 h-3" />
@@ -576,97 +560,69 @@ export default function CRMKanban() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-6 w-6"
+                                  className="h-5 w-5"
                                   onClick={(e) => { e.stopPropagation(); setEditLead(lead); }}
                                 >
                                   <Edit className="w-3 h-3" />
                                 </Button>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
+                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={(e) => e.stopPropagation()}>
                                       <MoreHorizontal className="w-3 h-3" />
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
                                     <DropdownMenuItem onClick={() => setViewLead(lead)}>
-                                      <Eye className="w-4 h-4 mr-2" />
-                                      Ver detalhes
+                                      <Eye className="w-3.5 h-3.5 mr-2" />Ver detalhes
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => setEditLead(lead)}>
-                                      <Edit className="w-4 h-4 mr-2" />
-                                      Editar
+                                      <Edit className="w-3.5 h-3.5 mr-2" />Editar
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={() => fetchLeadHistory(lead)}>
-                                      <History className="w-4 h-4 mr-2" />
-                                      Histórico
+                                      <History className="w-3.5 h-3.5 mr-2" />Histórico
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
                             </div>
 
-                            {/* Contact Info */}
-                            {(lead.email || lead.phone) && (
-                              <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
-                                {lead.phone && (
-                                  <span className="flex items-center gap-1">
-                                    <Phone className="w-3 h-3" />
-                                    {lead.phone}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-
                             {/* Footer: Value + Time */}
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="font-semibold text-primary flex items-center gap-1">
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="font-semibold text-primary flex items-center gap-0.5">
                                 <DollarSign className="w-3 h-3" />
                                 {formatCurrency(Number(lead.value) || 0)}
                               </span>
                               <span className={cn(
-                                "flex items-center gap-1 px-1.5 py-0.5 rounded",
+                                "flex items-center gap-0.5 px-1 py-0.5 rounded",
                                 slaStatus === 'critical' && 'text-red-500 bg-red-500/10',
                                 slaStatus === 'warning' && 'text-amber-500 bg-amber-500/10',
                                 slaStatus === 'ok' && 'text-muted-foreground'
                               )}>
-                                {slaStatus === 'critical' && <AlertTriangle className="w-3 h-3" />}
-                                <Clock className="w-3 h-3" />
+                                {slaStatus === 'critical' && <AlertTriangle className="w-2.5 h-2.5" />}
+                                <Clock className="w-2.5 h-2.5" />
                                 {getTimeInStage(lead.stage_entered_at || lead.created_at)}
                               </span>
                             </div>
 
                             {/* Tags */}
                             {lead.tags && lead.tags.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-2">
+                              <div className="flex flex-wrap gap-0.5 mt-1.5">
                                 {lead.tags.slice(0, 2).map((tag) => (
                                   <Badge
                                     key={tag.id}
                                     variant="outline"
-                                    className="text-[10px] px-1.5 py-0 h-4"
+                                    className="text-[9px] px-1 py-0 h-3.5"
                                     style={{ borderColor: tag.color, color: tag.color }}
                                   >
                                     {tag.name}
                                   </Badge>
                                 ))}
                                 {lead.tags.length > 2 && (
-                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5">
                                     +{lead.tags.length - 2}
                                   </Badge>
                                 )}
-                              </div>
-                            )}
-
-                            {/* Responsible */}
-                            {lead.responsible && (
-                              <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                                <User className="w-3 h-3" />
-                                {lead.responsible.name}
                               </div>
                             )}
                           </motion.div>
@@ -675,9 +631,9 @@ export default function CRMKanban() {
                     </AnimatePresence>
 
                     {stageLeads.length === 0 && (
-                      <div className="py-8 text-center text-xs text-muted-foreground border-2 border-dashed rounded-lg">
-                        <TrendingUp className="w-6 h-6 mx-auto mb-1 opacity-50" />
-                        Arraste leads para cá
+                      <div className="py-6 text-center text-[10px] text-muted-foreground border-2 border-dashed rounded-lg">
+                        <TrendingUp className="w-5 h-5 mx-auto mb-1 opacity-40" />
+                        Arraste leads
                       </div>
                     )}
                   </div>
@@ -687,41 +643,37 @@ export default function CRMKanban() {
           })}
         </div>
       ) : (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground mb-4">
-              Nenhuma etapa configurada neste funil
-            </p>
-            <Button variant="outline">Configurar Funil</Button>
-          </CardContent>
-        </Card>
+        <div className="py-12 text-center border rounded-lg bg-card">
+          <p className="text-muted-foreground text-sm mb-3">Nenhuma etapa configurada</p>
+          <Button variant="outline" size="sm">Configurar Funil</Button>
+        </div>
       )}
 
       {/* Lead History Dialog */}
       <Dialog open={!!selectedLeadHistory} onOpenChange={() => setSelectedLeadHistory(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <History className="w-5 h-5" />
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              <History className="w-4 h-4" />
               Histórico: {selectedLeadHistory?.name}
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="max-h-[400px] pr-4">
+          <ScrollArea className="max-h-[350px] pr-3">
             {isHistoryLoading ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {[...Array(3)].map((_, i) => (
-                  <Skeleton key={i} className="h-16" />
+                  <Skeleton key={i} className="h-14" />
                 ))}
               </div>
             ) : leadHistory.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {leadHistory.map((item) => (
-                  <div key={item.id} className="p-3 rounded-lg border bg-muted/30">
-                    <div className="flex items-center justify-between mb-1">
-                      <Badge variant="outline" className="text-xs">
+                  <div key={item.id} className="p-2.5 rounded-lg border bg-muted/30">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <Badge variant="outline" className="text-[10px] h-4">
                         {item.action === 'stage_changed' ? 'Movido' : item.action}
                       </Badge>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-[10px] text-muted-foreground">
                         {new Date(item.created_at).toLocaleDateString('pt-BR', {
                           day: '2-digit',
                           month: '2-digit',
@@ -731,7 +683,7 @@ export default function CRMKanban() {
                       </span>
                     </div>
                     {item.action === 'stage_changed' && item.old_value && item.new_value && (
-                      <p className="text-sm">
+                      <p className="text-xs">
                         <span className="text-muted-foreground">
                           {(item.old_value as { stage_name?: string }).stage_name || 'Entrada'}
                         </span>
@@ -742,7 +694,7 @@ export default function CRMKanban() {
                       </p>
                     )}
                     {item.user && (
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
                         por {item.user.name}
                       </p>
                     )}
@@ -750,8 +702,8 @@ export default function CRMKanban() {
                 ))}
               </div>
             ) : (
-              <p className="text-center text-muted-foreground py-8">
-                Nenhum histórico encontrado
+              <p className="text-center text-muted-foreground text-sm py-6">
+                Nenhum histórico
               </p>
             )}
           </ScrollArea>
