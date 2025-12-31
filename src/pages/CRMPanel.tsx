@@ -13,7 +13,6 @@ import {
   Settings,
   Menu,
   X,
-  LogOut,
   ChevronLeft,
   Building2,
 } from 'lucide-react';
@@ -32,6 +31,11 @@ import CRMUsers from '@/components/crm/CRMUsers';
 import CRMReports from '@/components/crm/CRMReports';
 import CRMSettings from '@/components/crm/CRMSettings';
 import CRMOnboardingModal from '@/components/crm/CRMOnboardingModal';
+import CRMCompanyAccount from '@/components/crm/CRMCompanyAccount';
+import CRMCollaborators from '@/components/crm/CRMCollaborators';
+import CRMUserProfile from '@/components/crm/CRMUserProfile';
+import CRMProfileMenu from '@/components/crm/CRMProfileMenu';
+import CRMSecurityProvider from '@/components/crm/CRMSecurityProvider';
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
