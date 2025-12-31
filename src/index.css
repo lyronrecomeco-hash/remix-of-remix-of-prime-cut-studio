@@ -2,148 +2,148 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Premium Black & Gold Barbershop Design System */
+/* Premium Blue Design System */
 
 @layer base {
   :root {
-    /* Black & Gold Theme - Native and Default */
-    --background: 0 0% 4%;
-    --foreground: 45 20% 95%;
+    /* Blue Theme - Native and Default */
+    --background: 222 47% 8%;
+    --foreground: 210 40% 98%;
 
-    --card: 0 0% 7%;
-    --card-foreground: 45 20% 95%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 0 0% 7%;
-    --popover-foreground: 45 20% 95%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
 
-    /* Gold as primary accent */
-    --primary: 43 74% 49%;
-    --primary-foreground: 0 0% 5%;
+    /* Blue as primary accent */
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 8%;
 
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 45 20% 95%;
+    --secondary: 222 30% 16%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 45 10% 55%;
+    --muted: 222 25% 18%;
+    --muted-foreground: 210 20% 55%;
 
-    --accent: 43 74% 49%;
-    --accent-foreground: 0 0% 5%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 222 47% 8%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 43 30% 18%;
-    --input: 0 0% 18%;
-    --ring: 43 74% 49%;
+    --border: 217 40% 20%;
+    --input: 222 30% 18%;
+    --ring: 217 91% 60%;
 
     --radius: 0.75rem;
 
-    /* Gold tokens */
-    --gold: 43 74% 49%;
-    --gold-light: 43 80% 60%;
-    --gold-dark: 43 70% 35%;
-    --gold-foreground: 0 0% 5%;
+    /* Blue tokens */
+    --gold: 217 91% 60%;
+    --gold-light: 217 95% 70%;
+    --gold-dark: 217 85% 45%;
+    --gold-foreground: 222 47% 8%;
     
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(43 74% 49%) 0%, hsl(43 70% 35%) 100%);
-    --gradient-gold-shine: linear-gradient(135deg, hsl(43 80% 60%) 0%, hsl(43 74% 49%) 50%, hsl(43 70% 35%) 100%);
-    --gradient-dark: linear-gradient(180deg, hsl(0 0% 7%) 0%, hsl(0 0% 4%) 100%);
-    --gradient-glow: radial-gradient(ellipse at center, hsl(43 74% 49% / 0.15) 0%, transparent 70%);
+    --gradient-primary: linear-gradient(135deg, hsl(217 95% 70%) 0%, hsl(217 85% 45%) 100%);
+    --gradient-gold-shine: linear-gradient(135deg, hsl(217 95% 70%) 0%, hsl(217 91% 60%) 50%, hsl(217 85% 45%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(222 47% 11%) 0%, hsl(222 47% 8%) 100%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(217 91% 60% / 0.15) 0%, transparent 70%);
     
     /* Shadows */
     --shadow-soft: 0 4px 20px -4px hsl(0 0% 0% / 0.5);
-    --shadow-glow: 0 0 40px hsl(43 74% 49% / 0.25);
-    --shadow-gold: 0 4px 30px hsl(43 74% 49% / 0.2);
+    --shadow-glow: 0 0 40px hsl(217 91% 60% / 0.3);
+    --shadow-gold: 0 4px 30px hsl(217 91% 60% / 0.25);
     --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.6);
 
     /* Sidebar */
-    --sidebar-background: 0 0% 6%;
-    --sidebar-foreground: 45 20% 95%;
-    --sidebar-primary: 43 74% 49%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 45 20% 95%;
-    --sidebar-border: 43 30% 15%;
-    --sidebar-ring: 43 74% 49%;
+    --sidebar-background: 222 47% 10%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 222 47% 8%;
+    --sidebar-accent: 222 30% 16%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 40% 18%;
+    --sidebar-ring: 217 91% 60%;
   }
 
-  /* Default (Black & Gold) Theme - for isolated previews */
+  /* Default Blue Theme - for isolated previews */
   .theme-gold {
-    --background: 0 0% 4%;
-    --foreground: 45 20% 95%;
+    --background: 222 47% 8%;
+    --foreground: 210 40% 98%;
 
-    --card: 0 0% 7%;
-    --card-foreground: 45 20% 95%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 0 0% 7%;
-    --popover-foreground: 45 20% 95%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 43 74% 49%;
-    --primary-foreground: 0 0% 5%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 8%;
 
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 45 20% 95%;
+    --secondary: 222 30% 16%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 45 10% 55%;
+    --muted: 222 25% 18%;
+    --muted-foreground: 210 20% 55%;
 
-    --accent: 43 74% 49%;
-    --accent-foreground: 0 0% 5%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 222 47% 8%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 43 30% 18%;
-    --input: 0 0% 18%;
-    --ring: 43 74% 49%;
+    --border: 217 40% 20%;
+    --input: 222 30% 18%;
+    --ring: 217 91% 60%;
 
     --radius: 0.75rem;
 
-    --gold: 43 74% 49%;
-    --gold-light: 43 80% 60%;
-    --gold-dark: 43 70% 35%;
-    --gold-foreground: 0 0% 5%;
+    --gold: 217 91% 60%;
+    --gold-light: 217 95% 70%;
+    --gold-dark: 217 85% 45%;
+    --gold-foreground: 222 47% 8%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(43 74% 49%) 0%, hsl(43 70% 35%) 100%);
-    --gradient-gold-shine: linear-gradient(135deg, hsl(43 80% 60%) 0%, hsl(43 74% 49%) 50%, hsl(43 70% 35%) 100%);
-    --gradient-dark: linear-gradient(180deg, hsl(0 0% 7%) 0%, hsl(0 0% 4%) 100%);
-    --gradient-glow: radial-gradient(ellipse at center, hsl(43 74% 49% / 0.15) 0%, transparent 70%);
+    --gradient-primary: linear-gradient(135deg, hsl(217 95% 70%) 0%, hsl(217 85% 45%) 100%);
+    --gradient-gold-shine: linear-gradient(135deg, hsl(217 95% 70%) 0%, hsl(217 91% 60%) 50%, hsl(217 85% 45%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(222 47% 11%) 0%, hsl(222 47% 8%) 100%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(217 91% 60% / 0.15) 0%, transparent 70%);
 
     --shadow-soft: 0 4px 20px -4px hsl(0 0% 0% / 0.5);
-    --shadow-glow: 0 0 40px hsl(43 74% 49% / 0.25);
-    --shadow-gold: 0 4px 30px hsl(43 74% 49% / 0.2);
+    --shadow-glow: 0 0 40px hsl(217 91% 60% / 0.3);
+    --shadow-gold: 0 4px 30px hsl(217 91% 60% / 0.25);
     --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.6);
 
-    --sidebar-background: 0 0% 6%;
-    --sidebar-foreground: 45 20% 95%;
-    --sidebar-primary: 43 74% 49%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 45 20% 95%;
-    --sidebar-border: 43 30% 15%;
-    --sidebar-ring: 43 74% 49%;
+    --sidebar-background: 222 47% 10%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 222 47% 8%;
+    --sidebar-accent: 222 30% 16%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 40% 18%;
+    --sidebar-ring: 217 91% 60%;
   }
 
-  /* Shiny Gold Theme - Configurable */
+  /* Shiny Blue Theme - Configurable */
   .theme-gold-shine {
-    --primary: 43 85% 55%;
-    --gold: 43 85% 55%;
-    --gold-light: 43 90% 70%;
-    --border: 43 40% 20%;
-    --ring: 43 85% 55%;
-    --gradient-primary: linear-gradient(135deg, hsl(43 90% 70%) 0%, hsl(43 85% 55%) 50%, hsl(43 75% 40%) 100%);
-    --gradient-gold-shine: linear-gradient(135deg, hsl(43 90% 70%) 0%, hsl(43 85% 55%) 30%, hsl(43 80% 50%) 70%, hsl(43 75% 40%) 100%);
-    --shadow-glow: 0 0 50px hsl(43 85% 55% / 0.35);
-    --shadow-gold: 0 4px 40px hsl(43 85% 55% / 0.3);
+    --primary: 217 95% 65%;
+    --gold: 217 95% 65%;
+    --gold-light: 217 98% 75%;
+    --border: 217 45% 22%;
+    --ring: 217 95% 65%;
+    --gradient-primary: linear-gradient(135deg, hsl(217 98% 75%) 0%, hsl(217 95% 65%) 50%, hsl(217 85% 50%) 100%);
+    --gradient-gold-shine: linear-gradient(135deg, hsl(217 98% 75%) 0%, hsl(217 95% 65%) 30%, hsl(217 90% 60%) 70%, hsl(217 85% 50%) 100%);
+    --shadow-glow: 0 0 50px hsl(217 95% 65% / 0.35);
+    --shadow-gold: 0 4px 40px hsl(217 95% 65% / 0.3);
   }
 
-  /* High contrast gold */
+  /* High contrast blue */
   .theme-gold-metallic {
-    --primary: 43 90% 50%;
-    --gold: 43 90% 50%;
-    --gold-light: 45 95% 65%;
-    --gradient-primary: linear-gradient(135deg, hsl(45 95% 65%) 0%, hsl(43 90% 50%) 40%, hsl(40 85% 38%) 100%);
-    --shadow-glow: 0 0 60px hsl(43 90% 50% / 0.4);
+    --primary: 217 95% 58%;
+    --gold: 217 95% 58%;
+    --gold-light: 217 98% 70%;
+    --gradient-primary: linear-gradient(135deg, hsl(217 98% 70%) 0%, hsl(217 95% 58%) 40%, hsl(217 85% 42%) 100%);
+    --shadow-glow: 0 0 60px hsl(217 95% 58% / 0.4);
   }
 
   /* Dark Elegant Theme - Purple accent */
