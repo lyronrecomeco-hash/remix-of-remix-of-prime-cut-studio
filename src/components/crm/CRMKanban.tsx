@@ -43,18 +43,25 @@ import { useCRM } from '@/contexts/CRMContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import CRMLeadDetailModal from './CRMLeadDetailModal';
+import CRMLeadEditModal from './CRMLeadEditModal';
 
 interface Lead {
   id: string;
   name: string;
-  email: string | null;
-  phone: string | null;
-  value: number;
-  stage_id: string | null;
-  funnel_id: string | null;
-  responsible_id: string | null;
-  stage_entered_at: string;
+  email?: string | null;
+  phone?: string | null;
+  company?: string | null;
+  origin?: string | null;
+  value?: number;
+  status?: string;
+  notes?: string | null;
+  stage_id?: string | null;
+  funnel_id?: string | null;
+  responsible_id?: string | null;
+  stage_entered_at?: string;
   created_at: string;
+  updated_at?: string;
   priority?: number;
   responsible?: { name: string } | null;
   tags?: { id: string; name: string; color: string }[];
@@ -103,6 +110,8 @@ export default function CRMKanban() {
   const [selectedLeadHistory, setSelectedLeadHistory] = useState<Lead | null>(null);
   const [leadHistory, setLeadHistory] = useState<LeadHistory[]>([]);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [viewLead, setViewLead] = useState<Lead | null>(null);
+  const [editLead, setEditLead] = useState<Lead | null>(null);
 
   // Real-time subscription
   useEffect(() => {
@@ -551,11 +560,11 @@ export default function CRMKanban() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setViewLead(lead)}>
                                     <Eye className="w-4 h-4 mr-2" />
                                     Ver detalhes
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setEditLead(lead)}>
                                     <Edit className="w-4 h-4 mr-2" />
                                     Editar
                                   </DropdownMenuItem>
@@ -700,6 +709,28 @@ export default function CRMKanban() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Lead Detail Modal */}
+      <CRMLeadDetailModal
+        lead={viewLead}
+        isOpen={!!viewLead}
+        onClose={() => setViewLead(null)}
+        onEdit={(lead) => {
+          setViewLead(null);
+          setEditLead(lead);
+        }}
+      />
+
+      {/* Lead Edit Modal */}
+      <CRMLeadEditModal
+        lead={editLead}
+        isOpen={!!editLead}
+        onClose={() => setEditLead(null)}
+        onSave={() => {
+          setEditLead(null);
+          fetchStagesAndLeads();
+        }}
+      />
     </div>
   );
 }
