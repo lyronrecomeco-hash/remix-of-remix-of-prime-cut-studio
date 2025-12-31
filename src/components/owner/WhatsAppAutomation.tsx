@@ -1416,25 +1416,53 @@ app.listen(PORT, () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
-                    <div className="flex-1 space-y-3">
+                  <div className="flex flex-col gap-4 p-4 rounded-lg bg-muted/50">
+                    <div className="space-y-3">
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">1</Badge>
+                        <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium rounded-full border">1</span>
                         <span className="text-sm">Instale as dependências:</span>
                       </div>
-                      <code className="block text-xs bg-background p-2 rounded font-mono">
-                        npm install express cors @whiskeysockets/baileys qrcode @supabase/supabase-js
-                      </code>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-xs bg-background p-2 rounded font-mono overflow-x-auto">
+                          npm install express cors @whiskeysockets/baileys qrcode @supabase/supabase-js
+                        </code>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="shrink-0"
+                          onClick={() => copyToClipboard('npm install express cors @whiskeysockets/baileys qrcode @supabase/supabase-js', 'cmd-install')}
+                        >
+                          {copiedToken === 'cmd-install' ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
                       
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">2</Badge>
+                        <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium rounded-full border">2</span>
                         <span className="text-sm">Baixe o script e execute:</span>
                       </div>
-                      <code className="block text-xs bg-background p-2 rounded font-mono">
-                        node whatsapp-local.js
-                      </code>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-xs bg-background p-2 rounded font-mono">
+                          node whatsapp-local.js
+                        </code>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="shrink-0"
+                          onClick={() => copyToClipboard('node whatsapp-local.js', 'cmd-run')}
+                        >
+                          {copiedToken === 'cmd-run' ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                    <Button onClick={downloadScript} className="shrink-0">
+                    <Button onClick={downloadScript} className="w-full">
                       <Download className="w-4 h-4 mr-2" />
                       Baixar Script
                     </Button>
