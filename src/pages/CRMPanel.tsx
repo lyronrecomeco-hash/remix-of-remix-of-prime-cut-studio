@@ -142,6 +142,8 @@ export default function CRMPanel() {
 
       {/* Onboarding Modal */}
       {!crmTenant.onboarding_completed && <CRMOnboardingModal />}
+
+      <div className="min-h-screen bg-background relative">
         {/* Desktop Sidebar */}
         <motion.aside
           initial={false}
