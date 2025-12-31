@@ -8,6 +8,7 @@ import {
   CheckCircle, 
   Search,
   Copy,
+  Eye,
   Wallet,
   TrendingUp,
   UserCheck,
@@ -26,10 +27,12 @@ import { Textarea } from '@/components/ui/textarea';
 
 interface Affiliate {
   id: string;
+  user_id: string;
   name: string;
   email: string;
   whatsapp: string;
   affiliate_code: string;
+  password_hash: string;
   status: 'active' | 'pending' | 'blocked';
   total_earnings: number;
   pending_balance: number;
@@ -75,6 +78,17 @@ const AffiliateManager = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [creating, setCreating] = useState(false);
   const [processing, setProcessing] = useState(false);
+
+  const [selectedAffiliate, setSelectedAffiliate] = useState<Affiliate | null>(null);
+  const [showAffiliateDetailsModal, setShowAffiliateDetailsModal] = useState(false);
+
+  const [createdCredentials, setCreatedCredentials] = useState<{
+    name?: string;
+    email: string;
+    password: string;
+    affiliate_code: string;
+  } | null>(null);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   
   const [newAffiliate, setNewAffiliate] = useState({
     name: '',
@@ -106,23 +120,6 @@ const AffiliateManager = () => {
     }
   };
 
-  const generateAffiliateCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-  };
-
-  const generatePassword = () => {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
-    let password = '';
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return password;
-  };
 
   const handleCreateAffiliate = async () => {
     if (!newAffiliate.name || !newAffiliate.email || !newAffiliate.whatsapp) {
@@ -132,40 +129,33 @@ const AffiliateManager = () => {
 
     setCreating(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        throw new Error('Sessão não encontrada');
-      }
+      const normalizedEmail = newAffiliate.email.toLowerCase().trim();
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-affiliate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('create-affiliate', {
+        body: {
           name: newAffiliate.name,
-          email: newAffiliate.email,
-          whatsapp: newAffiliate.whatsapp
-        })
+          email: normalizedEmail,
+          whatsapp: newAffiliate.whatsapp,
+        },
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao criar afiliado');
+      if (error) {
+        throw new Error(error.message || 'Erro ao criar afiliado');
       }
 
-      toast.success(
-        <div className="space-y-2">
-          <p className="font-semibold">Afiliado criado com sucesso!</p>
-          <p className="text-sm">Email: {result.affiliate.email}</p>
-          <p className="text-sm">Senha: {result.affiliate.password}</p>
-          <p className="text-sm">Código: {result.affiliate.affiliate_code}</p>
-        </div>,
-        { duration: 15000 }
-      );
+      if (!data?.success || !data?.affiliate?.email || !data?.affiliate?.password) {
+        throw new Error(data?.error || 'Erro ao criar afiliado');
+      }
+
+      setCreatedCredentials({
+        name: data.affiliate.name,
+        email: data.affiliate.email,
+        password: data.affiliate.password,
+        affiliate_code: data.affiliate.affiliate_code,
+      });
+      setShowCredentialsModal(true);
+
+      toast.success('Afiliado criado com sucesso!');
 
       setNewAffiliate({ name: '', email: '', whatsapp: '' });
       setShowCreateModal(false);
@@ -405,9 +395,35 @@ const AffiliateManager = () => {
                       <TableCell className="text-right text-muted-foreground">R$ {Number(affiliate.pending_balance).toFixed(2)}</TableCell>
                       <TableCell className="text-right font-medium">R$ {Number(affiliate.total_earnings).toFixed(2)}</TableCell>
                       <TableCell>
-                        <Button variant={affiliate.status === 'active' ? 'destructive' : 'default'} size="sm" onClick={() => handleToggleStatus(affiliate)}>
-                          {affiliate.status === 'active' ? <><Ban className="w-3 h-3 mr-1" />Bloquear</> : <><CheckCircle className="w-3 h-3 mr-1" />Ativar</>}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedAffiliate(affiliate);
+                              setShowAffiliateDetailsModal(true);
+                            }}
+                            className="gap-1"
+                          >
+                            <Eye className="w-3 h-3" />
+                            Ver
+                          </Button>
+                          <Button
+                            variant={affiliate.status === 'active' ? 'destructive' : 'default'}
+                            size="sm"
+                            onClick={() => handleToggleStatus(affiliate)}
+                          >
+                            {affiliate.status === 'active' ? (
+                              <>
+                                <Ban className="w-3 h-3 mr-1" />Bloquear
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="w-3 h-3 mr-1" />Ativar
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -562,6 +578,59 @@ const AffiliateManager = () => {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={showCredentialsModal}
+        onOpenChange={(open) => {
+          setShowCredentialsModal(open);
+          if (!open) setCreatedCredentials(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Credenciais do Afiliado</DialogTitle>
+            <DialogDescription>Copie e envie para o afiliado (login via email + senha).</DialogDescription>
+          </DialogHeader>
+
+          {createdCredentials && (
+            <div className="space-y-3 py-2">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Email</span>
+                <div className="flex items-center gap-2">
+                  <code className="bg-muted px-2 py-1 rounded text-xs">{createdCredentials.email}</code>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(createdCredentials.email)}>
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Senha</span>
+                <div className="flex items-center gap-2">
+                  <code className="bg-muted px-2 py-1 rounded text-xs">{createdCredentials.password}</code>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(createdCredentials.password)}>
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Código</span>
+                <div className="flex items-center gap-2">
+                  <code className="bg-muted px-2 py-1 rounded text-xs">{createdCredentials.affiliate_code}</code>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(createdCredentials.affiliate_code)}>
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setShowCredentialsModal(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showWithdrawalModal} onOpenChange={setShowWithdrawalModal}>
         <DialogContent>
           <DialogHeader>
@@ -607,6 +676,70 @@ const AffiliateManager = () => {
             <Button onClick={() => handleProcessWithdrawal('completed')} disabled={processing}>
               {processing ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}Aprovar
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAffiliateDetailsModal} onOpenChange={setShowAffiliateDetailsModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Detalhes do Afiliado</DialogTitle>
+            <DialogDescription>Informações e credenciais do afiliado selecionado.</DialogDescription>
+          </DialogHeader>
+
+          {selectedAffiliate && (
+            <div className="space-y-3 py-2">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Nome</span>
+                <span className="font-medium text-sm">{selectedAffiliate.name}</span>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Email</span>
+                <div className="flex items-center gap-2">
+                  <code className="bg-muted px-2 py-1 rounded text-xs">{selectedAffiliate.email}</code>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(selectedAffiliate.email)}>
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Senha</span>
+                <div className="flex items-center gap-2">
+                  <code className="bg-muted px-2 py-1 rounded text-xs">{selectedAffiliate.password_hash}</code>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(selectedAffiliate.password_hash)}>
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Código</span>
+                <div className="flex items-center gap-2">
+                  <code className="bg-muted px-2 py-1 rounded text-xs">{selectedAffiliate.affiliate_code}</code>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(selectedAffiliate.affiliate_code)}>
+                    <Copy className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">WhatsApp</span>
+                <span className="font-medium text-sm">{selectedAffiliate.whatsapp}</span>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <Badge variant={selectedAffiliate.status === 'active' ? 'default' : selectedAffiliate.status === 'blocked' ? 'destructive' : 'secondary'}>
+                  {selectedAffiliate.status === 'active' ? 'Ativo' : selectedAffiliate.status === 'blocked' ? 'Bloqueado' : 'Pendente'}
+                </Badge>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setShowAffiliateDetailsModal(false)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

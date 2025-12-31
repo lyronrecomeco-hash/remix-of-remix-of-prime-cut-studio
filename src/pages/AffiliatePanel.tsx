@@ -55,11 +55,14 @@ const AffiliatePanel = () => {
   }, []);
 
   const checkAffiliateAuth = async () => {
+    const isAffiliateSubdomain = window.location.hostname === 'parceiros.genesishub.cloud';
+    const loginPath = isAffiliateSubdomain ? '/login' : '/afiliado/login';
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
-        navigate('/parceiros/login');
+        navigate(loginPath);
         return;
       }
 
@@ -72,29 +75,32 @@ const AffiliatePanel = () => {
       if (error || !affiliateData) {
         toast.error('Acesso não autorizado');
         await supabase.auth.signOut();
-        navigate('/parceiros/login');
+        navigate(loginPath);
         return;
       }
 
       if (affiliateData.status !== 'active') {
         toast.error('Sua conta não está ativa');
         await supabase.auth.signOut();
-        navigate('/parceiros/login');
+        navigate(loginPath);
         return;
       }
 
       setAffiliate(affiliateData as Affiliate);
     } catch (error) {
       console.error('Erro ao verificar autenticação:', error);
-      navigate('/parceiros/login');
+      navigate(loginPath);
     } finally {
       setLoading(false);
     }
   };
 
   const handleLogout = async () => {
+    const isAffiliateSubdomain = window.location.hostname === 'parceiros.genesishub.cloud';
+    const loginPath = isAffiliateSubdomain ? '/login' : '/afiliado/login';
+
     await supabase.auth.signOut();
-    navigate('/parceiros/login');
+    navigate(loginPath);
     toast.success('Logout realizado com sucesso');
   };
 

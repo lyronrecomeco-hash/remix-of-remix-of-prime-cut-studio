@@ -20,46 +20,49 @@ const AffiliateLogin = () => {
     e.preventDefault();
     setLoading(true);
 
+    const normalizedEmail = email.toLowerCase().trim();
+    const isAffiliateSubdomain = window.location.hostname === 'parceiros.genesishub.cloud';
+    const panelPath = isAffiliateSubdomain ? '/painel' : '/afiliado';
+
     try {
-      // Verificar se é um afiliado válido
+      // 1) Tenta autenticar primeiro (RLS impede consultar affiliates antes do login)
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
+
+      if (authError || !authData.user) {
+        toast.error('Credenciais inválidas');
+        return;
+      }
+
+      // 2) Valida se o usuário autenticado é um afiliado ativo
       const { data: affiliate, error: affiliateError } = await supabase
         .from('affiliates')
-        .select('id, status, email')
-        .eq('email', email.toLowerCase().trim())
+        .select('status')
+        .eq('user_id', authData.user.id)
         .single();
 
       if (affiliateError || !affiliate) {
-        toast.error('Credenciais inválidas');
-        setLoading(false);
+        await supabase.auth.signOut();
+        toast.error('Acesso não autorizado');
         return;
       }
 
       if (affiliate.status === 'blocked') {
+        await supabase.auth.signOut();
         toast.error('Sua conta foi bloqueada. Entre em contato com o suporte.');
-        setLoading(false);
         return;
       }
 
       if (affiliate.status === 'pending') {
+        await supabase.auth.signOut();
         toast.error('Sua conta ainda está pendente de aprovação.');
-        setLoading(false);
-        return;
-      }
-
-      // Login via Supabase Auth
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: email.toLowerCase().trim(),
-        password,
-      });
-
-      if (authError) {
-        toast.error('Credenciais inválidas');
-        setLoading(false);
         return;
       }
 
       toast.success('Login realizado com sucesso!');
-      navigate('/afiliado');
+      navigate(panelPath);
     } catch (error) {
       console.error('Erro no login:', error);
       toast.error('Erro ao realizar login');
