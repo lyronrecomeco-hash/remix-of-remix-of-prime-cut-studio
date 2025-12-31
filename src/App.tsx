@@ -17,6 +17,7 @@ import UpgradeModal from "@/components/subscription/UpgradeModal";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Suspense, lazy, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { toast as notify } from "sonner";
 
 // Lazy loading de páginas para code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -92,15 +93,35 @@ const registerServiceWorker = async () => {
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data?.type === 'SW_UPDATED') {
           console.log('SW Updated to version:', event.data.version);
-          // Reload the page to get the new version
-          window.location.reload();
+
+          // Evita recarregamentos inesperados (especialmente no CRM)
+          const isCrm = window.location.pathname.startsWith('/crmpainel');
+          if (isCrm) {
+            notify('Atualização disponível', {
+              description: 'Clique para atualizar quando for conveniente.',
+              action: {
+                label: 'Atualizar',
+                onClick: () => window.location.reload(),
+              },
+            });
+            return;
+          }
+
+          // Para o restante do app, mantém atualização manual (sem auto reload)
+          notify('Atualização disponível', {
+            description: 'Clique para atualizar.',
+            action: {
+              label: 'Atualizar',
+              onClick: () => window.location.reload(),
+            },
+          });
         }
       });
 
-      // Check for updates every 60 seconds
+      // Check for updates (menos agressivo para evitar interrupções)
       setInterval(() => {
         registration.update();
-      }, 60000);
+      }, 10 * 60 * 1000);
 
     } catch (error) {
       console.log('Service Worker registration failed:', error);

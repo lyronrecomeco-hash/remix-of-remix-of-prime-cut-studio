@@ -27,16 +27,17 @@ export default function CRMInteractiveBackground() {
 
     const createParticles = () => {
       particles = [];
-      const particleCount = Math.floor((canvas.width * canvas.height) / 25000);
-      
+      // Mais discreto + melhor performance
+      const particleCount = Math.floor((canvas.width * canvas.height) / 40000);
+
       for (let i = 0; i < particleCount; i++) {
         particles.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.3,
+          vx: (Math.random() - 0.5) * 0.25,
+          vy: (Math.random() - 0.5) * 0.25,
           radius: Math.random() * 1.5 + 0.5,
-          opacity: Math.random() * 0.3 + 0.1,
+          opacity: Math.random() * 0.22 + 0.06,
         });
       }
     };
@@ -44,8 +45,8 @@ export default function CRMInteractiveBackground() {
     const drawParticles = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Get computed style for primary color
-      const primaryColor = getComputedStyle(document.documentElement)
+      // Cor primária (formato shadcn: "H S% L%")
+      const primary = getComputedStyle(document.documentElement)
         .getPropertyValue('--primary')
         .trim();
 
@@ -63,7 +64,7 @@ export default function CRMInteractiveBackground() {
         // Draw particle
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${primaryColor}, ${particle.opacity})`;
+        ctx.fillStyle = `hsl(${primary} / ${particle.opacity})`;
         ctx.fill();
 
         // Draw connections
@@ -76,7 +77,8 @@ export default function CRMInteractiveBackground() {
             ctx.beginPath();
             ctx.moveTo(particle.x, particle.y);
             ctx.lineTo(otherParticle.x, otherParticle.y);
-            ctx.strokeStyle = `hsla(${primaryColor}, ${0.08 * (1 - distance / 120)})`;
+            const alpha = 0.09 * (1 - distance / 120);
+            ctx.strokeStyle = `hsl(${primary} / ${alpha})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
@@ -90,14 +92,16 @@ export default function CRMInteractiveBackground() {
     createParticles();
     drawParticles();
 
-    window.addEventListener('resize', () => {
+    const handleResize = () => {
       resizeCanvas();
       createParticles();
-    });
+    };
+
+    window.addEventListener('resize', handleResize);
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('resize', handleResize);
     };
   }, []);
 
@@ -105,7 +109,7 @@ export default function CRMInteractiveBackground() {
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-0"
-      style={{ opacity: 0.6 }}
+      style={{ opacity: 0.22 }}
     />
   );
 }
