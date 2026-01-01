@@ -368,22 +368,46 @@ const ProposalPage = () => {
     }
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from('affiliate_proposals')
-        .select(`
-          *,
-          affiliate:affiliates(name, whatsapp, email)
-        `)
-        .eq('questionnaire_completed', true)
-        .not('generated_proposal', 'is', null);
+      // First try to find by ID (UUID format)
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+      
+      let matchedProposal: ProposalData | null = null;
+      
+      if (isUUID) {
+        // Direct lookup by ID
+        const { data, error: fetchError } = await supabase
+          .from('affiliate_proposals')
+          .select(`
+            *,
+            affiliate:affiliates(name, whatsapp, email)
+          `)
+          .eq('id', slug)
+          .single();
 
-      if (fetchError) throw fetchError;
+        if (!fetchError && data) {
+          matchedProposal = data as unknown as ProposalData;
+        }
+      }
+      
+      // If not found by ID, try by company name slug
+      if (!matchedProposal) {
+        const { data, error: fetchError } = await supabase
+          .from('affiliate_proposals')
+          .select(`
+            *,
+            affiliate:affiliates(name, whatsapp, email)
+          `)
+          .eq('questionnaire_completed', true);
 
-      const normalizedSlug = slug.toLowerCase().replace(/-/g, ' ');
-      const matchedProposal = data?.find(p => 
-        p.company_name.toLowerCase().replace(/\s+/g, ' ').trim() === normalizedSlug ||
-        p.company_name.toLowerCase().replace(/\s+/g, '-').trim() === slug.toLowerCase()
-      ) as unknown as ProposalData | undefined;
+        if (fetchError) throw fetchError;
+
+        const normalizedSlug = slug.toLowerCase().replace(/-/g, ' ');
+        matchedProposal = data?.find(p => 
+          p.company_name.toLowerCase().replace(/\s+/g, ' ').trim() === normalizedSlug ||
+          p.company_name.toLowerCase().replace(/\s+/g, '-').trim() === slug.toLowerCase() ||
+          p.id === slug
+        ) as unknown as ProposalData | undefined || null;
+      }
 
       if (!matchedProposal) {
         setError('Proposta não encontrada');

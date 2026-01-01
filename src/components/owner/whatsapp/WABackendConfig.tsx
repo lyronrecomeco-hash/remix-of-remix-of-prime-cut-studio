@@ -208,6 +208,13 @@ export const WABackendConfig = ({
 
       const response = await fetch(`${baseUrl}/health`, { headers });
 
+      if (response.status === 401) {
+        setIsLocalConnected(false);
+        addLog('error', '✗ Token inválido! Baixe o script novamente com o token atualizado.');
+        toast.error('Token inválido! Baixe o script novamente.');
+        return;
+      }
+
       if (!response.ok) {
         setIsLocalConnected(false);
         addLog('error', `✗ Falha na conexão (status ${response.status})`);
@@ -216,15 +223,6 @@ export const WABackendConfig = ({
       }
 
       const data = await response.json().catch(() => ({}));
-
-      // Verifica se as rotas necessárias existem (evita falso positivo só com /health)
-      const routesCheck = await fetch(`${baseUrl}/api/instance/__probe/status`, { headers });
-      if (routesCheck.status === 404) {
-        setIsLocalConnected(false);
-        addLog('error', '✗ Backend respondeu /health, mas não possui /api/instance/*');
-        toast.error('Script local sem rotas /api/instance. Baixe o script novamente.');
-        return;
-      }
 
       setIsLocalConnected(true);
       addLog('success', `✓ Backend local conectado! (${data.name || 'WhatsApp Local'})`);
@@ -632,8 +630,8 @@ app.listen(PORT, () => {
                     {copiedToken ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Use este token no script do backend local
+                <p className="text-xs text-amber-500 font-medium">
+                  ⚠️ Importante: Baixe o script novamente após mudar configurações ou se receber erro 401!
                 </p>
               </div>
 
