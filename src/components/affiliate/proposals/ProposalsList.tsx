@@ -14,7 +14,9 @@ import {
   XCircle,
   ClipboardList,
   CheckCircle,
-  FileText
+  FileText,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,6 +50,8 @@ interface ProposalsListProps {
   onViewProposal?: (proposal: AffiliateProposal) => void;
 }
 
+const ITEMS_PER_PAGE = 6;
+
 export function ProposalsList({ 
   proposals, 
   loading, 
@@ -58,6 +62,11 @@ export function ProposalsList({
   onViewProposal
 }: ProposalsListProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(proposals.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedProposals = proposals.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const handleStatusChange = async (id: string, newStatus: ProposalStatus) => {
     await onUpdate(id, { status: newStatus });
@@ -70,13 +79,17 @@ export function ProposalsList({
     }
   };
 
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
   if (loading) {
     return (
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {[1, 2, 3, 4].map((i) => (
           <Card key={i} className="bg-card border-border animate-pulse">
             <CardContent className="p-4">
-              <div className="h-20 bg-secondary/50 rounded" />
+              <div className="h-24 bg-secondary/50 rounded" />
             </CardContent>
           </Card>
         ))}
@@ -102,99 +115,33 @@ export function ProposalsList({
 
   return (
     <>
-      <div className="space-y-4">
-        {proposals.map((proposal) => (
+      {/* Grid responsivo */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {paginatedProposals.map((proposal) => (
           <Card key={proposal.id} className="bg-card border-border hover:border-primary/50 transition-colors">
             <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start gap-3">
+              <div className="flex flex-col gap-3">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className="p-2 bg-primary/10 rounded-lg shrink-0">
                       <Building2 className="w-5 h-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-foreground truncate">
-                          {proposal.company_name}
-                        </h3>
-                        <ProposalStatusBadge status={proposal.status} />
-                        {proposal.questionnaire_completed && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">
-                            <CheckCircle className="w-3 h-3" />
-                            Questionário
-                          </span>
-                        )}
-                      </div>
-                      
+                      <h3 className="font-semibold text-foreground truncate">
+                        {proposal.company_name}
+                      </h3>
                       {proposal.contact_name && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Contato: {proposal.contact_name}
+                        <p className="text-sm text-muted-foreground truncate">
+                          {proposal.contact_name}
                         </p>
                       )}
-
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
-                        {proposal.company_email && (
-                          <span className="flex items-center gap-1">
-                            <Mail className="w-3.5 h-3.5" />
-                            {proposal.company_email}
-                          </span>
-                        )}
-                        {proposal.company_phone && (
-                          <span className="flex items-center gap-1">
-                            <Phone className="w-3.5 h-3.5" />
-                            {proposal.company_phone}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5" />
-                          {format(new Date(proposal.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                        </span>
-                      </div>
                     </div>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* Botão de Questionário - só aparece para drafts sem questionário */}
-                  {proposal.status === 'draft' && !proposal.questionnaire_completed && onStartQuestionnaire && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onStartQuestionnaire(proposal)}
-                      className="gap-1 text-primary border-primary/50 hover:bg-primary/10"
-                    >
-                      <ClipboardList className="w-4 h-4" />
-                      <span className="hidden sm:inline">Questionário</span>
-                    </Button>
-                  )}
-
-                  {/* Botão Ver Proposta - aparece quando questionário está completo */}
-                  {proposal.questionnaire_completed && onViewProposal && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onViewProposal(proposal)}
-                      className="gap-1 text-emerald-600 border-emerald-500/50 hover:bg-emerald-500/10"
-                    >
-                      <FileText className="w-4 h-4" />
-                      <span className="hidden sm:inline">Ver Proposta</span>
-                    </Button>
-                  )}
-
-                  {onView && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onView(proposal)}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                  )}
-
+                  
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="icon" className="shrink-0">
                         <MoreVertical className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -260,19 +207,124 @@ export function ProposalsList({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </div>
 
-              {proposal.notes && (
-                <div className="mt-3 pt-3 border-t border-border">
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {proposal.notes}
-                  </p>
+                {/* Status badges */}
+                <div className="flex flex-wrap gap-2">
+                  <ProposalStatusBadge status={proposal.status} />
+                  {proposal.questionnaire_completed && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">
+                      <CheckCircle className="w-3 h-3" />
+                      Questionário
+                    </span>
+                  )}
                 </div>
-              )}
+
+                {/* Info */}
+                <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+                  {proposal.company_email && (
+                    <span className="flex items-center gap-1.5 truncate">
+                      <Mail className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{proposal.company_email}</span>
+                    </span>
+                  )}
+                  {proposal.company_phone && (
+                    <span className="flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 shrink-0" />
+                      {proposal.company_phone}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 shrink-0" />
+                    {format(new Date(proposal.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                  </span>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2 border-t border-border">
+                  {proposal.status === 'draft' && !proposal.questionnaire_completed && onStartQuestionnaire && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onStartQuestionnaire(proposal)}
+                      className="flex-1 gap-1 text-primary border-primary/50 hover:bg-primary/10"
+                    >
+                      <ClipboardList className="w-4 h-4" />
+                      <span className="hidden sm:inline">Questionário</span>
+                      <span className="sm:hidden">Iniciar</span>
+                    </Button>
+                  )}
+
+                  {proposal.questionnaire_completed && onViewProposal && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onViewProposal(proposal)}
+                      className="flex-1 gap-1 text-emerald-600 border-emerald-500/50 hover:bg-emerald-500/10"
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span className="hidden sm:inline">Ver Proposta</span>
+                      <span className="sm:hidden">Proposta</span>
+                    </Button>
+                  )}
+
+                  {onView && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onView(proposal)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Paginação */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 px-2">
+          <p className="text-sm text-muted-foreground">
+            {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, proposals.length)} de {proposals.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => goToPage(page)}
+                  className="w-8 h-8 p-0"
+                >
+                  {page}
+                </Button>
+              ))}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent className="bg-card border-border">
