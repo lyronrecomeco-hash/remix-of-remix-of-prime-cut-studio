@@ -179,23 +179,39 @@ export function useWhatsAppConnection() {
     }
   };
 
+  type BackendHealthResult =
+    | { ok: true }
+    | { ok: false; reason: 'unauthorized' | 'unreachable' | 'error'; status?: number };
+
   // Pre-connection health check to prevent ghost connections
-  const validateBackendHealth = async (backendUrl: string): Promise<boolean> => {
+  const validateBackendHealth = async (backendUrl: string, token: string): Promise<BackendHealthResult> => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     try {
       const response = await fetch(`${backendUrl}/health`, {
         method: 'GET',
+        headers: {
+          // v4 local backend protects /health with the same Bearer token
+          Authorization: `Bearer ${token}`,
+        },
         signal: controller.signal,
       });
-      
-      if (!response.ok) return false;
-      
-      const data = await response.json();
-      return data.status === 'ok' || data.success === true;
+
+      if (response.ok) {
+        // Accept common formats: {status:'ok'} or {success:true}
+        const data = await response.json().catch(() => ({} as any));
+        if (data?.status === 'ok' || data?.success === true) return { ok: true };
+        return { ok: true }; // if it responded 200, it's alive
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        return { ok: false, reason: 'unauthorized', status: response.status };
+      }
+
+      return { ok: false, reason: 'error', status: response.status };
     } catch {
-      return false;
+      return { ok: false, reason: 'unreachable' };
     } finally {
       clearTimeout(timeoutId);
     }
@@ -220,9 +236,12 @@ export function useWhatsAppConnection() {
 
     try {
       // ANTI-GHOST: Validate backend is actually running before attempting connection
-      const isBackendHealthy = await validateBackendHealth(backendUrl);
-      
-      if (!isBackendHealthy) {
+      const health = await validateBackendHealth(backendUrl, token);
+
+      if (health.ok === false) {
+        if (health.reason === 'unauthorized') {
+          throw new Error('Token do Backend inválido. Verifique o token e reinicie o backend local.');
+        }
         throw new Error('Backend não está respondendo. Verifique se o CMD está rodando com o script.');
       }
 
