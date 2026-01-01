@@ -152,6 +152,7 @@ export type Database = {
         Row: {
           accepted_at: string | null
           affiliate_id: string
+          ai_analysis: Json | null
           cancelled_at: string | null
           company_cnpj: string | null
           company_email: string | null
@@ -160,7 +161,10 @@ export type Database = {
           contact_name: string | null
           created_at: string
           id: string
+          niche_id: string | null
           notes: string | null
+          questionnaire_answers: Json | null
+          questionnaire_completed: boolean | null
           sent_at: string | null
           status: Database["public"]["Enums"]["proposal_status"]
           updated_at: string
@@ -168,6 +172,7 @@ export type Database = {
         Insert: {
           accepted_at?: string | null
           affiliate_id: string
+          ai_analysis?: Json | null
           cancelled_at?: string | null
           company_cnpj?: string | null
           company_email?: string | null
@@ -176,7 +181,10 @@ export type Database = {
           contact_name?: string | null
           created_at?: string
           id?: string
+          niche_id?: string | null
           notes?: string | null
+          questionnaire_answers?: Json | null
+          questionnaire_completed?: boolean | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           updated_at?: string
@@ -184,6 +192,7 @@ export type Database = {
         Update: {
           accepted_at?: string | null
           affiliate_id?: string
+          ai_analysis?: Json | null
           cancelled_at?: string | null
           company_cnpj?: string | null
           company_email?: string | null
@@ -192,7 +201,10 @@ export type Database = {
           contact_name?: string | null
           created_at?: string
           id?: string
+          niche_id?: string | null
           notes?: string | null
+          questionnaire_answers?: Json | null
+          questionnaire_completed?: boolean | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["proposal_status"]
           updated_at?: string
@@ -203,6 +215,13 @@ export type Database = {
             columns: ["affiliate_id"]
             isOneToOne: false
             referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_proposals_niche_id_fkey"
+            columns: ["niche_id"]
+            isOneToOne: false
+            referencedRelation: "business_niches"
             referencedColumns: ["id"]
           },
         ]
@@ -824,6 +843,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      business_niches: {
+        Row: {
+          base_questions: Json
+          created_at: string
+          description: string | null
+          display_order: number
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          base_questions?: Json
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          base_questions?: Json
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       chatpro_config: {
         Row: {
@@ -2272,6 +2330,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      proposal_questionnaire_history: {
+        Row: {
+          ai_follow_up: string | null
+          answer: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          proposal_id: string
+          question: string
+          question_index: number
+        }
+        Insert: {
+          ai_follow_up?: string | null
+          answer?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          proposal_id: string
+          question: string
+          question_index: number
+        }
+        Update: {
+          ai_follow_up?: string | null
+          answer?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          proposal_id?: string
+          question?: string
+          question_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_questionnaire_history_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {

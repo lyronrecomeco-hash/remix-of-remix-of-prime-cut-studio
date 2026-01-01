@@ -5,7 +5,9 @@ import {
   useProposals, 
   ProposalsList, 
   ProposalsStats, 
-  CreateProposalModal 
+  CreateProposalModal,
+  ProposalQuestionnaireModal,
+  type AffiliateProposal,
 } from './proposals';
 
 interface AffiliateProposalsProps {
@@ -14,6 +16,7 @@ interface AffiliateProposalsProps {
 
 const AffiliateProposals = ({ affiliateId }: AffiliateProposalsProps) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [questionnaireProposal, setQuestionnaireProposal] = useState<AffiliateProposal | null>(null);
   
   const {
     proposals,
@@ -23,9 +26,15 @@ const AffiliateProposals = ({ affiliateId }: AffiliateProposalsProps) => {
     updateProposal,
     deleteProposal,
     getStatsCounts,
+    fetchProposals,
   } = useProposals(affiliateId);
 
   const stats = getStatsCounts();
+
+  const handleQuestionnaireComplete = () => {
+    fetchProposals();
+    setQuestionnaireProposal(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -60,6 +69,7 @@ const AffiliateProposals = ({ affiliateId }: AffiliateProposalsProps) => {
           loading={loading}
           onUpdate={updateProposal}
           onDelete={deleteProposal}
+          onStartQuestionnaire={setQuestionnaireProposal}
         />
       </div>
 
@@ -70,6 +80,16 @@ const AffiliateProposals = ({ affiliateId }: AffiliateProposalsProps) => {
         onSubmit={createProposal}
         loading={creating}
       />
+
+      {/* Modal do Questionário */}
+      {questionnaireProposal && (
+        <ProposalQuestionnaireModal
+          open={!!questionnaireProposal}
+          onClose={() => setQuestionnaireProposal(null)}
+          proposal={questionnaireProposal}
+          onComplete={handleQuestionnaireComplete}
+        />
+      )}
     </div>
   );
 };

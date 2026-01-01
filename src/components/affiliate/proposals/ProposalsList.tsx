@@ -11,7 +11,9 @@ import {
   Send,
   Eye,
   Edit,
-  XCircle
+  XCircle,
+  ClipboardList,
+  CheckCircle
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,9 +43,17 @@ interface ProposalsListProps {
   onUpdate: (id: string, data: { status: ProposalStatus }) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
   onView?: (proposal: AffiliateProposal) => void;
+  onStartQuestionnaire?: (proposal: AffiliateProposal) => void;
 }
 
-export function ProposalsList({ proposals, loading, onUpdate, onDelete, onView }: ProposalsListProps) {
+export function ProposalsList({ 
+  proposals, 
+  loading, 
+  onUpdate, 
+  onDelete, 
+  onView,
+  onStartQuestionnaire 
+}: ProposalsListProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const handleStatusChange = async (id: string, newStatus: ProposalStatus) => {
@@ -105,6 +115,12 @@ export function ProposalsList({ proposals, loading, onUpdate, onDelete, onView }
                           {proposal.company_name}
                         </h3>
                         <ProposalStatusBadge status={proposal.status} />
+                        {proposal.questionnaire_completed && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">
+                            <CheckCircle className="w-3 h-3" />
+                            Questionário
+                          </span>
+                        )}
                       </div>
                       
                       {proposal.contact_name && (
@@ -136,6 +152,19 @@ export function ProposalsList({ proposals, loading, onUpdate, onDelete, onView }
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                  {/* Botão de Questionário - só aparece para drafts sem questionário */}
+                  {proposal.status === 'draft' && !proposal.questionnaire_completed && onStartQuestionnaire && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onStartQuestionnaire(proposal)}
+                      className="gap-1 text-primary border-primary/50 hover:bg-primary/10"
+                    >
+                      <ClipboardList className="w-4 h-4" />
+                      <span className="hidden sm:inline">Questionário</span>
+                    </Button>
+                  )}
+
                   {onView && (
                     <Button
                       variant="ghost"
@@ -156,14 +185,22 @@ export function ProposalsList({ proposals, loading, onUpdate, onDelete, onView }
                     <DropdownMenuContent align="end" className="bg-popover border-border">
                       {proposal.status === 'draft' && (
                         <>
+                          {!proposal.questionnaire_completed && onStartQuestionnaire && (
+                            <DropdownMenuItem onClick={() => onStartQuestionnaire(proposal)}>
+                              <ClipboardList className="w-4 h-4 mr-2" />
+                              Iniciar Questionário
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => onView?.(proposal)}>
                             <Edit className="w-4 h-4 mr-2" />
                             Editar
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusChange(proposal.id, 'sent')}>
-                            <Send className="w-4 h-4 mr-2" />
-                            Marcar como Enviada
-                          </DropdownMenuItem>
+                          {proposal.questionnaire_completed && (
+                            <DropdownMenuItem onClick={() => handleStatusChange(proposal.id, 'sent')}>
+                              <Send className="w-4 h-4 mr-2" />
+                              Marcar como Enviada
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
                             onClick={() => setDeleteId(proposal.id)}

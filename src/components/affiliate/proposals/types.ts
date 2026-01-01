@@ -1,4 +1,4 @@
-// Tipos para o Sistema de Propostas Empresariais - FASE 1
+// Tipos para o Sistema de Propostas Empresariais - FASE 1 & 2
 
 export type ProposalStatus = 'draft' | 'sent' | 'accepted' | 'cancelled';
 
@@ -17,6 +17,11 @@ export interface AffiliateProposal {
   sent_at: string | null;
   accepted_at: string | null;
   cancelled_at: string | null;
+  // Campos FASE 2
+  niche_id: string | null;
+  questionnaire_answers: unknown[] | null;
+  questionnaire_completed: boolean | null;
+  ai_analysis: unknown | null;
 }
 
 export interface CreateProposalData {

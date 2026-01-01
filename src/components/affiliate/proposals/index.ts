@@ -5,3 +5,4 @@ export * from './ProposalStatusBadge';
 export * from './ProposalsList';
 export * from './ProposalsStats';
 export * from './CreateProposalModal';
+export * from './ProposalQuestionnaireModal';

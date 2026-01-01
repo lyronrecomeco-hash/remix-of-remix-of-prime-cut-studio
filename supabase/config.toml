@@ -89,3 +89,6 @@ verify_jwt = false
 
 [functions.send-collaborator-token]
 verify_jwt = false
+
+[functions.questionnaire-ai]
+verify_jwt = false
