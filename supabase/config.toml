@@ -103,3 +103,6 @@ verify_jwt = false
 
 [functions.proposal-chat]
 verify_jwt = false
+
+[functions.whatsapp-heartbeat]
+verify_jwt = false

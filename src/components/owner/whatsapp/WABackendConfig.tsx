@@ -249,11 +249,13 @@ export const WABackendConfig = ({
   };
 
   const getLocalScript = () => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const scriptContent = `/*
  * ╔═══════════════════════════════════════════════════════════╗
  * ║           GENESIS HUB - WhatsApp Backend Local            ║
- * ║                      Versão 3.0                           ║
+ * ║                      Versão 4.0                           ║
  * ╠═══════════════════════════════════════════════════════════╣
+ * ║  • Heartbeat automático para persistência de status       ║
  * ║  • Reconexão automática inteligente                       ║
  * ║  • Persistência de sessão                                 ║
  * ║  • API REST completa                                      ║
@@ -273,6 +275,8 @@ const { makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBailey
 const PORT = ` + localPort + `;
 const TOKEN = '` + localToken + `';
 const SESSIONS_DIR = path.join(__dirname, 'sessions');
+const SUPABASE_URL = '` + supabaseUrl + `';
+const HEARTBEAT_INTERVAL = 30000; // 30 segundos
 
 // ═══════════════════════════════════════════════════════════
 //                        EXPRESS APP
@@ -298,6 +302,7 @@ app.use((req, res, next) => {
 if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 
 const connections = new Map();
+const startTime = Date.now();
 
 const log = (icon, msg) => console.log(icon + '  ' + msg);
 
@@ -307,6 +312,43 @@ const getPhone = (sock) => {
     return id ? String(id).split('@')[0].split(':')[0] : null;
   } catch { return null; }
 };
+
+// ═══════════════════════════════════════════════════════════
+//                    SISTEMA DE HEARTBEAT
+// ═══════════════════════════════════════════════════════════
+const sendHeartbeat = async (instanceId, status, phone) => {
+  try {
+    const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
+    const response = await fetch(SUPABASE_URL + '/functions/v1/whatsapp-heartbeat/' + instanceId, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Instance-Token': TOKEN,
+      },
+      body: JSON.stringify({
+        status: status,
+        phone_number: phone,
+        uptime_seconds: uptimeSeconds,
+      }),
+    });
+    
+    if (response.ok) {
+      log('💓', 'Heartbeat enviado: ' + instanceId + ' (' + status + ')');
+    } else {
+      log('⚠️', 'Heartbeat falhou: ' + response.status);
+    }
+  } catch (err) {
+    log('❌', 'Erro no heartbeat: ' + err.message);
+  }
+};
+
+// Heartbeat periódico para todas as instâncias
+setInterval(() => {
+  connections.forEach((conn, instanceId) => {
+    const phone = conn.phone || getPhone(conn.sock);
+    sendHeartbeat(instanceId, conn.status, phone);
+  });
+}, HEARTBEAT_INTERVAL);
 
 const createSocket = async (instanceId) => {
   if (connections.has(instanceId)) return connections.get(instanceId);
@@ -321,7 +363,7 @@ const createSocket = async (instanceId) => {
     auth: state,
     version,
     printQRInTerminal: false,
-    browser: ['Genesis Hub', 'Chrome', '3.0'],
+    browser: ['Genesis Hub', 'Chrome', '4.0'],
   });
 
   const conn = { sock, status: 'disconnected', qr: null, phone: null, retries: 0 };
@@ -342,6 +384,9 @@ const createSocket = async (instanceId) => {
       conn.retries = 0;
       conn.phone = getPhone(sock);
       log('✅', 'Conectado: ' + (conn.phone || instanceId));
+      
+      // Envia heartbeat imediato ao conectar
+      sendHeartbeat(instanceId, 'connected', conn.phone);
     }
 
     if (connection === 'close') {
@@ -351,6 +396,7 @@ const createSocket = async (instanceId) => {
 
       if (code === DisconnectReason.loggedOut || code === 401) {
         log('🔒', 'Sessão encerrada: ' + instanceId);
+        sendHeartbeat(instanceId, 'disconnected', null);
         try { sock.end(); } catch {}
         connections.delete(instanceId);
         fs.rmSync(authPath, { recursive: true, force: true });
@@ -358,6 +404,7 @@ const createSocket = async (instanceId) => {
       }
 
       log('⚠️', 'Desconectado (' + (code || '?') + '): ' + instanceId);
+      sendHeartbeat(instanceId, 'disconnected', null);
 
       // Reconexão automática
       if (conn.retries < 5 && [515, 428, 408].includes(code)) {
@@ -380,7 +427,7 @@ const createSocket = async (instanceId) => {
 //                          ROTAS
 // ═══════════════════════════════════════════════════════════
 app.get('/health', (_, res) => {
-  res.json({ status: 'ok', version: '3.0.0', name: 'Genesis WhatsApp Backend' });
+  res.json({ status: 'ok', version: '4.0.0', name: 'Genesis WhatsApp Backend', uptime: Math.floor((Date.now() - startTime) / 1000) });
 });
 
 app.get('/api/instance/:id/status', (req, res) => {
@@ -442,6 +489,7 @@ app.post('/api/instance/:id/disconnect', (req, res) => {
     }
   } finally {
     connections.delete(id);
+    sendHeartbeat(id, 'disconnected', null);
     const sessionPath = path.join(SESSIONS_DIR, id);
     if (fs.existsSync(sessionPath)) fs.rmSync(sessionPath, { recursive: true, force: true });
   }
@@ -476,10 +524,11 @@ app.post('/api/instance/:id/send', async (req, res) => {
 app.listen(PORT, () => {
   console.log('');
   console.log('╔═══════════════════════════════════════════════════════════╗');
-  console.log('║         🚀 GENESIS HUB - WhatsApp Backend v3.0            ║');
+  console.log('║         🚀 GENESIS HUB - WhatsApp Backend v4.0            ║');
   console.log('╠═══════════════════════════════════════════════════════════╣');
   console.log('║  Rodando em: http://localhost:' + PORT + '                       ║');
   console.log('║  Status: Pronto para conexões                             ║');
+  console.log('║  Heartbeat: A cada 30 segundos                            ║');
   console.log('╚═══════════════════════════════════════════════════════════╝');
   console.log('');
 });

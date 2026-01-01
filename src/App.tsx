@@ -42,6 +42,7 @@ const CRMLogin = lazy(() => import("./pages/CRMLogin"));
 const CRMPanel = lazy(() => import("./pages/CRMPanel"));
 const CRMTokenLogin = lazy(() => import("./pages/CRMTokenLogin"));
 const ProposalPage = lazy(() => import("./pages/ProposalPage"));
+const WADocsPage = lazy(() => import("./pages/WADocsPage"));
 
 // QueryClient com retry logic e cache otimizado
 const queryClient = new QueryClient({
@@ -215,6 +216,7 @@ const AppContent = () => {
             <Route path="/termos" element={<TermosDeUso />} />
             <Route path="/privacidade" element={<PoliticaDePrivacidade />} />
             <Route path="/docs" element={<Docs />} />
+            <Route path="/docs/whatsapp-api" element={<WADocsPage />} />
             <Route path="/afiliado/login" element={<AffiliateLogin />} />
             <Route path="/afiliado" element={<AffiliatePanel />} />
             <Route path="/crm/login" element={<CRMProvider><CRMLogin /></CRMProvider>} />
