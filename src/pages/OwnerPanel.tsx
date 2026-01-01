@@ -18,7 +18,8 @@ import {
   Sparkles,
   Activity,
   Bot,
-  Briefcase
+  Briefcase,
+  Building2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -37,6 +38,7 @@ import LeadsManager from '@/components/owner/LeadsManager';
 import AffiliateManager from '@/components/owner/AffiliateManager';
 import WhatsAppAutomation from '@/components/owner/WhatsAppAutomation';
 import CRMUsersManager from '@/components/owner/CRMUsersManager';
+import ProposalsManager from '@/components/owner/ProposalsManager';
 
 const OWNER_EMAIL = 'lyronrp@gmail.com';
 
@@ -66,8 +68,9 @@ const navSections: NavSection[] = [
     items: [
       { id: 'subscriptions', label: 'Assinaturas', icon: CreditCard },
       { id: 'users', label: 'Usuários', icon: Users },
-      { id: 'affiliates', label: 'Afiliados', icon: Users, badge: 'Novo', badgeVariant: 'default' },
-      { id: 'crm', label: 'CRM', icon: Briefcase, badge: 'Novo', badgeVariant: 'default' },
+      { id: 'affiliates', label: 'Afiliados', icon: Users },
+      { id: 'proposals', label: 'Propostas', icon: Building2, badge: 'Novo', badgeVariant: 'default' },
+      { id: 'crm', label: 'CRM', icon: Briefcase },
       { id: 'affiliate-chatpro', label: 'ChatPro Afiliados', icon: MessageCircle },
       { id: 'database', label: 'Banco de Dados', icon: HardDrive },
     ]
@@ -147,6 +150,8 @@ const OwnerPanel = () => {
         return <UsersOverview />;
       case 'affiliates':
         return <AffiliateManager />;
+      case 'proposals':
+        return <ProposalsManager />;
       case 'crm':
         return <CRMUsersManager />;
       case 'affiliate-chatpro':
