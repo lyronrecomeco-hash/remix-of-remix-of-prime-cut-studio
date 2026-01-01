@@ -179,6 +179,28 @@ export function useWhatsAppConnection() {
     }
   };
 
+  // Pre-connection health check to prevent ghost connections
+  const validateBackendHealth = async (backendUrl: string): Promise<boolean> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    try {
+      const response = await fetch(`${backendUrl}/health`, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+      
+      if (!response.ok) return false;
+      
+      const data = await response.json();
+      return data.status === 'ok' || data.success === true;
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
   const startConnection = useCallback(async (
     instanceId: string,
     backendUrl: string,
@@ -197,6 +219,13 @@ export function useWhatsAppConnection() {
     });
 
     try {
+      // ANTI-GHOST: Validate backend is actually running before attempting connection
+      const isBackendHealthy = await validateBackendHealth(backendUrl);
+      
+      if (!isBackendHealthy) {
+        throw new Error('Backend não está respondendo. Verifique se o CMD está rodando com o script.');
+      }
+
       // First check if already connected
       const initialStatus = await checkStatus(instanceId, backendUrl, token);
       

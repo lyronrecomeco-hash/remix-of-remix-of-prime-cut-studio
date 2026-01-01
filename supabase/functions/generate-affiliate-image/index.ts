@@ -20,6 +20,46 @@ serve(async (req) => {
 
     console.log('Generating image with prompt:', prompt, 'type:', type);
 
+    // Enhanced prompt based on type with exact aspect ratio
+    let enhancedPrompt = '';
+    let aspectRatioHint = '';
+    
+    switch (type) {
+      case 'banner':
+        aspectRatioHint = '16:9 aspect ratio, widescreen horizontal';
+        enhancedPrompt = `Create a professional marketing banner image (16:9 wide format, 1920x1080 resolution). ${prompt}. 
+Style: Modern, clean, premium digital marketing aesthetic. High contrast, vibrant colors, professional typography placeholder areas.
+The image should be perfect for website headers, social media banners, and advertising campaigns.
+IMPORTANT: Ultra high resolution, photorealistic quality, no text overlays.`;
+        break;
+      case 'story':
+        aspectRatioHint = '9:16 aspect ratio, vertical portrait format';
+        enhancedPrompt = `Create a professional vertical story/reel image (9:16 portrait format, 1080x1920 resolution). ${prompt}.
+Style: Instagram/WhatsApp story format, edge-to-edge design, mobile-optimized, eye-catching colors.
+The image should fill the entire vertical frame without any empty space.
+IMPORTANT: Ultra high resolution, perfect for mobile viewing, no text overlays.`;
+        break;
+      case 'post':
+        aspectRatioHint = '1:1 aspect ratio, square format';
+        enhancedPrompt = `Create a professional square social media post image (1:1 format, 1080x1080 resolution). ${prompt}.
+Style: Instagram/Facebook post format, centered composition, balanced layout, modern aesthetic.
+The image should be perfectly square and optimized for social media feeds.
+IMPORTANT: Ultra high resolution, professional quality, no text overlays.`;
+        break;
+      case 'logo':
+        aspectRatioHint = '1:1 aspect ratio, square logo format';
+        enhancedPrompt = `Create a professional logo design (1:1 square format, 1024x1024 resolution). ${prompt}.
+Style: Minimalist, modern, scalable vector-style design. Clean lines, memorable silhouette, professional branding.
+The logo should work on any background (dark or light) and be recognizable at small sizes.
+IMPORTANT: Ultra high resolution, clean edges, transparent-friendly design, no text unless specifically requested.`;
+        break;
+      default:
+        aspectRatioHint = '16:9 aspect ratio';
+        enhancedPrompt = `Create a professional marketing image. ${prompt}.
+Style: Modern, clean, professional. High quality digital marketing material.
+IMPORTANT: Ultra high resolution.`;
+    }
+
     // Generate image using Lovable AI Gateway with Gemini
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -28,14 +68,18 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
+        model: 'google/gemini-3-pro-image-preview',
         messages: [
           {
             role: 'user',
-            content: `Crie uma imagem profissional de marketing para afiliados: ${prompt}. 
-            Estilo: moderno, clean, profissional, cores vibrantes.
-            Tipo: ${type === 'banner' ? 'Banner promocional 16:9' : type === 'story' ? 'Story vertical 9:16' : 'Post quadrado 1:1'}.
-            A imagem deve ser atraente para redes sociais e marketing digital.`
+            content: `${enhancedPrompt}
+            
+TECHNICAL REQUIREMENTS:
+- Aspect ratio: ${aspectRatioHint}
+- Fill the entire canvas - no empty borders or padding
+- Professional quality suitable for commercial use
+- Modern 2024 design trends
+- High contrast and vibrant colors`
           }
         ],
         modalities: ['image', 'text']
@@ -76,7 +120,8 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       imageUrl,
-      description: textResponse 
+      description: textResponse,
+      aspectRatio: type === 'story' ? '9:16' : type === 'post' || type === 'logo' ? '1:1' : '16:9'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

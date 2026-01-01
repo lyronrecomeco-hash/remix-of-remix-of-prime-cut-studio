@@ -12,25 +12,49 @@ import {
   MessageSquare,
   Instagram,
   Facebook,
-  Mail
+  Mail,
+  Palette
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface AIContentGeneratorProps {
   affiliateCode: string;
 }
 
+type ImageType = 'banner' | 'story' | 'post' | 'logo';
+
+const imageTypeConfig: Record<ImageType, { label: string; aspectRatio: string; description: string }> = {
+  banner: { 
+    label: 'Banner (16:9)', 
+    aspectRatio: '16/9', 
+    description: 'Ideal para headers, capas e anúncios'
+  },
+  story: { 
+    label: 'Story (9:16)', 
+    aspectRatio: '9/16', 
+    description: 'Perfeito para Instagram/WhatsApp Stories'
+  },
+  post: { 
+    label: 'Post Quadrado (1:1)', 
+    aspectRatio: '1/1', 
+    description: 'Ideal para feed do Instagram'
+  },
+  logo: { 
+    label: 'Logo (1:1)', 
+    aspectRatio: '1/1', 
+    description: 'Criação de logos e ícones'
+  },
+};
+
 const AIContentGenerator = ({ affiliateCode }: AIContentGeneratorProps) => {
   const [imagePrompt, setImagePrompt] = useState('');
-  const [imageType, setImageType] = useState('banner');
+  const [imageType, setImageType] = useState<ImageType>('banner');
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
 
@@ -116,7 +140,7 @@ const AIContentGenerator = ({ affiliateCode }: AIContentGeneratorProps) => {
       setCopied(true);
       toast.success('Texto copiado!');
       setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
+    } catch {
       toast.error('Erro ao copiar');
     }
   };
@@ -126,17 +150,33 @@ const AIContentGenerator = ({ affiliateCode }: AIContentGeneratorProps) => {
     
     const link = document.createElement('a');
     link.href = generatedImage;
-    link.download = `material-${Date.now()}.png`;
+    link.download = `material-${imageType}-${Date.now()}.png`;
     link.click();
     toast.success('Download iniciado!');
   };
 
-  const imageSuggestions = [
-    'Banner de promoção de sistema para barbearias com desconto',
-    'Arte para stories sobre gestão de agendamentos',
-    'Post para Instagram sobre automatização de barbearia',
-    'Banner profissional para WhatsApp marketing'
-  ];
+  const imageSuggestions: Record<ImageType, string[]> = {
+    banner: [
+      'Banner de promoção de sistema para barbearias com desconto',
+      'Banner profissional para WhatsApp marketing',
+      'Header para site de gestão de barbearias',
+    ],
+    story: [
+      'Arte para stories sobre gestão de agendamentos',
+      'Story promocional com chamada para ação',
+      'Story mostrando resultados de clientes',
+    ],
+    post: [
+      'Post para Instagram sobre automatização de barbearia',
+      'Post com depoimento de cliente satisfeito',
+      'Post educativo sobre gestão de negócios',
+    ],
+    logo: [
+      'Logo moderno para barbearia premium',
+      'Ícone minimalista para app de agendamento',
+      'Logo profissional para consultoria',
+    ],
+  };
 
   const textSuggestions = [
     'Convite para conhecer o sistema de gestão',
@@ -144,6 +184,8 @@ const AIContentGenerator = ({ affiliateCode }: AIContentGeneratorProps) => {
     'Benefícios de usar tecnologia na barbearia',
     'Depoimento sobre facilidade de agendamento'
   ];
+
+  const currentConfig = imageTypeConfig[imageType];
 
   return (
     <div className="space-y-6">
@@ -184,16 +226,22 @@ const AIContentGenerator = ({ affiliateCode }: AIContentGeneratorProps) => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-foreground">Tipo de Imagem</Label>
-                <Select value={imageType} onValueChange={setImageType}>
+                <Select value={imageType} onValueChange={(v) => setImageType(v as ImageType)}>
                   <SelectTrigger className="bg-input border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="banner">Banner (16:9)</SelectItem>
-                    <SelectItem value="story">Story (9:16)</SelectItem>
-                    <SelectItem value="post">Post Quadrado (1:1)</SelectItem>
+                    {Object.entries(imageTypeConfig).map(([key, config]) => (
+                      <SelectItem key={key} value={key}>
+                        <span className="flex items-center gap-2">
+                          {key === 'logo' ? <Palette className="w-4 h-4" /> : <Image className="w-4 h-4" />}
+                          {config.label}
+                        </span>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">{currentConfig.description}</p>
               </div>
 
               <div className="space-y-2">
@@ -201,7 +249,7 @@ const AIContentGenerator = ({ affiliateCode }: AIContentGeneratorProps) => {
                 <Textarea
                   value={imagePrompt}
                   onChange={(e) => setImagePrompt(e.target.value)}
-                  placeholder="Ex: Banner promocional mostrando um smartphone com o aplicativo de agendamento de barbearia"
+                  placeholder={`Ex: ${imageSuggestions[imageType][0]}`}
                   className="bg-input border-border min-h-[100px]"
                 />
               </div>
@@ -209,7 +257,7 @@ const AIContentGenerator = ({ affiliateCode }: AIContentGeneratorProps) => {
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Sugestões:</p>
                 <div className="flex flex-wrap gap-2">
-                  {imageSuggestions.map((suggestion, i) => (
+                  {imageSuggestions[imageType].map((suggestion, i) => (
                     <button
                       key={i}
                       onClick={() => setImagePrompt(suggestion)}
@@ -241,8 +289,22 @@ const AIContentGenerator = ({ affiliateCode }: AIContentGeneratorProps) => {
 
               {generatedImage && (
                 <div className="mt-4 space-y-3">
-                  <div className="relative rounded-lg overflow-hidden border border-border">
-                    <img src={generatedImage} alt="Imagem gerada" className="w-full h-auto" />
+                  <div 
+                    className="relative rounded-lg overflow-hidden border border-border bg-muted/30 flex items-center justify-center"
+                    style={{ 
+                      aspectRatio: currentConfig.aspectRatio,
+                      maxHeight: imageType === 'story' ? '500px' : '400px',
+                    }}
+                  >
+                    <img 
+                      src={generatedImage} 
+                      alt="Imagem gerada" 
+                      className="w-full h-full object-contain"
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '100%',
+                      }}
+                    />
                   </div>
                   <div className="flex gap-2">
                     <Button onClick={downloadImage} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
