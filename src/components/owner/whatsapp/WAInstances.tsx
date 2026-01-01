@@ -284,6 +284,21 @@ export const WAInstances = ({
 
   const connectedCount = instances.filter(i => i.status === 'connected').length;
 
+  const primaryInstance = instances.length === 1 ? instances[0] : null;
+  const canQuickConnect = !!primaryInstance && isBackendActive && primaryInstance.status !== 'connected';
+
+  const primaryAction = canQuickConnect
+    ? {
+        label: 'Conectar WhatsApp',
+        onClick: () => handleConnectInstance(primaryInstance.id),
+        icon: QrCode,
+      }
+    : {
+        label: 'Nova Instância',
+        onClick: openNewDialog,
+        icon: Plus,
+      };
+
   return (
     <div className="space-y-6">
       {/* Header Stats */}
@@ -366,9 +381,9 @@ export const WAInstances = ({
           <h3 className="text-lg font-semibold">Instâncias WhatsApp</h3>
           <p className="text-sm text-muted-foreground">Gerencie suas conexões WhatsApp</p>
         </div>
-        <Button onClick={openNewDialog}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nova Instância
+        <Button onClick={primaryAction.onClick} disabled={!isBackendActive && primaryAction.label === 'Conectar WhatsApp'}>
+          <primaryAction.icon className="w-4 h-4 mr-2" />
+          {primaryAction.label}
         </Button>
       </div>
 

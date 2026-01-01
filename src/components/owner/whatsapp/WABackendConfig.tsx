@@ -390,7 +390,24 @@ app.get('/api/instance/:id/status', async (req, res) => {
   const instanceId = String(req.params.id);
   const conn = connections.get(instanceId);
   if (!conn) return res.json({ status: 'disconnected', connected: false });
-  return res.json({ status: conn.status, connected: conn.status === 'connected', phone: conn.phone || undefined });
+
+  const hasUser = !!(conn.sock && conn.sock.user && conn.sock.user.id);
+  const connected = conn.status === 'connected' || hasUser;
+
+  const phoneFromSock = hasUser ? String(conn.sock.user.id).split('@')[0].split(':')[0] : null;
+  const phone = conn.phone || phoneFromSock || null;
+
+  if (connected && conn.status !== 'connected') {
+    conn.status = 'connected';
+    conn.qr = null;
+    conn.phone = phone;
+  }
+
+  return res.json({
+    status: connected ? 'connected' : conn.status,
+    connected,
+    phone: phone || undefined,
+  });
 });
 
 app.post('/api/instance/:id/qrcode', async (req, res) => {

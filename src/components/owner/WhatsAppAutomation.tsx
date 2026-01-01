@@ -208,7 +208,30 @@ const WhatsAppAutomation = () => {
         .order('created_at', { ascending: false });
 
       if (instancesError) throw instancesError;
-      setInstances((instancesData || []) as WhatsAppInstance[]);
+
+      let nextInstances = (instancesData || []) as WhatsAppInstance[];
+
+      // Auto-provisiona uma instância padrão para o usuário não precisar "criar instância" manualmente
+      if (nextInstances.length === 0) {
+        const { data: created, error: createError } = await supabase
+          .from('whatsapp_instances')
+          .insert({
+            name: 'Principal',
+            instance_token: crypto.randomUUID(),
+            status: 'inactive',
+            phone_number: null,
+            auto_reply_enabled: false,
+            message_delay_ms: 1000,
+          })
+          .select('*')
+          .single();
+
+        if (!createError && created) {
+          nextInstances = [created as WhatsAppInstance];
+        }
+      }
+
+      setInstances(nextInstances);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Erro ao carregar dados');
