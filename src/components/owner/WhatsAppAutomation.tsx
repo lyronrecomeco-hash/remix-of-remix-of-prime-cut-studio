@@ -44,8 +44,19 @@ import {
   Download,
   FileText,
   Save,
-  Activity
+  Activity,
+  LayoutDashboard,
+  Inbox,
+  Send,
+  Bot,
+  Webhook,
+  Users,
+  Contact,
+  Lock,
+  Zap,
+  Plug
 } from 'lucide-react';
+import { WADashboard, WAInbox, WAAdvancedSend, WAAutomations, WAWebhooks, WAGroups, WAContacts, WASecurity, WAIntegrations, WAQuickReplies } from './whatsapp';
 
 // Types
 interface BackendConfig {

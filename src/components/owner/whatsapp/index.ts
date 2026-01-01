@@ -1,0 +1,10 @@
+export { WADashboard } from './WADashboard';
+export { WAInbox } from './WAInbox';
+export { WAAdvancedSend } from './WAAdvancedSend';
+export { WAAutomations } from './WAAutomations';
+export { WAWebhooks } from './WAWebhooks';
+export { WAGroups } from './WAGroups';
+export { WAContacts } from './WAContacts';
+export { WASecurity } from './WASecurity';
+export { WAIntegrations } from './WAIntegrations';
+export { WAQuickReplies } from './WAQuickReplies';
