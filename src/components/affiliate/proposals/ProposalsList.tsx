@@ -94,8 +94,8 @@ export function ProposalsList({
   };
 
   const getProposalLink = (proposal: AffiliateProposal) => {
-    const slug = proposal.company_name.toLowerCase().replace(/\s+/g, '-');
-    return `${window.location.origin}/proposta/${slug}`;
+    // Use ID for reliable lookup
+    return `${window.location.origin}/proposta/${proposal.id}`;
   };
 
   const copyLink = (proposal: AffiliateProposal) => {
@@ -105,8 +105,7 @@ export function ProposalsList({
   };
 
   const openProposalPage = (proposal: AffiliateProposal) => {
-    const slug = proposal.company_name.toLowerCase().replace(/\s+/g, '-');
-    window.open(`/proposta/${slug}`, '_blank');
+    window.open(`/proposta/${proposal.id}`, '_blank');
   };
 
   if (loading) {
