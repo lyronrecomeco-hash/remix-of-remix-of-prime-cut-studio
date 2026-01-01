@@ -88,24 +88,25 @@ export const ProposalViewer: React.FC<ProposalViewerProps> = ({
       return;
     }
 
+    if (!proposal.company_email) {
+      toast.error('Email da empresa não informado. Edite a proposta e adicione o email.');
+      return;
+    }
+
     setIsSending(true);
     try {
-      const { error } = await supabase
-        .from('affiliate_proposals')
-        .update({
-          status: 'sent',
-          sent_at: new Date().toISOString()
-        })
-        .eq('id', proposal.id);
+      const { data, error } = await supabase.functions.invoke('send-proposal-email', {
+        body: { proposalId: proposal.id }
+      });
 
       if (error) throw error;
 
-      toast.success('Proposta enviada com sucesso!');
+      toast.success('Proposta enviada por email com sucesso!');
       onProposalUpdated();
       onOpenChange(false);
     } catch (error) {
       console.error('Error sending proposal:', error);
-      toast.error('Erro ao enviar proposta');
+      toast.error('Erro ao enviar proposta por email');
     } finally {
       setIsSending(false);
     }

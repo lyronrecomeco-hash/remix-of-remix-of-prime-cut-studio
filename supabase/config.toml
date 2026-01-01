@@ -1,6 +1,8 @@
 project_id = "wvnszzrvrrueuycrpgyc"
 
 [functions.generate-proposal]
+
+[functions.send-proposal-email]
 verify_jwt = false
 
 [functions.create-crm-user]
