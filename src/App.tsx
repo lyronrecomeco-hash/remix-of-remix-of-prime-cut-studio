@@ -41,6 +41,7 @@ const AffiliatePanel = lazy(() => import("./pages/AffiliatePanel"));
 const CRMLogin = lazy(() => import("./pages/CRMLogin"));
 const CRMPanel = lazy(() => import("./pages/CRMPanel"));
 const CRMTokenLogin = lazy(() => import("./pages/CRMTokenLogin"));
+const ProposalPage = lazy(() => import("./pages/ProposalPage"));
 
 // QueryClient com retry logic e cache otimizado
 const queryClient = new QueryClient({
@@ -207,6 +208,7 @@ const AppContent = () => {
             } />
             <Route path="/avaliar" element={<FeedbackPage />} />
             <Route path="/owner" element={<OwnerPanel />} />
+            <Route path="/proposta/:slug" element={<ProposalPage />} />
             <Route path="/email-confirmado" element={<EmailConfirmed />} />
             <Route path="/confirmar-email" element={<ConfirmarEmail />} />
             <Route path="/redefinir-senha" element={<RedefinirSenha />} />
