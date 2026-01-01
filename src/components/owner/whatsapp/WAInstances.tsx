@@ -284,13 +284,19 @@ export const WAInstances = ({
 
   const connectedCount = instances.filter(i => i.status === 'connected').length;
 
-  const primaryInstance = instances.length === 1 ? instances[0] : null;
-  const canQuickConnect = !!primaryInstance && isBackendActive && primaryInstance.status !== 'connected';
+  // UX: se existir ao menos 1 instância e nenhuma conectada, vira "Conectar WhatsApp" automaticamente
+  const bestCandidate =
+    instances.find((i) => i.status === 'qr_pending') ||
+    instances.find((i) => i.status === 'disconnected') ||
+    instances.find((i) => i.status !== 'connected') ||
+    null;
+
+  const canQuickConnect = !!bestCandidate && isBackendActive && bestCandidate.status !== 'connected';
 
   const primaryAction = canQuickConnect
     ? {
         label: 'Conectar WhatsApp',
-        onClick: () => handleConnectInstance(primaryInstance.id),
+        onClick: () => handleConnectInstance(bestCandidate.id),
         icon: QrCode,
       }
     : {

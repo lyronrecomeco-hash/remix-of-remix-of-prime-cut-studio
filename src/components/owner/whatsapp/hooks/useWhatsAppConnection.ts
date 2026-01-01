@@ -25,7 +25,7 @@ export function useWhatsAppConnection() {
 
   const maxPollingAttempts = 150; // ~2.5 minutes total (1s * 150)
   const pollingInterval = 1000;
-  const qrAutoRefreshMs = 25000;
+  const qrAutoRefreshMs = 45000;
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
@@ -251,7 +251,7 @@ export function useWhatsAppConnection() {
             return;
           }
 
-          // Auto-refresh QR to avoid scanning expired codes (WhatsApp often expires QR ~30s)
+          // Auto-refresh QR (bem menos agressivo) para evitar expiração
           if (Date.now() - lastQrRefreshAtRef.current > qrAutoRefreshMs) {
             try {
               const nextQr = await generateQRCode(instanceId, backendUrl, token, phoneHint);
@@ -261,6 +261,28 @@ export function useWhatsAppConnection() {
               }
             } catch {
               // ignore refresh failures; polling continues
+            }
+          }
+
+          // Se ficar preso em QR_PENDING por muito tempo, faz um reset limpo (resolve travas comuns)
+          if (attempts === 35) {
+            try {
+              await fetch(`${backendUrl}/api/instance/${instanceId}/disconnect`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+              });
+              await updateInstanceStatus(instanceId, 'qr_pending');
+              const freshQr = await generateQRCode(instanceId, backendUrl, token, phoneHint);
+              if (freshQr && freshQr !== 'CONNECTED') {
+                lastQrRefreshAtRef.current = Date.now();
+                setConnectionState((prev) => ({ ...prev, qrCode: freshQr }));
+              }
+              toast.message('Conexão travada — gerando novo QR automaticamente.');
+            } catch {
+              // se falhar, segue o fluxo normal
             }
           }
 
