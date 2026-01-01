@@ -11,7 +11,8 @@ import {
   Menu,
   X,
   Sparkles,
-  Building2
+  Building2,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +21,8 @@ import AffiliateDashboard from '@/components/affiliate/AffiliateDashboard';
 import AffiliateSales from '@/components/affiliate/AffiliateSales';
 import AffiliateMaterials from '@/components/affiliate/AffiliateMaterials';
 import AffiliateWithdrawals from '@/components/affiliate/AffiliateWithdrawals';
-import AffiliateProfile from '@/components/affiliate/AffiliateProfile';
+import AffiliateProfileComplete from '@/components/affiliate/AffiliateProfileComplete';
+import AffiliateSettings from '@/components/affiliate/AffiliateSettings';
 import AIContentGenerator from '@/components/affiliate/AIContentGenerator';
 import AffiliateProposals from '@/components/affiliate/AffiliateProposals';
 import HowItWorksModal from '@/components/affiliate/HowItWorksModal';
@@ -49,6 +51,7 @@ const navItems = [
   { id: 'materials', label: 'Materiais', icon: FileText },
   { id: 'withdrawals', label: 'Saques', icon: Wallet },
   { id: 'profile', label: 'Meu Perfil', icon: User },
+  { id: 'settings', label: 'Configurações', icon: Settings },
 ];
 
 const AffiliatePanel = () => {
@@ -144,7 +147,9 @@ const AffiliatePanel = () => {
       case 'withdrawals':
         return <AffiliateWithdrawals affiliate={affiliate} onRefresh={checkAffiliateAuth} />;
       case 'profile':
-        return <AffiliateProfile affiliate={affiliate} />;
+        return <AffiliateProfileComplete affiliate={affiliate} onRefresh={checkAffiliateAuth} />;
+      case 'settings':
+        return <AffiliateSettings affiliateId={affiliate.id} />;
       default:
         return <AffiliateDashboard affiliate={affiliate} />;
     }
