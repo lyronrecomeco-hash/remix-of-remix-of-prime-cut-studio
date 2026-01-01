@@ -251,36 +251,34 @@ export const WABackendConfig = ({
   };
 
   const getLocalScript = () => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
-    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'YOUR_SUPABASE_KEY';
-
     return `// ===============================================
-// WhatsApp Backend Local (PC Local) v2.0
+// WhatsApp Backend Local (PC Local) v2.1
+// Rotas: /api/instance/:id/{qrcode,status,disconnect,send}
 // ===============================================
+
 const express = require('express');
 const cors = require('cors');
 const qrcode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
+
 const {
   makeWASocket,
   DisconnectReason,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
 } = require('@whiskeysockets/baileys');
-const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = ${localPort};
 const TOKEN = '${localToken}';
-const supabase = createClient('${supabaseUrl}', '${supabaseKey}');
 
 const serverLogs = [];
 const pushLog = (type, message) => {
   const payload = { timestamp: new Date().toISOString(), type, message };
   serverLogs.push(payload);
   if (serverLogs.length > 500) serverLogs.shift();
-  console.log(\`[\${type.toUpperCase()}] \${message}\`);
+  console.log('[' + String(type).toUpperCase() + '] ' + message);
 };
 
 app.use(cors({ origin: true, credentials: true }));
@@ -289,28 +287,185 @@ app.use(express.json({ limit: '5mb' }));
 const authMiddleware = (req, res, next) => {
   if (req.method === 'OPTIONS') return next();
   const auth = req.headers.authorization;
-  if (!auth || auth !== \`Bearer \${TOKEN}\`) {
+  if (!auth || auth !== 'Bearer ' + TOKEN) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
 };
 app.use(authMiddleware);
 
+const sessionsDir = path.join(__dirname, 'sessions');
+if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
+
 const connections = new Map();
 
+const removeSession = (instanceId) => {
+  try {
+    const dir = path.join(sessionsDir, instanceId);
+    if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+  } catch { /* ignore */ }
+};
+
+const normalizePhoneToJid = (phone) => {
+  const digits = String(phone || '').replace(/\\D/g, '');
+  if (!digits) return null;
+  return digits + '@s.whatsapp.net';
+};
+
+const createOrGetSocket = async (instanceId) => {
+  if (connections.has(instanceId)) return connections.get(instanceId);
+
+  const authPath = path.join(sessionsDir, instanceId);
+  if (!fs.existsSync(authPath)) fs.mkdirSync(authPath, { recursive: true });
+
+  const { state, saveCreds } = await useMultiFileAuthState(authPath);
+  const { version } = await fetchLatestBaileysVersion();
+
+  const sock = makeWASocket({
+    auth: state,
+    version,
+    printQRInTerminal: false,
+    browser: ['Genesis Hub', 'Chrome', '2.1'],
+  });
+
+  const conn = { sock, status: 'disconnected', qr: null, phone: null };
+  connections.set(instanceId, conn);
+
+  sock.ev.on('creds.update', saveCreds);
+
+  sock.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect, qr } = update || {};
+
+    if (qr) {
+      conn.qr = qr;
+      conn.status = 'qr_pending';
+      pushLog('info', 'QR gerado para instância ' + instanceId);
+    }
+
+    if (connection === 'open') {
+      conn.status = 'connected';
+      conn.qr = null;
+      const raw = sock.user && sock.user.id ? String(sock.user.id) : '';
+      conn.phone = raw ? raw.split('@')[0].split(':')[0] : null;
+      pushLog('success', 'Instância ' + instanceId + ' conectada (' + (conn.phone || 'sem número') + ')');
+    }
+
+    if (connection === 'close') {
+      conn.status = 'disconnected';
+      conn.qr = null;
+
+      const code = lastDisconnect && lastDisconnect.error && lastDisconnect.error.output
+        ? lastDisconnect.error.output.statusCode
+        : null;
+
+      if (code === DisconnectReason.loggedOut || code === 401) {
+        pushLog('warning', 'Sessão expirada para instância ' + instanceId);
+        try { sock.logout(); } catch {}
+        try { sock.end(); } catch {}
+        connections.delete(instanceId);
+        removeSession(instanceId);
+        return;
+      }
+
+      pushLog('warning', 'Instância ' + instanceId + ' desconectada (código ' + code + ')');
+    }
+  });
+
+  return conn;
+};
+
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', name: 'WhatsApp Local Backend', version: '2.0.0' });
+  res.json({ status: 'ok', name: 'WhatsApp Local Backend', version: '2.1.0', routes: { apiInstance: true } });
 });
 
 app.get('/logs', (req, res) => {
   const since = req.query.since ? new Date(String(req.query.since)) : null;
-  const logs = since ? serverLogs.filter(l => new Date(l.timestamp) > since) : serverLogs.slice(-100);
+  const logs = since
+    ? serverLogs.filter((l) => new Date(l.timestamp) > since)
+    : serverLogs.slice(-100);
   res.json({ logs });
 });
 
+app.get('/api/instance/:id/status', async (req, res) => {
+  const instanceId = String(req.params.id);
+  const conn = connections.get(instanceId);
+  if (!conn) return res.json({ status: 'disconnected', connected: false });
+  return res.json({ status: conn.status, connected: conn.status === 'connected', phone: conn.phone || undefined });
+});
+
+app.post('/api/instance/:id/qrcode', async (req, res) => {
+  const instanceId = String(req.params.id);
+
+  try {
+    const conn = await createOrGetSocket(instanceId);
+
+    if (conn.status === 'connected') {
+      return res.json({ status: 'connected', connected: true, phone: conn.phone || undefined });
+    }
+
+    const startedAt = Date.now();
+    while (!conn.qr && Date.now() - startedAt < 15000) {
+      await new Promise((r) => setTimeout(r, 250));
+    }
+
+    if (!conn.qr) {
+      return res.status(500).json({ error: 'QR não disponível. Tente novamente.' });
+    }
+
+    const dataUrl = await qrcode.toDataURL(conn.qr, { margin: 1, scale: 6 });
+    return res.json({ status: 'qr_pending', qrcode: dataUrl });
+  } catch (err) {
+    const msg = err && err.message ? err.message : 'Erro ao gerar QR';
+    pushLog('error', 'Falha ao gerar QR (' + instanceId + '): ' + msg);
+    return res.status(500).json({ error: msg });
+  }
+});
+
+app.post('/api/instance/:id/disconnect', async (req, res) => {
+  const instanceId = String(req.params.id);
+  const conn = connections.get(instanceId);
+
+  try {
+    if (conn && conn.sock) {
+      try { await conn.sock.logout(); } catch {}
+      try { conn.sock.end(); } catch {}
+    }
+  } finally {
+    connections.delete(instanceId);
+    removeSession(instanceId);
+  }
+
+  pushLog('info', 'Instância ' + instanceId + ' desconectada via API.');
+  return res.json({ success: true });
+});
+
+app.post('/api/instance/:id/send', async (req, res) => {
+  const instanceId = String(req.params.id);
+  const { phone, message } = req.body || {};
+
+  const conn = connections.get(instanceId);
+  if (!conn || conn.status !== 'connected') {
+    return res.status(400).json({ error: 'Instância não conectada' });
+  }
+
+  const jid = normalizePhoneToJid(phone);
+  if (!jid) return res.status(400).json({ error: 'Telefone inválido' });
+  if (!message) return res.status(400).json({ error: 'Mensagem vazia' });
+
+  try {
+    await conn.sock.sendMessage(jid, { text: String(message) });
+    return res.json({ success: true });
+  } catch (err) {
+    const msg = err && err.message ? err.message : 'Falha ao enviar mensagem';
+    pushLog('error', 'Falha envio (' + instanceId + '): ' + msg);
+    return res.status(500).json({ error: msg });
+  }
+});
+
 app.listen(PORT, () => {
-  console.log(\`WhatsApp Backend Local rodando na porta \${PORT}\`);
   pushLog('success', 'Backend iniciado com sucesso!');
+  pushLog('success', 'Rotas /api/instance habilitadas.');
+  console.log('WhatsApp Backend Local rodando na porta ' + PORT);
 });
 `;
   };
