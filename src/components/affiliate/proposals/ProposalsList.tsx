@@ -13,7 +13,8 @@ import {
   Edit,
   XCircle,
   ClipboardList,
-  CheckCircle
+  CheckCircle,
+  FileText
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ interface ProposalsListProps {
   onDelete: (id: string) => Promise<boolean>;
   onView?: (proposal: AffiliateProposal) => void;
   onStartQuestionnaire?: (proposal: AffiliateProposal) => void;
+  onViewProposal?: (proposal: AffiliateProposal) => void;
 }
 
 export function ProposalsList({ 
@@ -52,7 +54,8 @@ export function ProposalsList({
   onUpdate, 
   onDelete, 
   onView,
-  onStartQuestionnaire 
+  onStartQuestionnaire,
+  onViewProposal
 }: ProposalsListProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -162,6 +165,19 @@ export function ProposalsList({
                     >
                       <ClipboardList className="w-4 h-4" />
                       <span className="hidden sm:inline">Questionário</span>
+                    </Button>
+                  )}
+
+                  {/* Botão Ver Proposta - aparece quando questionário está completo */}
+                  {proposal.questionnaire_completed && onViewProposal && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onViewProposal(proposal)}
+                      className="gap-1 text-emerald-600 border-emerald-500/50 hover:bg-emerald-500/10"
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span className="hidden sm:inline">Ver Proposta</span>
                     </Button>
                   )}
 

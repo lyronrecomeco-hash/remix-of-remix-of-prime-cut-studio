@@ -22,6 +22,9 @@ export interface AffiliateProposal {
   questionnaire_answers: unknown[] | null;
   questionnaire_completed: boolean | null;
   ai_analysis: unknown | null;
+  // Campos FASE 3
+  generated_proposal: unknown | null;
+  proposal_generated_at: string | null;
 }
 
 export interface CreateProposalData {
