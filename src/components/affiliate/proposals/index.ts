@@ -6,3 +6,4 @@ export * from './ProposalsList';
 export * from './ProposalsStats';
 export * from './CreateProposalModal';
 export * from './ProposalQuestionnaireModal';
+export * from './ProposalViewer';

@@ -7,6 +7,7 @@ import {
   ProposalsStats, 
   CreateProposalModal,
   ProposalQuestionnaireModal,
+  ProposalViewer,
   type AffiliateProposal,
 } from './proposals';
 
@@ -17,6 +18,7 @@ interface AffiliateProposalsProps {
 const AffiliateProposals = ({ affiliateId }: AffiliateProposalsProps) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [questionnaireProposal, setQuestionnaireProposal] = useState<AffiliateProposal | null>(null);
+  const [viewerProposal, setViewerProposal] = useState<AffiliateProposal | null>(null);
   
   const {
     proposals,
@@ -34,6 +36,10 @@ const AffiliateProposals = ({ affiliateId }: AffiliateProposalsProps) => {
   const handleQuestionnaireComplete = () => {
     fetchProposals();
     setQuestionnaireProposal(null);
+  };
+
+  const handleProposalUpdated = () => {
+    fetchProposals();
   };
 
   return (
@@ -70,6 +76,7 @@ const AffiliateProposals = ({ affiliateId }: AffiliateProposalsProps) => {
           onUpdate={updateProposal}
           onDelete={deleteProposal}
           onStartQuestionnaire={setQuestionnaireProposal}
+          onViewProposal={setViewerProposal}
         />
       </div>
 
@@ -88,6 +95,16 @@ const AffiliateProposals = ({ affiliateId }: AffiliateProposalsProps) => {
           onClose={() => setQuestionnaireProposal(null)}
           proposal={questionnaireProposal}
           onComplete={handleQuestionnaireComplete}
+        />
+      )}
+
+      {/* Visualizador de Proposta */}
+      {viewerProposal && (
+        <ProposalViewer
+          proposal={viewerProposal}
+          open={!!viewerProposal}
+          onOpenChange={(open) => !open && setViewerProposal(null)}
+          onProposalUpdated={handleProposalUpdated}
         />
       )}
     </div>

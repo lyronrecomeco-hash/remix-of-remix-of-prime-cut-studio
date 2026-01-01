@@ -160,9 +160,11 @@ export type Database = {
           company_phone: string | null
           contact_name: string | null
           created_at: string
+          generated_proposal: Json | null
           id: string
           niche_id: string | null
           notes: string | null
+          proposal_generated_at: string | null
           questionnaire_answers: Json | null
           questionnaire_completed: boolean | null
           sent_at: string | null
@@ -180,9 +182,11 @@ export type Database = {
           company_phone?: string | null
           contact_name?: string | null
           created_at?: string
+          generated_proposal?: Json | null
           id?: string
           niche_id?: string | null
           notes?: string | null
+          proposal_generated_at?: string | null
           questionnaire_answers?: Json | null
           questionnaire_completed?: boolean | null
           sent_at?: string | null
@@ -200,9 +204,11 @@ export type Database = {
           company_phone?: string | null
           contact_name?: string | null
           created_at?: string
+          generated_proposal?: Json | null
           id?: string
           niche_id?: string | null
           notes?: string | null
+          proposal_generated_at?: string | null
           questionnaire_answers?: Json | null
           questionnaire_completed?: boolean | null
           sent_at?: string | null
