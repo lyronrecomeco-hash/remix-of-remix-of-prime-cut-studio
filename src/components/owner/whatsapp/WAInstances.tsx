@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { 
   Plus, 
   Trash2, 
-  Edit, 
   Loader2, 
   Server, 
   Smartphone, 
@@ -21,15 +20,16 @@ import {
   Copy, 
   Check,
   Clock,
-  Power,
   PowerOff,
   Monitor,
   Settings2,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useWhatsAppConnection } from './hooks/useWhatsAppConnection';
 
 interface WhatsAppInstance {
   id: string;
@@ -83,8 +83,6 @@ export const WAInstances = ({
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
-  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
   const [currentInstanceId, setCurrentInstanceId] = useState<string | null>(null);
 
   // Edit states
@@ -95,14 +93,45 @@ export const WAInstances = ({
   const [editMessageDelay, setEditMessageDelay] = useState(1000);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
+  // Use the new connection hook
+  const { 
+    connectionState, 
+    startConnection, 
+    refreshQRCode, 
+    stopPolling 
+  } = useWhatsAppConnection();
+
+  const getBackendUrl = () => {
+    return backendMode === 'local' ? `${localEndpoint}:${localPort}` : backendUrl;
+  };
+
+  const getToken = () => {
+    return backendMode === 'local' ? localToken : masterToken;
+  };
+
   const openNewDialog = () => {
     setCreationStep('choose');
     setSelectedBackendType(null);
     setNewName('');
     setNewPhone('');
-    setQrCodeData(null);
+    setCurrentInstanceId(null);
     setIsNewDialogOpen(true);
   };
+
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      stopPolling();
+    }
+    setIsNewDialogOpen(open);
+  };
+
+  // Close dialog when connected
+  useEffect(() => {
+    if (!connectionState.isPolling && !connectionState.qrCode && !connectionState.error && currentInstanceId) {
+      // Connection successful - detected by no polling, no QR, no error but has instanceId
+      // This means the connection callback was triggered
+    }
+  }, [connectionState, currentInstanceId]);
 
   const handleBackendTypeSelection = (type: 'vps' | 'local') => {
     setSelectedBackendType(type);
@@ -139,7 +168,17 @@ export const WAInstances = ({
       
       if (isBackendActive) {
         setCreationStep('qrcode');
-        await generateQRCode(data.id);
+        // Use the new connection hook
+        startConnection(
+          data.id,
+          getBackendUrl(),
+          getToken(),
+          newPhone,
+          () => {
+            setIsNewDialogOpen(false);
+            onRefresh();
+          }
+        );
       } else {
         setIsNewDialogOpen(false);
       }
@@ -153,84 +192,31 @@ export const WAInstances = ({
     }
   };
 
-  const generateQRCode = async (instanceId: string) => {
-    setIsGeneratingQR(true);
-    setQrCodeData(null);
-
-    try {
-      const endpoint = backendMode === 'local'
-        ? `${localEndpoint}:${localPort}/api/instance/${instanceId}/qrcode`
-        : `${backendUrl}/api/instance/${instanceId}/qrcode`;
-      
-      const token = backendMode === 'local' ? localToken : masterToken;
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ phone: newPhone }),
-      });
-
-      const result = await response.json();
-
-      if (result.status === 'connected') {
-        toast.success('Instância já está conectada!');
+  const handleConnectInstance = (instanceId: string) => {
+    setCurrentInstanceId(instanceId);
+    setCreationStep('qrcode');
+    setIsNewDialogOpen(true);
+    
+    startConnection(
+      instanceId,
+      getBackendUrl(),
+      getToken(),
+      undefined,
+      () => {
         setIsNewDialogOpen(false);
         onRefresh();
-        return;
       }
-
-      if (result.qrcode) {
-        setQrCodeData(result.qrcode);
-        checkConnectionStatus(instanceId);
-      } else {
-        throw new Error(result.error || 'Erro ao gerar QR Code');
-      }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      toast.error(errorMessage);
-    } finally {
-      setIsGeneratingQR(false);
-    }
+    );
   };
 
-  const checkConnectionStatus = (instanceId: string) => {
-    let attempts = 0;
-    const maxAttempts = 60;
-
-    const checkInterval = setInterval(async () => {
-      attempts++;
-      
-      if (attempts >= maxAttempts) {
-        clearInterval(checkInterval);
-        return;
-      }
-
-      try {
-        const endpoint = backendMode === 'local'
-          ? `${localEndpoint}:${localPort}/api/instance/${instanceId}/status`
-          : `${backendUrl}/api/instance/${instanceId}/status`;
-        
-        const token = backendMode === 'local' ? localToken : masterToken;
-
-        const response = await fetch(endpoint, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-
-        const result = await response.json();
-
-        if (result.status === 'connected' || result.connected) {
-          clearInterval(checkInterval);
-          toast.success('WhatsApp conectado!');
-          setIsNewDialogOpen(false);
-          onRefresh();
-        }
-      } catch {
-        // Silent check
-      }
-    }, 2000);
+  const handleRefreshQR = () => {
+    if (!currentInstanceId) return;
+    
+    refreshQRCode(
+      currentInstanceId,
+      getBackendUrl(),
+      getToken()
+    );
   };
 
   const openEditDialog = (instance: WhatsAppInstance) => {
@@ -434,12 +420,7 @@ export const WAInstances = ({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          setCurrentInstanceId(instance.id);
-                          setCreationStep('qrcode');
-                          setIsNewDialogOpen(true);
-                          generateQRCode(instance.id);
-                        }}
+                        onClick={() => handleConnectInstance(instance.id)}
                       >
                         <QrCode className="w-4 h-4" />
                       </Button>
@@ -490,7 +471,7 @@ export const WAInstances = ({
       </div>
 
       {/* New Instance Dialog */}
-      <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
+      <Dialog open={isNewDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent className="max-w-md">
           {creationStep === 'choose' && (
             <>
@@ -576,31 +557,52 @@ export const WAInstances = ({
                 </DialogDescription>
               </DialogHeader>
               <div className="flex flex-col items-center justify-center py-8">
-                {isGeneratingQR ? (
+                {connectionState.isConnecting ? (
                   <div className="flex flex-col items-center gap-4">
                     <Loader2 className="w-12 h-12 animate-spin text-primary" />
-                    <p className="text-muted-foreground">Gerando QR Code...</p>
+                    <p className="text-muted-foreground">Conectando...</p>
                   </div>
-                ) : qrCodeData ? (
+                ) : connectionState.qrCode ? (
                   <div className="space-y-4 text-center">
                     <div className="p-4 bg-white rounded-lg inline-block">
-                      <img src={qrCodeData} alt="QR Code" className="w-64 h-64" />
+                      <img src={connectionState.qrCode} alt="QR Code" className="w-64 h-64" />
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Abra o WhatsApp → Menu → Aparelhos conectados → Conectar
                     </p>
+                    {connectionState.isPolling && (
+                      <div className="flex items-center justify-center gap-2 text-sm text-primary">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Aguardando conexão... ({connectionState.attempts}s)</span>
+                      </div>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRefreshQR}
+                      className="mt-2"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Atualizar QR Code
+                    </Button>
                   </div>
-                ) : (
+                ) : connectionState.error ? (
                   <div className="text-center text-muted-foreground">
-                    <QrCode className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                    <p>Erro ao gerar QR Code</p>
+                    <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-destructive opacity-50" />
+                    <p className="text-destructive mb-2">{connectionState.error}</p>
                     <Button
                       variant="outline"
                       className="mt-4"
-                      onClick={() => currentInstanceId && generateQRCode(currentInstanceId)}
+                      onClick={() => currentInstanceId && handleConnectInstance(currentInstanceId)}
                     >
+                      <RefreshCw className="w-4 h-4 mr-2" />
                       Tentar novamente
                     </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                    <p className="text-muted-foreground">Iniciando conexão...</p>
                   </div>
                 )}
               </div>
