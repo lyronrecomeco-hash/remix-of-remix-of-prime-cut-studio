@@ -81,7 +81,7 @@ export default function CRMPanel() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const { crmUser, crmTenant, isAuthenticated, isLoading, logout, isAdmin } = useCRM();
+  const { crmUser, crmTenant, isAuthenticated, isLoading, logout, isAdmin, refreshData } = useCRM();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -173,8 +173,46 @@ export default function CRMPanel() {
     );
   }
 
-  if (!isAuthenticated || !crmUser || !crmTenant) {
-    return null;
+  // Evita tela branca: se a sessão expirar ou os dados do tenant não carregarem,
+  // mostramos um fallback com ação para recuperar.
+  if (!isAuthenticated) {
+    return (
+      <CRMSecurityProvider>
+        <div className="min-h-screen bg-background flex items-center justify-center p-6">
+          <div className="text-center max-w-sm">
+            <p className="text-sm font-semibold">Sessão expirada</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Faça login novamente para acessar o CRM.
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigate('/crm/login')}>
+                Ir para login
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CRMSecurityProvider>
+    );
+  }
+
+  if (!crmUser || !crmTenant) {
+    return (
+      <CRMSecurityProvider>
+        <div className="min-h-screen bg-background flex items-center justify-center p-6">
+          <div className="text-center max-w-sm">
+            <p className="text-sm font-semibold">Carregando dados do CRM</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Se isso persistir, recarregue a sessão.
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => refreshData()}>
+                Tentar novamente
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CRMSecurityProvider>
+    );
   }
 
   return (
