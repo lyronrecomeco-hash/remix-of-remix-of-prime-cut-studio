@@ -23,8 +23,8 @@ export function useWhatsAppConnection() {
   const statusInFlightRef = useRef(false);
   const lastQrRefreshAtRef = useRef<number>(0);
 
-  const maxPollingAttempts = 150; // ~5 minutes total (2s * 150)
-  const pollingInterval = 2000;
+  const maxPollingAttempts = 150; // ~2.5 minutes total (1s * 150)
+  const pollingInterval = 1000;
   const qrAutoRefreshMs = 25000;
 
   const stopPolling = useCallback(() => {
@@ -119,10 +119,30 @@ export function useWhatsAppConnection() {
         signal: controller.signal,
       });
 
-      const result = await response.json().catch(() => ({}));
+      const rawText = await response.text();
+      let result: any = {};
+      try {
+        result = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        result = {};
+      }
 
       if (!response.ok) {
-        throw new Error(result?.error || result?.message || 'Erro ao gerar QR Code');
+        if (response.status === 404) {
+          throw new Error(
+            'Backend local desatualizado: baixe o script novamente na aba Backend e reinicie o serviço.'
+          );
+        }
+
+        const msg =
+          result?.error ||
+          result?.message ||
+          (rawText && rawText.includes('Cannot POST')
+            ? 'Endpoint de QR Code não encontrado no backend.'
+            : '') ||
+          `Erro ao gerar QR Code (HTTP ${response.status})`;
+
+        throw new Error(msg);
       }
 
       // If already connected
