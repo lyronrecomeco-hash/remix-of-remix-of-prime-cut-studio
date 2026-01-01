@@ -7,14 +7,11 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import {
   MessageSquare,
   Search,
   Send,
   Phone,
-  User,
-  Clock,
   Check,
   CheckCheck,
   Image,
@@ -27,8 +24,8 @@ import {
   Archive,
   ArchiveX,
   RefreshCw,
-  Filter,
-  MoreVertical
+  MoreVertical,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -37,34 +34,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-interface Conversation {
-  id: string;
-  instance_id: string;
-  phone: string;
-  contact_name: string | null;
-  profile_picture_url: string | null;
-  last_message: string | null;
-  last_message_at: string | null;
-  unread_count: number;
-  is_archived: boolean;
-  is_pinned: boolean;
-  is_muted: boolean;
-  tags: string[];
-}
-
-interface Message {
-  id: string;
-  phone_from: string;
-  phone_to: string | null;
-  contact_name: string | null;
-  message_type: string;
-  message_content: string | null;
-  media_url: string | null;
-  is_from_me: boolean;
-  is_read: boolean;
-  received_at: string;
-}
+import type { WhatsAppInstance, Conversation, InboxMessage } from './types';
 
 interface WAInboxProps {
   instances: Array<{ id: string; name: string; status: string }>;
@@ -72,7 +42,7 @@ interface WAInboxProps {
 
 export const WAInbox = ({ instances }: WAInboxProps) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<InboxMessage[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [newMessage, setNewMessage] = useState('');
@@ -81,6 +51,7 @@ export const WAInbox = ({ instances }: WAInboxProps) => {
   const [filter, setFilter] = useState<'all' | 'unread' | 'archived'>('all');
 
   const fetchConversations = useCallback(async () => {
+    setIsLoading(true);
     try {
       let query = supabase
         .from('whatsapp_conversations')
@@ -101,35 +72,39 @@ export const WAInbox = ({ instances }: WAInboxProps) => {
       setConversations((data || []) as Conversation[]);
     } catch (error) {
       console.error('Error fetching conversations:', error);
+      toast.error('Erro ao carregar conversas');
     } finally {
       setIsLoading(false);
     }
   }, [filter]);
 
-  const fetchMessages = useCallback(async (phone: string) => {
+  const fetchMessages = useCallback(async (phone: string, instanceId: string) => {
     try {
       const { data, error } = await supabase
         .from('whatsapp_inbox')
         .select('*')
+        .eq('instance_id', instanceId)
         .or(`phone_from.eq.${phone},phone_to.eq.${phone}`)
         .order('received_at', { ascending: true })
         .limit(100);
 
       if (error) throw error;
-      setMessages((data || []) as Message[]);
+      setMessages((data || []) as InboxMessage[]);
 
       // Mark as read
       await supabase
         .from('whatsapp_inbox')
         .update({ is_read: true, read_at: new Date().toISOString() })
         .eq('phone_from', phone)
+        .eq('instance_id', instanceId)
         .eq('is_read', false);
 
       // Update unread count
       await supabase
         .from('whatsapp_conversations')
         .update({ unread_count: 0 })
-        .eq('phone', phone);
+        .eq('phone', phone)
+        .eq('instance_id', instanceId);
 
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -142,7 +117,7 @@ export const WAInbox = ({ instances }: WAInboxProps) => {
 
   useEffect(() => {
     if (selectedConversation) {
-      fetchMessages(selectedConversation.phone);
+      fetchMessages(selectedConversation.phone, selectedConversation.instance_id);
     }
   }, [selectedConversation, fetchMessages]);
 
@@ -155,8 +130,20 @@ export const WAInbox = ({ instances }: WAInboxProps) => {
 
     setIsSending(true);
     try {
-      // This would call the WhatsApp API to send the message
-      // For now, we'll just add it to the inbox
+      // Add to send queue
+      const { error: queueError } = await supabase
+        .from('whatsapp_send_queue')
+        .insert({
+          instance_id: selectedConversation.instance_id,
+          phone_to: selectedConversation.phone,
+          message_type: 'text',
+          message_content: newMessage,
+          status: 'pending',
+        });
+
+      if (queueError) throw queueError;
+
+      // Add to inbox for immediate display
       const { error } = await supabase.from('whatsapp_inbox').insert({
         instance_id: selectedConversation.instance_id,
         phone_from: 'me',
@@ -179,7 +166,7 @@ export const WAInbox = ({ instances }: WAInboxProps) => {
         .eq('id', selectedConversation.id);
 
       setNewMessage('');
-      fetchMessages(selectedConversation.phone);
+      await fetchMessages(selectedConversation.phone, selectedConversation.instance_id);
       toast.success('Mensagem enviada!');
     } catch (error) {
       console.error('Error sending message:', error);
@@ -191,28 +178,32 @@ export const WAInbox = ({ instances }: WAInboxProps) => {
 
   const toggleArchive = async (conv: Conversation) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('whatsapp_conversations')
         .update({ is_archived: !conv.is_archived })
         .eq('id', conv.id);
 
+      if (error) throw error;
       toast.success(conv.is_archived ? 'Conversa desarquivada' : 'Conversa arquivada');
       fetchConversations();
     } catch (error) {
+      console.error('Error toggling archive:', error);
       toast.error('Erro ao arquivar');
     }
   };
 
   const togglePin = async (conv: Conversation) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('whatsapp_conversations')
         .update({ is_pinned: !conv.is_pinned })
         .eq('id', conv.id);
 
+      if (error) throw error;
       toast.success(conv.is_pinned ? 'Conversa desafixada' : 'Conversa fixada');
       fetchConversations();
     } catch (error) {
+      console.error('Error toggling pin:', error);
       toast.error('Erro ao fixar');
     }
   };
@@ -250,8 +241,8 @@ export const WAInbox = ({ instances }: WAInboxProps) => {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Inbox</CardTitle>
-            <Button variant="ghost" size="sm" onClick={fetchConversations}>
-              <RefreshCw className="w-4 h-4" />
+            <Button variant="ghost" size="sm" onClick={fetchConversations} disabled={isLoading}>
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
           <div className="relative">
@@ -290,7 +281,9 @@ export const WAInbox = ({ instances }: WAInboxProps) => {
         <CardContent className="flex-1 p-0">
           <ScrollArea className="h-full">
             {isLoading ? (
-              <div className="p-4 text-center text-muted-foreground">Carregando...</div>
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
             ) : sortedConversations.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
                 <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -344,7 +337,6 @@ export const WAInbox = ({ instances }: WAInboxProps) => {
       <Card className="flex-1 flex flex-col">
         {selectedConversation ? (
           <>
-            {/* Chat Header */}
             <CardHeader className="pb-3 border-b">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -402,7 +394,6 @@ export const WAInbox = ({ instances }: WAInboxProps) => {
               </div>
             </CardHeader>
 
-            {/* Messages */}
             <CardContent className="flex-1 p-0 overflow-hidden">
               <ScrollArea className="h-full p-4">
                 <div className="space-y-4">
@@ -447,11 +438,15 @@ export const WAInbox = ({ instances }: WAInboxProps) => {
                       </div>
                     </div>
                   ))}
+                  {messages.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Nenhuma mensagem nesta conversa
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </CardContent>
 
-            {/* Input */}
             <div className="p-4 border-t">
               <div className="flex gap-2">
                 <Textarea
@@ -468,7 +463,7 @@ export const WAInbox = ({ instances }: WAInboxProps) => {
                   rows={1}
                 />
                 <Button onClick={handleSendMessage} disabled={isSending || !newMessage.trim()}>
-                  <Send className="w-4 h-4" />
+                  {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </Button>
               </div>
             </div>

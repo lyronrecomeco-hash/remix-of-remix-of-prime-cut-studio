@@ -5,39 +5,31 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import {
   Activity,
   MessageSquare,
   CheckCircle2,
   XCircle,
-  Clock,
-  TrendingUp,
-  TrendingDown,
-  Wifi,
-  WifiOff,
   AlertTriangle,
   RefreshCw,
-  Zap,
-  Users,
-  BarChart3,
+  Wifi,
+  WifiOff,
   Timer,
-  Server
+  Server,
+  TrendingUp,
+  BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar
 } from 'recharts';
+import type { WhatsAppInstance, Alert } from './types';
 
 interface InstanceMetrics {
   id: string;
@@ -56,17 +48,6 @@ interface DailyMetric {
   sent: number;
   received: number;
   failed: number;
-}
-
-interface Alert {
-  id: string;
-  instance_id: string;
-  alert_type: string;
-  severity: string;
-  title: string;
-  message: string;
-  is_resolved: boolean;
-  created_at: string;
 }
 
 interface WADashboardProps {
@@ -90,10 +71,10 @@ export const WADashboard = ({ instances, isBackendActive }: WADashboardProps) =>
 
   const fetchMetrics = useCallback(async () => {
     try {
-      // Fetch metrics for last 7 days
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+      // Fetch metrics
       const { data: metricsData, error: metricsError } = await supabase
         .from('whatsapp_metrics')
         .select('*')
@@ -104,18 +85,18 @@ export const WADashboard = ({ instances, isBackendActive }: WADashboardProps) =>
 
       // Aggregate daily metrics
       const dailyMap = new Map<string, DailyMetric>();
-      (metricsData || []).forEach((m: any) => {
-        const date = m.metric_date;
+      (metricsData || []).forEach((m: Record<string, unknown>) => {
+        const date = m.metric_date as string;
         const existing = dailyMap.get(date) || { date, sent: 0, received: 0, failed: 0 };
-        existing.sent += m.messages_sent || 0;
-        existing.received += m.messages_received || 0;
-        existing.failed += m.messages_failed || 0;
+        existing.sent += (m.messages_sent as number) || 0;
+        existing.received += (m.messages_received as number) || 0;
+        existing.failed += (m.messages_failed as number) || 0;
         dailyMap.set(date, existing);
       });
 
       setDailyMetrics(Array.from(dailyMap.values()));
 
-      // Fetch latest health checks
+      // Fetch health checks
       const { data: healthData } = await supabase
         .from('whatsapp_health_checks')
         .select('*')
@@ -124,18 +105,18 @@ export const WADashboard = ({ instances, isBackendActive }: WADashboardProps) =>
 
       // Calculate instance metrics
       const instanceMetrics: InstanceMetrics[] = instances.map(inst => {
-        const instMetrics = (metricsData || []).filter((m: any) => m.instance_id === inst.id);
-        const latestHealth = (healthData || []).find((h: any) => h.instance_id === inst.id);
+        const instMetrics = (metricsData || []).filter((m: Record<string, unknown>) => m.instance_id === inst.id);
+        const latestHealth = (healthData || []).find((h: Record<string, unknown>) => h.instance_id === inst.id);
         
         return {
           id: inst.id,
           name: inst.name,
           status: inst.status,
-          messagesSent: instMetrics.reduce((sum: number, m: any) => sum + (m.messages_sent || 0), 0),
-          messagesReceived: instMetrics.reduce((sum: number, m: any) => sum + (m.messages_received || 0), 0),
-          messagesFailed: instMetrics.reduce((sum: number, m: any) => sum + (m.messages_failed || 0), 0),
+          messagesSent: instMetrics.reduce((sum: number, m: Record<string, unknown>) => sum + ((m.messages_sent as number) || 0), 0),
+          messagesReceived: instMetrics.reduce((sum: number, m: Record<string, unknown>) => sum + ((m.messages_received as number) || 0), 0),
+          messagesFailed: instMetrics.reduce((sum: number, m: Record<string, unknown>) => sum + ((m.messages_failed as number) || 0), 0),
           uptime: inst.uptime_seconds || 0,
-          latency: latestHealth?.latency_ms || 0,
+          latency: (latestHealth?.latency_ms as number) || 0,
           lastHeartbeat: inst.last_heartbeat_at || null,
         };
       });
@@ -172,9 +153,25 @@ export const WADashboard = ({ instances, isBackendActive }: WADashboardProps) =>
 
   useEffect(() => {
     fetchMetrics();
-    const interval = setInterval(fetchMetrics, 30000); // Refresh every 30s
+    const interval = setInterval(fetchMetrics, 30000);
     return () => clearInterval(interval);
   }, [fetchMetrics]);
+
+  const resolveAlert = async (alertId: string) => {
+    try {
+      const { error } = await supabase
+        .from('whatsapp_alerts')
+        .update({ is_resolved: true, resolved_at: new Date().toISOString() })
+        .eq('id', alertId);
+      
+      if (error) throw error;
+      toast.success('Alerta resolvido');
+      fetchMetrics();
+    } catch (error) {
+      console.error('Error resolving alert:', error);
+      toast.error('Erro ao resolver alerta');
+    }
+  };
 
   const totalSent = metrics.reduce((sum, m) => sum + m.messagesSent, 0);
   const totalReceived = metrics.reduce((sum, m) => sum + m.messagesReceived, 0);
@@ -186,20 +183,6 @@ export const WADashboard = ({ instances, isBackendActive }: WADashboardProps) =>
     healthy: 'text-green-500 bg-green-500/10',
     degraded: 'text-yellow-500 bg-yellow-500/10',
     unhealthy: 'text-red-500 bg-red-500/10',
-  };
-
-  const resolveAlert = async (alertId: string) => {
-    try {
-      await supabase
-        .from('whatsapp_alerts')
-        .update({ is_resolved: true, resolved_at: new Date().toISOString() })
-        .eq('id', alertId);
-      
-      toast.success('Alerta resolvido');
-      fetchMetrics();
-    } catch (error) {
-      toast.error('Erro ao resolver alerta');
-    }
   };
 
   return (
@@ -219,8 +202,8 @@ export const WADashboard = ({ instances, isBackendActive }: WADashboardProps) =>
             {healthStatus === 'unhealthy' && <XCircle className="w-3 h-3 mr-1" />}
             {healthStatus === 'healthy' ? 'Saudável' : healthStatus === 'degraded' ? 'Degradado' : 'Crítico'}
           </Badge>
-          <Button variant="outline" size="sm" onClick={fetchMetrics}>
-            <RefreshCw className="w-4 h-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={fetchMetrics} disabled={isLoading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
         </div>
@@ -296,7 +279,6 @@ export const WADashboard = ({ instances, isBackendActive }: WADashboardProps) =>
 
       {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Messages Over Time */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Mensagens nos Últimos 7 Dias</CardTitle>
@@ -329,7 +311,6 @@ export const WADashboard = ({ instances, isBackendActive }: WADashboardProps) =>
           </CardContent>
         </Card>
 
-        {/* Instance Status */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Status das Instâncias</CardTitle>

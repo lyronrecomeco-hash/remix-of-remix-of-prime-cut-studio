@@ -8,3 +8,5 @@ export { WAContacts } from './WAContacts';
 export { WASecurity } from './WASecurity';
 export { WAIntegrations } from './WAIntegrations';
 export { WAQuickReplies } from './WAQuickReplies';
+export * from './types';
+export * from './hooks';
