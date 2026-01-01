@@ -133,8 +133,13 @@ export const WADashboard = ({ instances, isBackendActive }: WADashboardProps) =>
 
       setAlerts((alertsData || []) as Alert[]);
 
-      // Determine overall health
-      const connectedCount = instances.filter(i => i.status === 'connected').length;
+      // Determine overall health based on effective status (heartbeat-aware)
+      const getEffectiveStatus = (inst: typeof instances[0]) => {
+        const lastHeartbeat = inst.last_heartbeat_at ? new Date(inst.last_heartbeat_at) : null;
+        const isStale = lastHeartbeat ? (Date.now() - lastHeartbeat.getTime()) > 120000 : true;
+        return isStale && inst.status === 'connected' ? 'disconnected' : inst.status;
+      };
+      const connectedCount = instances.filter(i => getEffectiveStatus(i) === 'connected').length;
       if (connectedCount === instances.length && instances.length > 0) {
         setHealthStatus('healthy');
       } else if (connectedCount > 0) {
@@ -177,7 +182,12 @@ export const WADashboard = ({ instances, isBackendActive }: WADashboardProps) =>
   const totalReceived = metrics.reduce((sum, m) => sum + m.messagesReceived, 0);
   const totalFailed = metrics.reduce((sum, m) => sum + m.messagesFailed, 0);
   const successRate = totalSent > 0 ? ((totalSent - totalFailed) / totalSent * 100).toFixed(1) : '100';
-  const connectedInstances = instances.filter(i => i.status === 'connected').length;
+  const getEffectiveStatusForCount = (inst: typeof instances[0]) => {
+    const lastHeartbeat = inst.last_heartbeat_at ? new Date(inst.last_heartbeat_at) : null;
+    const isStale = lastHeartbeat ? (Date.now() - lastHeartbeat.getTime()) > 120000 : true;
+    return isStale && inst.status === 'connected' ? 'disconnected' : inst.status;
+  };
+  const connectedInstances = instances.filter(i => getEffectiveStatusForCount(i) === 'connected').length;
 
   const healthColors = {
     healthy: 'text-green-500 bg-green-500/10',

@@ -282,7 +282,13 @@ export const WAInstances = ({
     }
   };
 
-  const connectedCount = instances.filter(i => i.status === 'connected').length;
+  // Use effective status based on heartbeat
+  const getEffectiveStatus = (inst: WhatsAppInstance & { last_heartbeat_at?: string }) => {
+    const lastHeartbeat = (inst as any).last_heartbeat_at ? new Date((inst as any).last_heartbeat_at) : null;
+    const isStale = lastHeartbeat ? (Date.now() - lastHeartbeat.getTime()) > 120000 : true;
+    return isStale && inst.status === 'connected' ? 'disconnected' : inst.status;
+  };
+  const connectedCount = instances.filter(i => getEffectiveStatus(i) === 'connected').length;
 
   // UX: se existir ao menos 1 instância e nenhuma conectada, vira "Conectar WhatsApp" automaticamente
   const bestCandidate =

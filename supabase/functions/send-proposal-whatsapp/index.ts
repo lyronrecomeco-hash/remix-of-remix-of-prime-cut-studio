@@ -61,16 +61,23 @@ serve(async (req) => {
     }
     
     if (!instance) {
-      // Buscar primeira instância conectada e ativa
+      // Buscar primeira instância conectada e ativa com heartbeat recente
       const { data: instances } = await supabase
         .from("whatsapp_instances")
         .select("*")
         .eq("status", "connected")
         .eq("is_active", true)
-        .order("last_heartbeat", { ascending: false })
-        .limit(1);
+        .order("last_heartbeat_at", { ascending: false })
+        .limit(10);
 
-      instance = instances?.[0];
+      // Filtrar por heartbeat recente (menos de 2 minutos)
+      const now = Date.now();
+      const activeInstances = (instances || []).filter(inst => {
+        const lastHb = inst.last_heartbeat_at ? new Date(inst.last_heartbeat_at).getTime() : 0;
+        return (now - lastHb) < 120000; // 2 minutos
+      });
+
+      instance = activeInstances[0] || instances?.[0];
     }
 
     if (!instance) {
