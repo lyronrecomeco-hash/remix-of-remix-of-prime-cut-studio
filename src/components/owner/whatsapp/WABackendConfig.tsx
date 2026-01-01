@@ -89,16 +89,26 @@ export const WABackendConfig = ({
   useEffect(() => {
     if (!isLocalConnected || backendMode !== 'local') return;
 
+    let interval: ReturnType<typeof setInterval> | null = null;
+
     const fetchLogs = async () => {
       try {
         const fullUrl = `${localEndpoint}:${localPort}`;
-        const url = lastLogTimestamp.current 
+        const url = lastLogTimestamp.current
           ? `${fullUrl}/logs?since=${encodeURIComponent(lastLogTimestamp.current)}`
           : `${fullUrl}/logs`;
-          
+
         const response = await fetch(url, {
-          headers: { 'Authorization': `Bearer ${localToken}` },
+          headers: { Authorization: `Bearer ${localToken}` },
         });
+
+        // Alguns backends locais não expõem /logs; evita spam de 404 em loop
+        if (response.status === 404) {
+          addLog('warning', 'Backend local não suporta /logs (monitoramento de logs desativado).');
+          if (interval) clearInterval(interval);
+          interval = null;
+          return;
+        }
 
         if (response.ok) {
           const data = await response.json();
@@ -115,10 +125,10 @@ export const WABackendConfig = ({
     };
 
     fetchLogs();
-    const interval = setInterval(fetchLogs, 2000);
+    interval = setInterval(fetchLogs, 2000);
     
     return () => {
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
       lastLogTimestamp.current = null;
     };
   }, [isLocalConnected, backendMode, localEndpoint, localPort, localToken, addLog]);
