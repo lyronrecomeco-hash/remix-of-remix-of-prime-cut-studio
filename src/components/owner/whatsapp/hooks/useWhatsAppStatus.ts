@@ -30,15 +30,30 @@ export const useWhatsAppStatus = (pollInterval = 30000) => {
 
       // Process instances - check for stale heartbeats
       const enriched = (data || []).map(inst => {
-        const lastHeartbeat = inst.last_heartbeat_at ? new Date(inst.last_heartbeat_at) : null;
-        const isStale = lastHeartbeat ? (Date.now() - lastHeartbeat.getTime()) > 120000 : true; // 2 minutes
+        // Use last_heartbeat_at OR last_seen as the freshness indicator
+        const lastActivity = inst.last_heartbeat_at || inst.last_seen;
+        const lastActivityDate = lastActivity ? new Date(lastActivity) : null;
+        const STALE_THRESHOLD_MS = 120000; // 2 minutes
+        
+        // Only consider stale if we have a timestamp that is old
+        // If we have NO timestamp but status is 'connected', trust the database status
+        const isStale = lastActivityDate 
+          ? (Date.now() - lastActivityDate.getTime()) > STALE_THRESHOLD_MS 
+          : false; // If no timestamp, don't assume stale - trust the status field
+
+        // Determine effective status:
+        // - If database says 'connected' and activity is recent (or no activity data), trust it
+        // - If database says 'connected' but activity is stale, mark as disconnected
+        let effectiveStatus = inst.status;
+        if (inst.status === 'connected' && isStale) {
+          effectiveStatus = 'disconnected';
+        }
 
         return {
           ...inst,
           uptime_seconds: inst.uptime_seconds || 0,
           is_stale: isStale,
-          // If connected but no heartbeat for 2+ minutes, consider disconnected
-          effective_status: isStale && inst.status === 'connected' ? 'disconnected' : inst.status,
+          effective_status: effectiveStatus,
         };
       });
 

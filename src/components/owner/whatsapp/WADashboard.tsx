@@ -133,13 +133,8 @@ export const WADashboard = ({ instances, isBackendActive }: WADashboardProps) =>
 
       setAlerts((alertsData || []) as Alert[]);
 
-      // Determine overall health based on effective status (heartbeat-aware)
-      const getEffectiveStatus = (inst: typeof instances[0]) => {
-        const lastHeartbeat = inst.last_heartbeat_at ? new Date(inst.last_heartbeat_at) : null;
-        const isStale = lastHeartbeat ? (Date.now() - lastHeartbeat.getTime()) > 120000 : true;
-        return isStale && inst.status === 'connected' ? 'disconnected' : inst.status;
-      };
-      const connectedCount = instances.filter(i => getEffectiveStatus(i) === 'connected').length;
+      // Trust database status - already merged with heartbeat effective_status in parent
+      const connectedCount = instances.filter(i => i.status === 'connected').length;
       if (connectedCount === instances.length && instances.length > 0) {
         setHealthStatus('healthy');
       } else if (connectedCount > 0) {

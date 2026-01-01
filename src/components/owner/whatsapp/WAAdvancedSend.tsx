@@ -32,7 +32,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface WAAdvancedSendProps {
-  instances: Array<{ id: string; name: string; status: string; last_heartbeat_at?: string }>;
+  instances: Array<{ id: string; name: string; status: string }>;
 }
 
 type MessageType = 'text' | 'image' | 'document' | 'audio' | 'video' | 'location' | 'contact' | 'buttons' | 'list';
@@ -69,13 +69,8 @@ export const WAAdvancedSend = ({ instances }: WAAdvancedSendProps) => {
   const [isSending, setIsSending] = useState(false);
   const [selectedInstance, setSelectedInstance] = useState('');
 
-  // Use effective status based on heartbeat
-  const getEffectiveStatus = (inst: typeof instances[0]) => {
-    const lastHeartbeat = inst.last_heartbeat_at ? new Date(inst.last_heartbeat_at) : null;
-    const isStale = lastHeartbeat ? (Date.now() - lastHeartbeat.getTime()) > 120000 : true;
-    return isStale && inst.status === 'connected' ? 'disconnected' : inst.status;
-  };
-  const connectedInstances = instances.filter(i => getEffectiveStatus(i) === 'connected');
+  // Trust database status - the instance was already merged with heartbeat data in parent
+  const connectedInstances = instances.filter(i => i.status === 'connected');
 
   const addButton = () => {
     if (buttons.length < 3) {
