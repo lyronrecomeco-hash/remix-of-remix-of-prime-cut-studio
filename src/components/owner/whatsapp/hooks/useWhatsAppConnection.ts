@@ -20,8 +20,12 @@ export function useWhatsAppConnection() {
   });
   
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
-  const maxPollingAttempts = 120; // 4 minutes total (2s * 120)
+  const statusInFlightRef = useRef(false);
+  const lastQrRefreshAtRef = useRef<number>(0);
+
+  const maxPollingAttempts = 150; // ~5 minutes total (2s * 150)
   const pollingInterval = 2000;
+  const qrAutoRefreshMs = 25000;
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
@@ -56,39 +60,42 @@ export function useWhatsAppConnection() {
     backendUrl: string,
     token: string
   ): Promise<{ connected: boolean; phoneNumber?: string }> => {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+    try {
       const response = await fetch(`${backendUrl}/api/instance/${instanceId}/status`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         signal: controller.signal,
       });
-
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         return { connected: false };
       }
 
       const result = await response.json();
-      
+
       // Handle different response formats
-      const isConnected = result.connected === true || 
-                          result.status === 'connected' || 
-                          result.state === 'open';
-      
-      return { 
-        connected: isConnected, 
-        phoneNumber: result.phone || result.phoneNumber || result.jid?.split('@')[0]
+      const isConnected =
+        result.connected === true || result.status === 'connected' || result.state === 'open';
+
+      return {
+        connected: isConnected,
+        phoneNumber: result.phone || result.phoneNumber || result.jid?.split('@')[0],
       };
-    } catch (error) {
+    } catch (error: unknown) {
+      // Abort due to timeout is expected sometimes; don't spam logs.
+      if (error instanceof Error && error.name === 'AbortError') {
+        return { connected: false };
+      }
       console.log('Status check failed:', error);
       return { connected: false };
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
@@ -98,23 +105,25 @@ export function useWhatsAppConnection() {
     token: string,
     phoneHint?: string
   ): Promise<string | null> => {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
+    try {
       const response = await fetch(`${backendUrl}/api/instance/${instanceId}/qrcode`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ phone: phoneHint }),
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
+      const result = await response.json().catch(() => ({}));
 
-      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error || result?.message || 'Erro ao gerar QR Code');
+      }
 
       // If already connected
       if (result.connected || result.status === 'connected') {
@@ -122,21 +131,22 @@ export function useWhatsAppConnection() {
       }
 
       // Return QR code data
-      if (result.qrcode || result.qr) {
-        return result.qrcode || result.qr;
-      }
-
-      // Handle base64 QR without data prefix
-      if (result.base64) {
-        return result.base64.startsWith('data:') 
-          ? result.base64 
-          : `data:image/png;base64,${result.base64}`;
+      const rawQr = result.qrcode || result.qr || result.base64;
+      if (typeof rawQr === 'string' && rawQr.length > 0) {
+        // Ensure data URL for base64 payloads
+        if (rawQr.startsWith('data:')) return rawQr;
+        if (/^[A-Za-z0-9+/=]+$/.test(rawQr.slice(0, 50))) {
+          return `data:image/png;base64,${rawQr}`;
+        }
+        return rawQr;
       }
 
       throw new Error(result.error || result.message || 'QR Code não disponível');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido';
       throw new Error(message);
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
@@ -188,6 +198,7 @@ export function useWhatsAppConnection() {
       }
 
       // Show QR and start polling
+      lastQrRefreshAtRef.current = Date.now();
       setConnectionState({
         isConnecting: false,
         isPolling: true,
@@ -198,38 +209,58 @@ export function useWhatsAppConnection() {
 
       // Start polling for connection status
       let attempts = 0;
-      
+
       pollingRef.current = setInterval(async () => {
-        attempts++;
-        
-        setConnectionState(prev => ({ ...prev, attempts }));
+        // Avoid overlapping network calls (helps prevent AbortError spam)
+        if (statusInFlightRef.current) return;
+        statusInFlightRef.current = true;
 
-        if (attempts >= maxPollingAttempts) {
-          stopPolling();
-          setConnectionState(prev => ({
-            ...prev,
-            error: 'Tempo limite excedido. Tente novamente.',
-            isPolling: false,
-          }));
-          await updateInstanceStatus(instanceId, 'disconnected');
-          toast.error('Tempo limite para conexão excedido');
-          return;
-        }
+        try {
+          attempts++;
+          setConnectionState((prev) => ({ ...prev, attempts }));
 
-        const statusResult = await checkStatus(instanceId, backendUrl, token);
+          if (attempts >= maxPollingAttempts) {
+            stopPolling();
+            setConnectionState((prev) => ({
+              ...prev,
+              error: 'Tempo limite excedido. Tente novamente.',
+              isPolling: false,
+            }));
+            await updateInstanceStatus(instanceId, 'disconnected');
+            toast.error('Tempo limite para conexão excedido');
+            return;
+          }
 
-        if (statusResult.connected) {
-          stopPolling();
-          await updateInstanceStatus(instanceId, 'connected', statusResult.phoneNumber);
-          setConnectionState({
-            isConnecting: false,
-            isPolling: false,
-            qrCode: null,
-            error: null,
-            attempts: 0,
-          });
-          toast.success('WhatsApp conectado com sucesso!');
-          onConnected?.();
+          // Auto-refresh QR to avoid scanning expired codes (WhatsApp often expires QR ~30s)
+          if (Date.now() - lastQrRefreshAtRef.current > qrAutoRefreshMs) {
+            try {
+              const nextQr = await generateQRCode(instanceId, backendUrl, token, phoneHint);
+              if (nextQr && nextQr !== 'CONNECTED') {
+                lastQrRefreshAtRef.current = Date.now();
+                setConnectionState((prev) => ({ ...prev, qrCode: nextQr }));
+              }
+            } catch {
+              // ignore refresh failures; polling continues
+            }
+          }
+
+          const statusResult = await checkStatus(instanceId, backendUrl, token);
+
+          if (statusResult.connected) {
+            stopPolling();
+            await updateInstanceStatus(instanceId, 'connected', statusResult.phoneNumber);
+            setConnectionState({
+              isConnecting: false,
+              isPolling: false,
+              qrCode: null,
+              error: null,
+              attempts: 0,
+            });
+            toast.success('WhatsApp conectado com sucesso!');
+            onConnected?.();
+          }
+        } finally {
+          statusInFlightRef.current = false;
         }
       }, pollingInterval);
 

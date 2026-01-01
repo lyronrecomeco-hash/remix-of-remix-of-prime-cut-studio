@@ -193,15 +193,17 @@ export const WAInstances = ({
   };
 
   const handleConnectInstance = (instanceId: string) => {
+    const instance = instances.find((i) => i.id === instanceId);
+
     setCurrentInstanceId(instanceId);
     setCreationStep('qrcode');
     setIsNewDialogOpen(true);
-    
+
     startConnection(
       instanceId,
       getBackendUrl(),
       getToken(),
-      undefined,
+      instance?.phone_number ?? undefined,
       () => {
         setIsNewDialogOpen(false);
         onRefresh();
