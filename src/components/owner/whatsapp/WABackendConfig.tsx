@@ -251,111 +251,69 @@ export const WABackendConfig = ({
   };
 
   const getLocalScript = () => {
-    return `// ===============================================
-// WhatsApp Backend Local (PC Local) v2.3
-// - CORS/preflight robusto (resolve NetworkError no browser)
-// - Reconnect automático para erro 515 (stream error)
-// Rotas: /api/instance/:id/{qrcode,status,disconnect,send}
-// ===============================================
+    const scriptContent = `/*
+ * ╔═══════════════════════════════════════════════════════════╗
+ * ║           GENESIS HUB - WhatsApp Backend Local            ║
+ * ║                      Versão 3.0                           ║
+ * ╠═══════════════════════════════════════════════════════════╣
+ * ║  • Reconexão automática inteligente                       ║
+ * ║  • Persistência de sessão                                 ║
+ * ║  • API REST completa                                      ║
+ * ╚═══════════════════════════════════════════════════════════╝
+ */
 
 const express = require('express');
 const cors = require('cors');
 const qrcode = require('qrcode');
 const fs = require('fs');
 const path = require('path');
+const { makeWASocket, DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 
-const {
-  makeWASocket,
-  DisconnectReason,
-  useMultiFileAuthState,
-  fetchLatestBaileysVersion,
-} = require('@whiskeysockets/baileys');
+// ═══════════════════════════════════════════════════════════
+//                      CONFIGURAÇÕES
+// ═══════════════════════════════════════════════════════════
+const PORT = ` + localPort + `;
+const TOKEN = '` + localToken + `';
+const SESSIONS_DIR = path.join(__dirname, 'sessions');
 
+// ═══════════════════════════════════════════════════════════
+//                        EXPRESS APP
+// ═══════════════════════════════════════════════════════════
 const app = express();
-const PORT = ${localPort};
-const TOKEN = '${localToken}';
 
-const serverLogs = [];
-const pushLog = (type, message) => {
-  const payload = { timestamp: new Date().toISOString(), type, message };
-  serverLogs.push(payload);
-  if (serverLogs.length > 500) serverLogs.shift();
-  console.log('[' + String(type).toUpperCase() + '] ' + message);
-};
-
-const corsOptions = {
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Authorization', 'Content-Type'],
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '5mb' }));
 
-const authMiddleware = (req, res, next) => {
-  // Responde preflight antes de qualquer outra coisa (evita NetworkError no browser)
+// Auth middleware
+app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204);
-
   const auth = req.headers.authorization;
   if (!auth || auth !== 'Bearer ' + TOKEN) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: 'Não autorizado' });
   }
   next();
-};
-app.use(authMiddleware);
+});
 
-const sessionsDir = path.join(__dirname, 'sessions');
-if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
+// ═══════════════════════════════════════════════════════════
+//                    GERENCIADOR DE CONEXÕES
+// ═══════════════════════════════════════════════════════════
+if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 
-// instanceId -> state
 const connections = new Map();
 
-const removeSession = (instanceId) => {
+const log = (icon, msg) => console.log(icon + '  ' + msg);
+
+const getPhone = (sock) => {
   try {
-    const dir = path.join(sessionsDir, instanceId);
-    if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
-  } catch { /* ignore */ }
+    const id = sock?.user?.id || sock?.authState?.creds?.me?.id;
+    return id ? String(id).split('@')[0].split(':')[0] : null;
+  } catch { return null; }
 };
 
-const normalizePhoneToJid = (phone) => {
-  const digits = String(phone || '').replace(/\D/g, '');
-  if (!digits) return null;
-  return digits + '@s.whatsapp.net';
-};
-
-const backoffMs = (attempt) => {
-  const base = 1500;
-  const max = 15000;
-  const ms = Math.min(max, base * Math.pow(2, Math.max(0, attempt - 1)));
-  return ms;
-};
-
-const getMeId = (sock) => {
-  try {
-    const idFromUser = sock && sock.user && sock.user.id ? String(sock.user.id) : null;
-    if (idFromUser) return idFromUser;
-
-    // Em algumas versões, o "me" vive no authState
-    const me = sock && sock.authState && sock.authState.creds && sock.authState.creds.me
-      ? sock.authState.creds.me
-      : null;
-
-    if (!me) return null;
-    if (typeof me === 'string') return me;
-    if (me.id) return String(me.id);
-    if (me.jid) return String(me.jid);
-    return null;
-  } catch {
-    return null;
-  }
-};
-
-const createOrGetSocket = async (instanceId) => {
+const createSocket = async (instanceId) => {
   if (connections.has(instanceId)) return connections.get(instanceId);
 
-  const authPath = path.join(sessionsDir, instanceId);
+  const authPath = path.join(SESSIONS_DIR, instanceId);
   if (!fs.existsSync(authPath)) fs.mkdirSync(authPath, { recursive: true });
 
   const { state, saveCreds } = await useMultiFileAuthState(authPath);
@@ -365,98 +323,54 @@ const createOrGetSocket = async (instanceId) => {
     auth: state,
     version,
     printQRInTerminal: false,
-    browser: ['Genesis Hub', 'Chrome', '2.3'],
+    browser: ['Genesis Hub', 'Chrome', '3.0'],
   });
 
-  const conn = {
-    sock,
-    status: 'disconnected',
-    qr: null,
-    qrCreatedAt: null,
-    phone: null,
-    lastDisconnectCode: null,
-    lastDisconnectAt: null,
-    reconnectAttempts: 0,
-    reconnectTimer: null,
-  };
-
+  const conn = { sock, status: 'disconnected', qr: null, phone: null, retries: 0 };
   connections.set(instanceId, conn);
 
   sock.ev.on('creds.update', saveCreds);
 
-  const scheduleReconnect = (code) => {
-    // 515 acontece com frequência; tentamos reconectar automático
-    if (conn.reconnectAttempts >= 5) return;
-
-    conn.reconnectAttempts += 1;
-    const wait = backoffMs(conn.reconnectAttempts);
-
-    if (conn.reconnectTimer) clearTimeout(conn.reconnectTimer);
-
-    pushLog('warning', 'Reconectando instância ' + instanceId + ' em ' + wait + 'ms (código ' + code + ', tentativa ' + conn.reconnectAttempts + ')');
-
-    conn.reconnectTimer = setTimeout(async () => {
-      try {
-        // encerra e recria socket mantendo sessão
-        try { conn.sock.end(); } catch {}
-        connections.delete(instanceId);
-        await createOrGetSocket(instanceId);
-      } catch (err) {
-        const msg = err && err.message ? err.message : 'erro desconhecido';
-        pushLog('error', 'Falha ao reconectar instância ' + instanceId + ': ' + msg);
-      }
-    }, wait);
-  };
-
-  sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect, qr } = update || {};
-
+  sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
     if (qr) {
       conn.qr = qr;
-      conn.qrCreatedAt = new Date().toISOString();
       conn.status = 'qr_pending';
-      pushLog('info', 'QR gerado para instância ' + instanceId);
+      log('📱', 'QR Code disponível para ' + instanceId);
     }
 
     if (connection === 'open') {
       conn.status = 'connected';
       conn.qr = null;
-      conn.qrCreatedAt = null;
-      conn.reconnectAttempts = 0;
-      conn.lastDisconnectCode = null;
-      conn.lastDisconnectAt = null;
-
-      const raw = getMeId(sock) || '';
-      conn.phone = raw ? raw.split('@')[0].split(':')[0] : null;
-      pushLog('success', 'Instância ' + instanceId + ' conectada (' + (conn.phone || 'sem número') + ')');
+      conn.retries = 0;
+      conn.phone = getPhone(sock);
+      log('✅', 'Conectado: ' + (conn.phone || instanceId));
     }
 
     if (connection === 'close') {
-      const code = lastDisconnect && lastDisconnect.error && lastDisconnect.error.output
-        ? lastDisconnect.error.output.statusCode
-        : null;
-
+      const code = lastDisconnect?.error?.output?.statusCode;
       conn.status = 'disconnected';
       conn.qr = null;
-      conn.qrCreatedAt = null;
-      conn.lastDisconnectCode = code;
-      conn.lastDisconnectAt = new Date().toISOString();
 
-      // logout: exige novo QR
       if (code === DisconnectReason.loggedOut || code === 401) {
-        pushLog('warning', 'Sessão expirada para instância ' + instanceId + ' (logout). Limpando sessão...');
-        try { sock.logout(); } catch {}
+        log('🔒', 'Sessão encerrada: ' + instanceId);
         try { sock.end(); } catch {}
         connections.delete(instanceId);
-        removeSession(instanceId);
+        fs.rmSync(authPath, { recursive: true, force: true });
         return;
       }
 
-      pushLog('warning', 'Instância ' + instanceId + ' desconectada (código ' + code + ')');
+      log('⚠️', 'Desconectado (' + (code || '?') + '): ' + instanceId);
 
-      // tenta recuperar automaticamente (especialmente 515)
-      if (code === 515 || code === 428 || code === 408) {
-        scheduleReconnect(code);
+      // Reconexão automática
+      if (conn.retries < 5 && [515, 428, 408].includes(code)) {
+        conn.retries++;
+        const delay = Math.min(15000, 1500 * Math.pow(2, conn.retries - 1));
+        log('🔄', 'Reconectando em ' + (delay/1000) + 's...');
+        setTimeout(() => {
+          try { sock.end(); } catch {}
+          connections.delete(instanceId);
+          createSocket(instanceId);
+        }, delay);
       }
     }
   });
@@ -464,139 +378,115 @@ const createOrGetSocket = async (instanceId) => {
   return conn;
 };
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', name: 'WhatsApp Local Backend', version: '2.3.0', routes: { apiInstance: true } });
+// ═══════════════════════════════════════════════════════════
+//                          ROTAS
+// ═══════════════════════════════════════════════════════════
+app.get('/health', (_, res) => {
+  res.json({ status: 'ok', version: '3.0.0', name: 'Genesis WhatsApp Backend' });
 });
 
-app.get('/logs', (req, res) => {
-  const since = req.query.since ? new Date(String(req.query.since)) : null;
-  const logs = since
-    ? serverLogs.filter((l) => new Date(l.timestamp) > since)
-    : serverLogs.slice(-100);
-  res.json({ logs });
-});
-
-app.get('/api/instance/:id/status', async (req, res) => {
-  const instanceId = String(req.params.id);
-  const conn = connections.get(instanceId);
+app.get('/api/instance/:id/status', (req, res) => {
+  const conn = connections.get(req.params.id);
   if (!conn) return res.json({ status: 'disconnected', connected: false });
 
-  const meId = getMeId(conn.sock);
-  const hasMe = !!meId;
-  const connected = conn.status === 'connected' || hasMe;
-
-  const phoneFromSock = hasMe ? String(meId).split('@')[0].split(':')[0] : null;
-  const phone = conn.phone || phoneFromSock || null;
+  const phone = conn.phone || getPhone(conn.sock);
+  const connected = conn.status === 'connected' || !!phone;
 
   if (connected && conn.status !== 'connected') {
     conn.status = 'connected';
-    conn.qr = null;
-    conn.qrCreatedAt = null;
     conn.phone = phone;
   }
 
-  return res.json({
-    status: connected ? 'connected' : conn.status,
-    connected,
-    phone: phone || undefined,
-    last_disconnect_code: conn.lastDisconnectCode || undefined,
-    last_disconnect_at: conn.lastDisconnectAt || undefined,
-  });
+  res.json({ status: connected ? 'connected' : conn.status, connected, phone });
 });
 
-const handleQRCode = async (req, res) => {
-  const instanceId = String(req.params.id);
+const handleQR = async (req, res) => {
+  const id = req.params.id;
 
   try {
-    pushLog('info', 'Solicitação de QR para instância ' + instanceId);
+    const conn = await createSocket(id);
+    const phone = conn.phone || getPhone(conn.sock);
 
-    const conn = await createOrGetSocket(instanceId);
-
-    const meId = getMeId(conn.sock);
-    const connected = conn.status === 'connected' || !!meId;
-
-    if (connected) {
-      const phone = conn.phone || (meId ? String(meId).split('@')[0].split(':')[0] : null);
+    if (conn.status === 'connected' || phone) {
       conn.status = 'connected';
-      conn.qr = null;
-      conn.qrCreatedAt = null;
       conn.phone = phone;
-      return res.json({ status: 'connected', connected: true, phone: phone || undefined });
+      return res.json({ status: 'connected', connected: true, phone });
     }
 
-    const startedAt = Date.now();
-    while (!conn.qr && Date.now() - startedAt < 15000) {
-      await new Promise((r) => setTimeout(r, 250));
+    // Aguarda QR (max 15s)
+    const start = Date.now();
+    while (!conn.qr && Date.now() - start < 15000) {
+      await new Promise(r => setTimeout(r, 250));
     }
 
     if (!conn.qr) {
-      return res.status(500).json({ error: 'QR não disponível. Tente novamente.' });
+      return res.status(500).json({ error: 'QR não disponível' });
     }
 
-    const dataUrl = await qrcode.toDataURL(conn.qr, { margin: 1, scale: 6 });
-    return res.json({ status: 'qr_pending', qrcode: dataUrl });
+    const qrDataUrl = await qrcode.toDataURL(conn.qr, { margin: 1, scale: 6 });
+    res.json({ status: 'qr_pending', qrcode: qrDataUrl });
   } catch (err) {
-    const msg = err && err.message ? err.message : 'Erro ao gerar QR';
-    pushLog('error', 'Falha ao gerar QR (' + instanceId + '): ' + msg);
-    return res.status(500).json({ error: msg });
+    res.status(500).json({ error: err.message || 'Erro ao gerar QR' });
   }
 };
 
-// GET e POST (para compatibilidade com frontends diferentes)
-app.get('/api/instance/:id/qrcode', handleQRCode);
-app.post('/api/instance/:id/qrcode', handleQRCode);
+app.get('/api/instance/:id/qrcode', handleQR);
+app.post('/api/instance/:id/qrcode', handleQR);
 
-
-app.post('/api/instance/:id/disconnect', async (req, res) => {
-  const instanceId = String(req.params.id);
-  const conn = connections.get(instanceId);
+app.post('/api/instance/:id/disconnect', (req, res) => {
+  const id = req.params.id;
+  const conn = connections.get(id);
 
   try {
-    if (conn && conn.reconnectTimer) {
-      try { clearTimeout(conn.reconnectTimer); } catch {}
-    }
-    if (conn && conn.sock) {
-      try { await conn.sock.logout(); } catch {}
+    if (conn?.sock) {
+      try { conn.sock.logout(); } catch {}
       try { conn.sock.end(); } catch {}
     }
   } finally {
-    connections.delete(instanceId);
-    removeSession(instanceId);
+    connections.delete(id);
+    const sessionPath = path.join(SESSIONS_DIR, id);
+    if (fs.existsSync(sessionPath)) fs.rmSync(sessionPath, { recursive: true, force: true });
   }
 
-  pushLog('info', 'Instância ' + instanceId + ' desconectada via API.');
-  return res.json({ success: true });
+  log('🔌', 'Desconectado: ' + id);
+  res.json({ success: true });
 });
 
 app.post('/api/instance/:id/send', async (req, res) => {
-  const instanceId = String(req.params.id);
   const { phone, message } = req.body || {};
+  const conn = connections.get(req.params.id);
 
-  const conn = connections.get(instanceId);
   if (!conn || conn.status !== 'connected') {
     return res.status(400).json({ error: 'Instância não conectada' });
   }
 
-  const jid = normalizePhoneToJid(phone);
-  if (!jid) return res.status(400).json({ error: 'Telefone inválido' });
+  const jid = String(phone || '').replace(/\\D/g, '') + '@s.whatsapp.net';
+  if (!phone) return res.status(400).json({ error: 'Telefone inválido' });
   if (!message) return res.status(400).json({ error: 'Mensagem vazia' });
 
   try {
     await conn.sock.sendMessage(jid, { text: String(message) });
-    return res.json({ success: true });
+    res.json({ success: true });
   } catch (err) {
-    const msg = err && err.message ? err.message : 'Falha ao enviar mensagem';
-    pushLog('error', 'Falha envio (' + instanceId + '): ' + msg);
-    return res.status(500).json({ error: msg });
+    res.status(500).json({ error: err.message || 'Falha ao enviar' });
   }
 });
 
+// ═══════════════════════════════════════════════════════════
+//                         INICIAR
+// ═══════════════════════════════════════════════════════════
 app.listen(PORT, () => {
-  pushLog('success', 'Backend iniciado com sucesso!');
-  pushLog('success', 'Rotas /api/instance habilitadas.');
-  console.log('WhatsApp Backend Local rodando na porta ' + PORT);
+  console.log('');
+  console.log('╔═══════════════════════════════════════════════════════════╗');
+  console.log('║         🚀 GENESIS HUB - WhatsApp Backend v3.0            ║');
+  console.log('╠═══════════════════════════════════════════════════════════╣');
+  console.log('║  Rodando em: http://localhost:' + PORT + '                       ║');
+  console.log('║  Status: Pronto para conexões                             ║');
+  console.log('╚═══════════════════════════════════════════════════════════╝');
+  console.log('');
 });
 `;
+    return scriptContent;
   };
 
   const downloadScript = () => {
