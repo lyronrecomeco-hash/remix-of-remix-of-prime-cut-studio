@@ -118,7 +118,7 @@ Aguardo seu retorno! 💼`;
 
     // Enviar via backend local/VPS
     const backendEndpoint = instance.backend_url || "http://localhost:3001";
-    const backendToken = instance.instance_token || instance.backend_token;
+    const backendToken = instance.backend_token || instance.instance_token;
 
     console.log(`[WhatsApp Proposal] Sending to ${phone} via ${backendEndpoint}`);
 

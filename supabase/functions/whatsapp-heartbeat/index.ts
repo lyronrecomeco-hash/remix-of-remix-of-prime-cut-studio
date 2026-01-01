@@ -35,7 +35,7 @@ serve(async (req) => {
       // Validate instance
       const { data: instance, error: instanceError } = await supabase
         .from("whatsapp_instances")
-        .select("id, instance_token, status")
+        .select("id, instance_token, backend_token, status")
         .eq("id", instanceId)
         .single();
 
@@ -47,7 +47,14 @@ serve(async (req) => {
         );
       }
 
-      if (instance.instance_token !== instanceToken) {
+      const expectedInstanceToken = instance.instance_token;
+      const expectedBackendToken = (instance as Record<string, unknown>).backend_token as string | null;
+
+      const isValidToken =
+        (expectedInstanceToken && expectedInstanceToken === instanceToken) ||
+        (expectedBackendToken && expectedBackendToken === instanceToken);
+
+      if (!isValidToken) {
         return new Response(
           JSON.stringify({ error: "Invalid token" }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -59,9 +66,11 @@ serve(async (req) => {
       const { status, phone_number, uptime_seconds } = body;
 
       // Update instance with heartbeat
+      const nowIso = new Date().toISOString();
       const updateData: Record<string, unknown> = {
-        last_heartbeat_at: new Date().toISOString(),
-        last_seen: new Date().toISOString(),
+        last_heartbeat_at: nowIso,
+        last_heartbeat: nowIso,
+        last_seen: nowIso,
       };
 
       if (status) updateData.status = status;
