@@ -252,7 +252,8 @@ export const WABackendConfig = ({
 
   const getLocalScript = () => {
     return `// ===============================================
-// WhatsApp Backend Local (PC Local) v2.1
+// WhatsApp Backend Local (PC Local) v2.2
+// - Reconnect automático para erro 515 (stream error)
 // Rotas: /api/instance/:id/{qrcode,status,disconnect,send}
 // ===============================================
 
@@ -297,6 +298,7 @@ app.use(authMiddleware);
 const sessionsDir = path.join(__dirname, 'sessions');
 if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
 
+// instanceId -> state
 const connections = new Map();
 
 const removeSession = (instanceId) => {
@@ -307,9 +309,16 @@ const removeSession = (instanceId) => {
 };
 
 const normalizePhoneToJid = (phone) => {
-  const digits = String(phone || '').replace(/\\D/g, '');
+  const digits = String(phone || '').replace(/\D/g, '');
   if (!digits) return null;
   return digits + '@s.whatsapp.net';
+};
+
+const backoffMs = (attempt) => {
+  const base = 1500;
+  const max = 15000;
+  const ms = Math.min(max, base * Math.pow(2, Math.max(0, attempt - 1)));
+  return ms;
 };
 
 const createOrGetSocket = async (instanceId) => {
@@ -325,19 +334,55 @@ const createOrGetSocket = async (instanceId) => {
     auth: state,
     version,
     printQRInTerminal: false,
-    browser: ['Genesis Hub', 'Chrome', '2.1'],
+    browser: ['Genesis Hub', 'Chrome', '2.2'],
   });
 
-  const conn = { sock, status: 'disconnected', qr: null, phone: null };
+  const conn = {
+    sock,
+    status: 'disconnected',
+    qr: null,
+    qrCreatedAt: null,
+    phone: null,
+    lastDisconnectCode: null,
+    lastDisconnectAt: null,
+    reconnectAttempts: 0,
+    reconnectTimer: null,
+  };
+
   connections.set(instanceId, conn);
 
   sock.ev.on('creds.update', saveCreds);
+
+  const scheduleReconnect = (code) => {
+    // 515 acontece com frequência; tentamos reconectar automático
+    if (conn.reconnectAttempts >= 5) return;
+
+    conn.reconnectAttempts += 1;
+    const wait = backoffMs(conn.reconnectAttempts);
+
+    if (conn.reconnectTimer) clearTimeout(conn.reconnectTimer);
+
+    pushLog('warning', 'Reconectando instância ' + instanceId + ' em ' + wait + 'ms (código ' + code + ', tentativa ' + conn.reconnectAttempts + ')');
+
+    conn.reconnectTimer = setTimeout(async () => {
+      try {
+        // encerra e recria socket mantendo sessão
+        try { conn.sock.end(); } catch {}
+        connections.delete(instanceId);
+        await createOrGetSocket(instanceId);
+      } catch (err) {
+        const msg = err && err.message ? err.message : 'erro desconhecido';
+        pushLog('error', 'Falha ao reconectar instância ' + instanceId + ': ' + msg);
+      }
+    }, wait);
+  };
 
   sock.ev.on('connection.update', (update) => {
     const { connection, lastDisconnect, qr } = update || {};
 
     if (qr) {
       conn.qr = qr;
+      conn.qrCreatedAt = new Date().toISOString();
       conn.status = 'qr_pending';
       pushLog('info', 'QR gerado para instância ' + instanceId);
     }
@@ -345,21 +390,30 @@ const createOrGetSocket = async (instanceId) => {
     if (connection === 'open') {
       conn.status = 'connected';
       conn.qr = null;
+      conn.qrCreatedAt = null;
+      conn.reconnectAttempts = 0;
+      conn.lastDisconnectCode = null;
+      conn.lastDisconnectAt = null;
+
       const raw = sock.user && sock.user.id ? String(sock.user.id) : '';
       conn.phone = raw ? raw.split('@')[0].split(':')[0] : null;
       pushLog('success', 'Instância ' + instanceId + ' conectada (' + (conn.phone || 'sem número') + ')');
     }
 
     if (connection === 'close') {
-      conn.status = 'disconnected';
-      conn.qr = null;
-
       const code = lastDisconnect && lastDisconnect.error && lastDisconnect.error.output
         ? lastDisconnect.error.output.statusCode
         : null;
 
+      conn.status = 'disconnected';
+      conn.qr = null;
+      conn.qrCreatedAt = null;
+      conn.lastDisconnectCode = code;
+      conn.lastDisconnectAt = new Date().toISOString();
+
+      // logout: exige novo QR
       if (code === DisconnectReason.loggedOut || code === 401) {
-        pushLog('warning', 'Sessão expirada para instância ' + instanceId);
+        pushLog('warning', 'Sessão expirada para instância ' + instanceId + ' (logout). Limpando sessão...');
         try { sock.logout(); } catch {}
         try { sock.end(); } catch {}
         connections.delete(instanceId);
@@ -368,6 +422,11 @@ const createOrGetSocket = async (instanceId) => {
       }
 
       pushLog('warning', 'Instância ' + instanceId + ' desconectada (código ' + code + ')');
+
+      // tenta recuperar automaticamente (especialmente 515)
+      if (code === 515 || code === 428 || code === 408) {
+        scheduleReconnect(code);
+      }
     }
   });
 
@@ -375,7 +434,7 @@ const createOrGetSocket = async (instanceId) => {
 };
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', name: 'WhatsApp Local Backend', version: '2.1.0', routes: { apiInstance: true } });
+  res.json({ status: 'ok', name: 'WhatsApp Local Backend', version: '2.2.0', routes: { apiInstance: true } });
 });
 
 app.get('/logs', (req, res) => {
@@ -400,6 +459,7 @@ app.get('/api/instance/:id/status', async (req, res) => {
   if (connected && conn.status !== 'connected') {
     conn.status = 'connected';
     conn.qr = null;
+    conn.qrCreatedAt = null;
     conn.phone = phone;
   }
 
@@ -407,6 +467,8 @@ app.get('/api/instance/:id/status', async (req, res) => {
     status: connected ? 'connected' : conn.status,
     connected,
     phone: phone || undefined,
+    last_disconnect_code: conn.lastDisconnectCode || undefined,
+    last_disconnect_at: conn.lastDisconnectAt || undefined,
   });
 });
 
@@ -443,6 +505,9 @@ app.post('/api/instance/:id/disconnect', async (req, res) => {
   const conn = connections.get(instanceId);
 
   try {
+    if (conn && conn.reconnectTimer) {
+      try { clearTimeout(conn.reconnectTimer); } catch {}
+    }
     if (conn && conn.sock) {
       try { await conn.sock.logout(); } catch {}
       try { conn.sock.end(); } catch {}
