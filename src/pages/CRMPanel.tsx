@@ -40,10 +40,12 @@ import CRMOnboardingModal from '@/components/crm/CRMOnboardingModal';
 import CRMCompanyAccount from '@/components/crm/CRMCompanyAccount';
 import CRMCollaborators from '@/components/crm/CRMCollaborators';
 import CRMUserProfile from '@/components/crm/CRMUserProfile';
-import CRMProfileMenu from '@/components/crm/CRMProfileMenu';
 import CRMSecurityProvider from '@/components/crm/CRMSecurityProvider';
 import CRMInteractiveBackground from '@/components/crm/CRMInteractiveBackground';
 import CRMGlobalSearch from '@/components/crm/CRMGlobalSearch';
+import CRMSidebarNav from '@/components/crm/CRMSidebarNav';
+import CRMTopbar from '@/components/crm/CRMTopbar';
+import CRMProfileMenu from '@/components/crm/CRMProfileMenu';
 
 interface NavItem {
   id: string;
