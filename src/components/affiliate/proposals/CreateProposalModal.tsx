@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, Mail, Phone, FileText, User } from 'lucide-react';
+import { Building2, Mail, Phone, FileText, User, DollarSign } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,7 @@ export function CreateProposalModal({ open, onClose, onSubmit, loading }: Create
     company_cnpj: '',
     contact_name: '',
     notes: '',
+    proposal_value: 0,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,6 +44,7 @@ export function CreateProposalModal({ open, onClose, onSubmit, loading }: Create
         company_cnpj: '',
         contact_name: '',
         notes: '',
+        proposal_value: 0,
       });
       onClose();
     }
@@ -145,17 +147,38 @@ export function CreateProposalModal({ open, onClose, onSubmit, loading }: Create
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="text-foreground">
-              Observações
-            </Label>
-            <Textarea
-              id="notes"
-              placeholder="Anotações sobre a empresa ou negociação..."
-              value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              className="bg-background border-border min-h-[80px]"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="proposal_value" className="text-foreground">
+                Valor da Proposta (R$)
+              </Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="proposal_value"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0,00"
+                  value={formData.proposal_value || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, proposal_value: parseFloat(e.target.value) || 0 }))}
+                  className="pl-10 bg-background border-border"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes" className="text-foreground">
+                Observações
+              </Label>
+              <Textarea
+                id="notes"
+                placeholder="Anotações..."
+                value={formData.notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                className="bg-background border-border min-h-[60px]"
+              />
+            </div>
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">

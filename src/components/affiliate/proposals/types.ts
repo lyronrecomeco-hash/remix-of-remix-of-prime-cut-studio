@@ -1,4 +1,4 @@
-// Tipos para o Sistema de Propostas Empresariais - FASE 1 & 2
+// Tipos para o Sistema de Propostas Empresariais - FASE 1, 2, 3 & 6
 
 export type ProposalStatus = 'draft' | 'sent' | 'accepted' | 'cancelled';
 
@@ -25,6 +25,12 @@ export interface AffiliateProposal {
   // Campos FASE 3
   generated_proposal: unknown | null;
   proposal_generated_at: string | null;
+  // Campos FASE 6 - Comissões
+  proposal_value: number | null;
+  commission_rate: number | null;
+  commission_amount: number | null;
+  commission_paid: boolean | null;
+  commission_paid_at: string | null;
 }
 
 export interface CreateProposalData {
@@ -34,6 +40,7 @@ export interface CreateProposalData {
   company_cnpj?: string;
   contact_name?: string;
   notes?: string;
+  proposal_value?: number;
 }
 
 export interface UpdateProposalData extends Partial<CreateProposalData> {

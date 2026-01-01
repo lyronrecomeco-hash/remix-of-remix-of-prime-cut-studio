@@ -30,8 +30,11 @@ import {
   Loader2,
   BarChart3,
   Target,
-  Sparkles
+  Sparkles,
+  DollarSign,
+  CreditCard
 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 
 type ProposalStatus = 'draft' | 'sent' | 'accepted' | 'cancelled';
 
@@ -56,6 +59,12 @@ interface AffiliateProposal {
   ai_analysis: unknown | null;
   generated_proposal: unknown | null;
   proposal_generated_at: string | null;
+  // FASE 6 - Comissões
+  proposal_value: number | null;
+  commission_rate: number | null;
+  commission_amount: number | null;
+  commission_paid: boolean | null;
+  commission_paid_at: string | null;
   affiliates?: {
     name: string;
     email: string;
@@ -92,12 +101,18 @@ const ProposalsManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedProposal, setSelectedProposal] = useState<AffiliateProposal | null>(null);
+  const [acceptModalOpen, setAcceptModalOpen] = useState(false);
+  const [acceptingProposal, setAcceptingProposal] = useState<AffiliateProposal | null>(null);
+  const [proposalValue, setProposalValue] = useState('');
+  const [isAccepting, setIsAccepting] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     draft: 0,
     sent: 0,
     accepted: 0,
     cancelled: 0,
+    totalValue: 0,
+    totalCommission: 0,
   });
 
   useEffect(() => {
@@ -121,12 +136,15 @@ const ProposalsManager = () => {
       setProposals(data || []);
       
       // Calculate stats
+      const accepted = data?.filter(p => p.status === 'accepted') || [];
       const statsData = {
         total: data?.length || 0,
         draft: data?.filter(p => p.status === 'draft').length || 0,
         sent: data?.filter(p => p.status === 'sent').length || 0,
-        accepted: data?.filter(p => p.status === 'accepted').length || 0,
+        accepted: accepted.length,
         cancelled: data?.filter(p => p.status === 'cancelled').length || 0,
+        totalValue: accepted.reduce((sum, p) => sum + (p.proposal_value || 0), 0),
+        totalCommission: accepted.reduce((sum, p) => sum + (p.commission_amount || 0), 0),
       };
       setStats(statsData);
     } catch (error) {
@@ -153,6 +171,62 @@ const ProposalsManager = () => {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
+  };
+
+  const handleAcceptProposal = async () => {
+    if (!acceptingProposal || !proposalValue) return;
+    
+    setIsAccepting(true);
+    try {
+      const value = parseFloat(proposalValue);
+      
+      // First update the value
+      const { error: valueError } = await supabase
+        .from('affiliate_proposals')
+        .update({ proposal_value: value })
+        .eq('id', acceptingProposal.id);
+      
+      if (valueError) throw valueError;
+      
+      // Then update status (trigger will calculate commission)
+      const { error: statusError } = await supabase
+        .from('affiliate_proposals')
+        .update({ status: 'accepted' })
+        .eq('id', acceptingProposal.id);
+      
+      if (statusError) throw statusError;
+      
+      toast.success('Proposta aceita! Comissão calculada automaticamente.');
+      setAcceptModalOpen(false);
+      setAcceptingProposal(null);
+      setProposalValue('');
+      fetchProposals();
+    } catch (error) {
+      console.error('Error accepting proposal:', error);
+      toast.error('Erro ao aceitar proposta');
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
+  const handlePayCommission = async (proposal: AffiliateProposal) => {
+    try {
+      const { data, error } = await supabase.rpc('pay_proposal_commission', {
+        proposal_id: proposal.id
+      });
+      
+      if (error) throw error;
+      
+      if (data) {
+        toast.success('Comissão paga! Saldo transferido para disponível.');
+        fetchProposals();
+      } else {
+        toast.error('Não foi possível pagar a comissão');
+      }
+    } catch (error) {
+      console.error('Error paying commission:', error);
+      toast.error('Erro ao pagar comissão');
+    }
   };
 
   const StatCard = ({ title, value, icon: Icon, color }: { title: string; value: number; icon: React.ElementType; color: string }) => (
@@ -193,12 +267,38 @@ const ProposalsManager = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <StatCard title="Total" value={stats.total} icon={BarChart3} color="bg-primary/10 text-primary" />
         <StatCard title="Em Elaboração" value={stats.draft} icon={Clock} color="bg-amber-500/10 text-amber-500" />
         <StatCard title="Enviadas" value={stats.sent} icon={Send} color="bg-blue-500/10 text-blue-500" />
         <StatCard title="Aceitas" value={stats.accepted} icon={CheckCircle2} color="bg-emerald-500/10 text-emerald-500" />
         <StatCard title="Canceladas" value={stats.cancelled} icon={XCircle} color="bg-red-500/10 text-red-500" />
+        <Card className="border-border/50">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Valor Total</p>
+                <p className="text-lg font-bold text-emerald-600">{formatCurrency(stats.totalValue)}</p>
+              </div>
+              <div className="p-2 rounded-lg bg-emerald-500/10">
+                <DollarSign className="w-5 h-5 text-emerald-500" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50">
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Comissões</p>
+                <p className="text-lg font-bold text-primary">{formatCurrency(stats.totalCommission)}</p>
+              </div>
+              <div className="p-2 rounded-lg bg-primary/10">
+                <TrendingUp className="w-5 h-5 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -255,10 +355,9 @@ const ProposalsManager = () => {
                   <TableRow>
                     <TableHead>Empresa</TableHead>
                     <TableHead>Afiliado</TableHead>
-                    <TableHead>Nicho</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Questionário</TableHead>
-                    <TableHead>Proposta IA</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Comissão</TableHead>
                     <TableHead>Criado em</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -280,35 +379,30 @@ const ProposalsManager = () => {
                           <p className="text-sm">{proposal.affiliates?.name || '-'}</p>
                         </TableCell>
                         <TableCell>
-                          <p className="text-sm">{proposal.business_niches?.name || '-'}</p>
-                        </TableCell>
-                        <TableCell>
                           <Badge className={statusConfig[proposal.status].color}>
                             <StatusIcon className="w-3 h-3 mr-1" />
                             {statusConfig[proposal.status].label}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {proposal.questionnaire_completed ? (
-                            <Badge variant="outline" className="text-emerald-600 border-emerald-300">
-                              <CheckCircle2 className="w-3 h-3 mr-1" />
-                              Completo
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-muted-foreground">
-                              <Clock className="w-3 h-3 mr-1" />
-                              Pendente
-                            </Badge>
-                          )}
+                          <p className="text-sm font-medium">
+                            {proposal.proposal_value ? formatCurrency(proposal.proposal_value) : '-'}
+                          </p>
                         </TableCell>
                         <TableCell>
-                          {proposal.generated_proposal ? (
-                            <Badge variant="outline" className="text-primary border-primary/30">
-                              <Sparkles className="w-3 h-3 mr-1" />
-                              Gerada
-                            </Badge>
+                          {proposal.commission_amount ? (
+                            <div>
+                              <p className="text-sm font-medium text-primary">
+                                {formatCurrency(proposal.commission_amount)}
+                              </p>
+                              {proposal.commission_paid ? (
+                                <Badge variant="outline" className="text-xs text-emerald-600">Paga</Badge>
+                              ) : proposal.status === 'accepted' ? (
+                                <Badge variant="outline" className="text-xs text-amber-600">Pendente</Badge>
+                              ) : null}
+                            </div>
                           ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
+                            <span className="text-sm text-muted-foreground">-</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -317,13 +411,39 @@ const ProposalsManager = () => {
                           </p>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedProposal(proposal)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedProposal(proposal)}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            {proposal.status === 'sent' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-emerald-600 hover:text-emerald-700"
+                                onClick={() => {
+                                  setAcceptingProposal(proposal);
+                                  setProposalValue(proposal.proposal_value?.toString() || '');
+                                  setAcceptModalOpen(true);
+                                }}
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                            {proposal.status === 'accepted' && !proposal.commission_paid && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-primary hover:text-primary/80"
+                                onClick={() => handlePayCommission(proposal)}
+                              >
+                                <CreditCard className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -555,6 +675,66 @@ const ProposalsManager = () => {
               </Tabs>
             )}
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Accept Proposal Modal */}
+      <Dialog open={acceptModalOpen} onOpenChange={setAcceptModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              Aceitar Proposta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">
+                Empresa: <strong className="text-foreground">{acceptingProposal?.company_name}</strong>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Afiliado: <strong className="text-foreground">{acceptingProposal?.affiliates?.name}</strong>
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="proposal_value">Valor da Proposta (R$)</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="proposal_value"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0,00"
+                  value={proposalValue}
+                  onChange={(e) => setProposalValue(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                A comissão será calculada automaticamente com base na taxa do afiliado.
+              </p>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setAcceptModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleAcceptProposal} 
+                disabled={isAccepting || !proposalValue}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {isAccepting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                )}
+                Confirmar
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

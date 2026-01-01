@@ -154,6 +154,10 @@ export type Database = {
           affiliate_id: string
           ai_analysis: Json | null
           cancelled_at: string | null
+          commission_amount: number | null
+          commission_paid: boolean | null
+          commission_paid_at: string | null
+          commission_rate: number | null
           company_cnpj: string | null
           company_email: string | null
           company_name: string
@@ -165,6 +169,7 @@ export type Database = {
           niche_id: string | null
           notes: string | null
           proposal_generated_at: string | null
+          proposal_value: number | null
           questionnaire_answers: Json | null
           questionnaire_completed: boolean | null
           sent_at: string | null
@@ -176,6 +181,10 @@ export type Database = {
           affiliate_id: string
           ai_analysis?: Json | null
           cancelled_at?: string | null
+          commission_amount?: number | null
+          commission_paid?: boolean | null
+          commission_paid_at?: string | null
+          commission_rate?: number | null
           company_cnpj?: string | null
           company_email?: string | null
           company_name: string
@@ -187,6 +196,7 @@ export type Database = {
           niche_id?: string | null
           notes?: string | null
           proposal_generated_at?: string | null
+          proposal_value?: number | null
           questionnaire_answers?: Json | null
           questionnaire_completed?: boolean | null
           sent_at?: string | null
@@ -198,6 +208,10 @@ export type Database = {
           affiliate_id?: string
           ai_analysis?: Json | null
           cancelled_at?: string | null
+          commission_amount?: number | null
+          commission_paid?: boolean | null
+          commission_paid_at?: string | null
+          commission_rate?: number | null
           company_cnpj?: string | null
           company_email?: string | null
           company_name?: string
@@ -209,6 +223,7 @@ export type Database = {
           niche_id?: string | null
           notes?: string | null
           proposal_generated_at?: string | null
+          proposal_value?: number | null
           questionnaire_answers?: Json | null
           questionnaire_completed?: boolean | null
           sent_at?: string | null
@@ -4305,6 +4320,10 @@ export type Database = {
           p_entity_type: string
         }
         Returns: undefined
+      }
+      pay_proposal_commission: {
+        Args: { proposal_id: string }
+        Returns: boolean
       }
       tenant_matches: { Args: { p_tenant: string }; Returns: boolean }
       validate_token_owner: {
