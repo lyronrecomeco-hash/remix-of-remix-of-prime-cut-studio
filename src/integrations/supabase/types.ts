@@ -3057,6 +3057,113 @@ export type Database = {
           },
         ]
       }
+      whatsapp_api_logs: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: string
+          idempotency_key: string | null
+          ip_address: string | null
+          method: string
+          project_id: string | null
+          request_body: Json | null
+          request_headers: Json | null
+          response_body: Json | null
+          response_status: number | null
+          response_time_ms: number | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          id?: string
+          idempotency_key?: string | null
+          ip_address?: string | null
+          method: string
+          project_id?: string | null
+          request_body?: Json | null
+          request_headers?: Json | null
+          response_body?: Json | null
+          response_status?: number | null
+          response_time_ms?: number | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          idempotency_key?: string | null
+          ip_address?: string | null
+          method?: string
+          project_id?: string | null
+          request_body?: Json | null
+          request_headers?: Json | null
+          response_body?: Json | null
+          response_status?: number | null
+          response_time_ms?: number | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_api_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_api_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_api_projects: {
+        Row: {
+          api_key: string
+          api_secret: string
+          created_at: string
+          description: string | null
+          environment: string
+          id: string
+          is_active: boolean
+          max_instances: number
+          name: string
+          owner_user_id: string
+          rate_limit_per_day: number
+          rate_limit_per_hour: number
+          rate_limit_per_minute: number
+          updated_at: string
+        }
+        Insert: {
+          api_key?: string
+          api_secret?: string
+          created_at?: string
+          description?: string | null
+          environment?: string
+          id?: string
+          is_active?: boolean
+          max_instances?: number
+          name: string
+          owner_user_id: string
+          rate_limit_per_day?: number
+          rate_limit_per_hour?: number
+          rate_limit_per_minute?: number
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          api_secret?: string
+          created_at?: string
+          description?: string | null
+          environment?: string
+          id?: string
+          is_active?: boolean
+          max_instances?: number
+          name?: string
+          owner_user_id?: string
+          rate_limit_per_day?: number
+          rate_limit_per_hour?: number
+          rate_limit_per_minute?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       whatsapp_audit_logs: {
         Row: {
           action: string
@@ -3106,6 +3213,65 @@ export type Database = {
             columns: ["instance_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_automation_rules: {
+        Row: {
+          actions: Json
+          conditions: Json | null
+          created_at: string
+          description: string | null
+          execution_count: number
+          id: string
+          is_active: boolean
+          last_executed_at: string | null
+          name: string
+          priority: number
+          project_id: string | null
+          trigger_config: Json
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          actions?: Json
+          conditions?: Json | null
+          created_at?: string
+          description?: string | null
+          execution_count?: number
+          id?: string
+          is_active?: boolean
+          last_executed_at?: string | null
+          name: string
+          priority?: number
+          project_id?: string | null
+          trigger_config?: Json
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json
+          conditions?: Json | null
+          created_at?: string
+          description?: string | null
+          execution_count?: number
+          id?: string
+          is_active?: boolean
+          last_executed_at?: string | null
+          name?: string
+          priority?: number
+          project_id?: string | null
+          trigger_config?: Json
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_automation_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_api_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -3450,6 +3616,124 @@ export type Database = {
             columns: ["instance_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_event_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          error_message: string | null
+          event_data: Json
+          event_type: string
+          id: string
+          max_attempts: number
+          processed_at: string | null
+          project_id: string | null
+          scheduled_for: string
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          event_data: Json
+          event_type: string
+          id?: string
+          max_attempts?: number
+          processed_at?: string | null
+          project_id?: string | null
+          scheduled_for?: string
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          event_data?: Json
+          event_type?: string
+          id?: string
+          max_attempts?: number
+          processed_at?: string | null
+          project_id?: string | null
+          scheduled_for?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_event_queue_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_api_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_external_webhooks: {
+        Row: {
+          created_at: string
+          events: string[]
+          failure_count: number
+          headers: Json | null
+          id: string
+          is_active: boolean
+          last_status_code: number | null
+          last_triggered_at: string | null
+          max_retries: number
+          name: string
+          project_id: string
+          retry_delay_seconds: number
+          retry_enabled: boolean
+          secret_key: string | null
+          success_count: number
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          events?: string[]
+          failure_count?: number
+          headers?: Json | null
+          id?: string
+          is_active?: boolean
+          last_status_code?: number | null
+          last_triggered_at?: string | null
+          max_retries?: number
+          name: string
+          project_id: string
+          retry_delay_seconds?: number
+          retry_enabled?: boolean
+          secret_key?: string | null
+          success_count?: number
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          events?: string[]
+          failure_count?: number
+          headers?: Json | null
+          id?: string
+          is_active?: boolean
+          last_status_code?: number | null
+          last_triggered_at?: string | null
+          max_retries?: number
+          name?: string
+          project_id?: string
+          retry_delay_seconds?: number
+          retry_enabled?: boolean
+          secret_key?: string | null
+          success_count?: number
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_external_webhooks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_api_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -3884,6 +4168,51 @@ export type Database = {
           },
         ]
       }
+      whatsapp_project_instances: {
+        Row: {
+          can_manage: boolean
+          can_receive: boolean
+          can_send: boolean
+          id: string
+          instance_id: string
+          linked_at: string
+          project_id: string
+        }
+        Insert: {
+          can_manage?: boolean
+          can_receive?: boolean
+          can_send?: boolean
+          id?: string
+          instance_id: string
+          linked_at?: string
+          project_id: string
+        }
+        Update: {
+          can_manage?: boolean
+          can_receive?: boolean
+          can_send?: boolean
+          id?: string
+          instance_id?: string
+          linked_at?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_project_instances_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_project_instances_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_api_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_quick_replies: {
         Row: {
           content: string
@@ -3927,6 +4256,50 @@ export type Database = {
             columns: ["instance_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_rate_limits: {
+        Row: {
+          day_count: number
+          day_window: string
+          hour_count: number
+          hour_window: string
+          id: string
+          minute_count: number
+          minute_window: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          day_count?: number
+          day_window?: string
+          hour_count?: number
+          hour_window?: string
+          id?: string
+          minute_count?: number
+          minute_window?: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          day_count?: number
+          day_window?: string
+          hour_count?: number
+          hour_window?: string
+          id?: string
+          minute_count?: number
+          minute_window?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_rate_limits_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "whatsapp_api_projects"
             referencedColumns: ["id"]
           },
         ]
