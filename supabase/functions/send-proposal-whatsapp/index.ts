@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { proposalId, instanceId } = await req.json();
+    const { proposalId, instanceId, customPhone, customMessage, isTest } = await req.json();
 
     if (!proposalId) {
       throw new Error("proposalId é obrigatório");
@@ -87,24 +87,40 @@ serve(async (req) => {
 
     console.log(`[WhatsApp Proposal] Using instance: ${instance.name} (${instance.id})`);
 
-    // Formatar número de telefone
-    let phone = proposal.company_phone.replace(/\D/g, "");
-    if (!phone.startsWith("55") && phone.length <= 11) {
-      phone = "55" + phone;
-    }
+    // Verificar se é teste ao vivo com número customizado
+    let phone: string;
+    let message: string;
 
-    // Gerar link da proposta
-    const proposalLink = `${supabaseUrl.replace('.supabase.co', '')}.lovable.app/proposta/${proposalId}`;
-    // Fallback para URL base se não funcionar
-    const baseUrl = "https://genesishub.cloud";
-    const finalLink = `${baseUrl}/proposta/${proposalId}`;
+    if (isTest && customPhone) {
+      // Modo de teste ao vivo
+      phone = customPhone.replace(/\D/g, "");
+      if (!phone.startsWith("55") && phone.length <= 11) {
+        phone = "55" + phone;
+      }
+      message = customMessage || `✨ *Teste Ao Vivo - Genesis Hub*\n\nEssa mensagem foi enviada instantaneamente pela IA Luna.`;
+      console.log(`[WhatsApp Proposal] LIVE TEST to: ${phone}`);
+    } else {
+      // Modo padrão - enviar para empresa da proposta
+      if (!proposal.company_phone) {
+        console.error("[WhatsApp Proposal] No company phone");
+        throw new Error("Telefone da empresa não informado");
+      }
+      
+      phone = proposal.company_phone.replace(/\D/g, "");
+      if (!phone.startsWith("55") && phone.length <= 11) {
+        phone = "55" + phone;
+      }
 
-    // Montar mensagem
-    const companyName = proposal.company_name;
-    const affiliateName = proposal.affiliates?.name || "Consultor Genesis";
-    const nicheName = proposal.business_niches?.name || "seu negócio";
+      // Gerar link da proposta
+      const baseUrl = "https://genesishub.cloud";
+      const finalLink = `${baseUrl}/proposta/${proposalId}`;
 
-    const message = `🚀 *Proposta Comercial Personalizada*
+      // Montar mensagem
+      const companyName = proposal.company_name;
+      const affiliateName = proposal.affiliates?.name || "Consultor Genesis";
+      const nicheName = proposal.business_niches?.name || "seu negócio";
+
+      message = `🚀 *Proposta Comercial Personalizada*
 
 Olá! Sou ${affiliateName}, consultor parceiro do *Genesis Hub*.
 
@@ -122,6 +138,7 @@ ${finalLink}
 _A proposta possui IA em tempo real para tirar suas dúvidas!_
 
 Aguardo seu retorno! 💼`;
+    }
 
     // Enviar via backend local/VPS
     const backendEndpoint = instance.backend_url || "http://localhost:3001";

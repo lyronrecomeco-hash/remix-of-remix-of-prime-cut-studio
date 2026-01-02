@@ -12,21 +12,15 @@ export const LunaAvatar = ({
   size = 'md',
   className = '' 
 }: LunaAvatarProps) => {
-  const sizeClasses = {
-    sm: 'w-12 h-12',
-    md: 'w-24 h-24',
-    lg: 'w-40 h-40',
-    xl: 'w-56 h-56'
+  const sizeConfig = {
+    sm: { container: 'w-12 h-12', glow: 15, border: 2 },
+    md: { container: 'w-20 h-20', glow: 25, border: 2 },
+    lg: { container: 'w-32 h-32', glow: 35, border: 3 },
+    xl: { container: 'w-44 h-44', glow: 50, border: 3 }
   };
 
-  const glowSizes = {
-    sm: { blur: 10, spread: 5 },
-    md: { blur: 20, spread: 10 },
-    lg: { blur: 30, spread: 15 },
-    xl: { blur: 40, spread: 20 }
-  };
+  const config = sizeConfig[size];
 
-  // Estados de animação baseados no contexto emocional
   const getStateAnimation = () => {
     switch (state) {
       case 'talking':
@@ -36,11 +30,11 @@ export const LunaAvatar = ({
       case 'analyzing':
         return { scale: [1, 1.01, 1], opacity: [1, 0.95, 1] };
       case 'revealing':
-        return { scale: [1, 1.05, 1] };
+        return { scale: [1, 1.04, 1] };
       case 'confident':
         return { y: [0, -2, 0] };
       default:
-        return { y: [0, -4, 0] };
+        return { y: [0, -3, 0] };
     }
   };
 
@@ -61,32 +55,42 @@ export const LunaAvatar = ({
     }
   };
 
-  // Cor do glow baseada no estado
   const getGlowColor = () => {
     switch (state) {
       case 'thinking':
       case 'analyzing':
-        return 'rgba(59, 130, 246, 0.4)'; // Azul
+        return 'hsl(var(--primary))';
       case 'revealing':
-        return 'rgba(168, 85, 247, 0.5)'; // Roxo
+        return 'hsl(270 75% 60%)';
       case 'confident':
-        return 'rgba(16, 185, 129, 0.4)'; // Verde
+        return 'hsl(160 84% 39%)';
       default:
-        return 'rgba(99, 102, 241, 0.3)'; // Indigo sutil
+        return 'hsl(var(--primary))';
+    }
+  };
+
+  const getGlowOpacity = () => {
+    switch (state) {
+      case 'revealing':
+      case 'confident':
+        return 0.5;
+      default:
+        return 0.35;
     }
   };
 
   return (
-    <div className={`relative ${className}`}>
-      {/* Aura externa animada - sutil e profissional */}
+    <div className={`relative inline-flex items-center justify-center ${className}`}>
+      {/* Outer glow ring */}
       <motion.div
-        className={`absolute inset-0 rounded-full ${sizeClasses[size]}`}
+        className={`absolute ${config.container} rounded-full`}
         style={{
-          background: `radial-gradient(circle, ${getGlowColor()} 0%, transparent 70%)`
+          boxShadow: `0 0 ${config.glow}px ${config.glow / 2}px ${getGlowColor()}`,
+          opacity: getGlowOpacity()
         }}
         animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.5, 0.8, 0.5]
+          scale: [1, 1.15, 1],
+          opacity: [getGlowOpacity() * 0.7, getGlowOpacity(), getGlowOpacity() * 0.7]
         }}
         transition={{
           duration: 3,
@@ -95,53 +99,62 @@ export const LunaAvatar = ({
         }}
       />
 
-      {/* Anel de luz secundário */}
+      {/* Secondary pulse ring */}
       <motion.div
-        className={`absolute inset-0 rounded-full ${sizeClasses[size]}`}
+        className={`absolute ${config.container} rounded-full border-2`}
         style={{
-          boxShadow: `0 0 ${glowSizes[size].blur}px ${glowSizes[size].spread}px ${getGlowColor()}`
+          borderColor: getGlowColor(),
+          opacity: 0.2
         }}
         animate={{
-          opacity: [0.3, 0.6, 0.3]
+          scale: [1, 1.3, 1],
+          opacity: [0.2, 0, 0.2]
         }}
         transition={{
-          duration: 2,
+          duration: 2.5,
           repeat: Infinity,
-          ease: 'easeInOut'
+          ease: 'easeOut'
         }}
       />
 
-      {/* Container principal da imagem */}
+      {/* Main avatar container */}
       <motion.div
-        className={`relative ${sizeClasses[size]} rounded-full overflow-hidden`}
+        className={`relative ${config.container} rounded-full overflow-hidden`}
         animate={getStateAnimation()}
         transition={getStateTransition()}
+        style={{
+          boxShadow: `
+            0 0 0 ${config.border}px hsl(var(--primary) / 0.4),
+            0 0 ${config.glow / 2}px hsl(var(--primary) / 0.3),
+            0 8px 32px -8px rgba(0,0,0,0.5)
+          `
+        }}
       >
-        {/* Borda premium */}
+        {/* Gradient border overlay */}
         <div
-          className="absolute inset-0 rounded-full"
+          className="absolute inset-0 rounded-full z-10 pointer-events-none"
           style={{
-            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(168, 85, 247, 0.3) 50%, rgba(59, 130, 246, 0.3) 100%)',
-            padding: '2px'
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%, rgba(0,0,0,0.2) 100%)'
           }}
         />
 
-        {/* Imagem da Luna */}
+        {/* Avatar image - no white background */}
         <motion.img
           src={lunaImage}
           alt="Luna - Assistente Genesis"
-          className="w-full h-full object-cover object-top rounded-full"
+          className="w-full h-full object-cover object-center rounded-full"
           style={{
-            filter: state === 'thinking' ? 'brightness(0.95)' : 'brightness(1)'
+            filter: state === 'thinking' ? 'brightness(0.95) saturate(1.1)' : 'brightness(1) saturate(1.05)'
           }}
+          draggable={false}
         />
 
-        {/* Overlay sutil para estados específicos */}
+        {/* State overlay effects */}
         {state === 'analyzing' && (
           <motion.div
-            className="absolute inset-0 rounded-full"
+            className="absolute inset-0 rounded-full pointer-events-none"
             style={{
-              background: 'linear-gradient(180deg, transparent 60%, rgba(59, 130, 246, 0.2) 100%)'
+              background: 'linear-gradient(180deg, transparent 50%, hsl(var(--primary) / 0.15) 100%)'
             }}
             animate={{ opacity: [0.3, 0.6, 0.3] }}
             transition={{ duration: 1.5, repeat: Infinity }}
@@ -150,39 +163,43 @@ export const LunaAvatar = ({
 
         {state === 'revealing' && (
           <motion.div
-            className="absolute inset-0 rounded-full"
+            className="absolute inset-0 rounded-full pointer-events-none"
             style={{
-              background: 'linear-gradient(180deg, transparent 60%, rgba(168, 85, 247, 0.2) 100%)'
+              background: 'radial-gradient(circle at center, transparent 30%, hsl(270 75% 60% / 0.2) 100%)'
             }}
-            animate={{ opacity: [0.3, 0.7, 0.3] }}
+            animate={{ opacity: [0.3, 0.6, 0.3] }}
             transition={{ duration: 2, repeat: Infinity }}
           />
         )}
       </motion.div>
 
-      {/* Indicador de estado "pensando" */}
+      {/* Thinking indicator */}
       {state === 'thinking' && (
         <motion.div
-          className="absolute -top-2 -right-2"
+          className="absolute -top-1 -right-1 z-20"
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
         >
           <motion.div
-            className="w-4 h-4 bg-blue-500 rounded-full"
-            animate={{ scale: [1, 1.2, 1], opacity: [0.7, 1, 0.7] }}
+            className="w-4 h-4 bg-primary rounded-full shadow-lg"
+            style={{ boxShadow: '0 0 10px hsl(var(--primary))' }}
+            animate={{ scale: [1, 1.3, 1], opacity: [0.8, 1, 0.8] }}
             transition={{ duration: 1, repeat: Infinity }}
           />
         </motion.div>
       )}
 
-      {/* Indicador "online" para estado confident */}
+      {/* Confident/Online indicator */}
       {state === 'confident' && (
         <motion.div
-          className="absolute -bottom-1 -right-1"
+          className="absolute -bottom-0.5 -right-0.5 z-20"
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
         >
-          <div className="w-4 h-4 bg-emerald-500 rounded-full border-2 border-slate-950" />
+          <div 
+            className="w-4 h-4 bg-emerald-500 rounded-full border-2 border-background shadow-lg"
+            style={{ boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)' }}
+          />
         </motion.div>
       )}
     </div>
