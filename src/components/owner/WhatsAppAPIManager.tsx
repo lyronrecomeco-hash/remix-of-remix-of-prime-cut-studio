@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import WAWebhooksManager from './whatsapp/WAWebhooksManager';
 import WAAutomationsManager from './whatsapp/WAAutomationsManager';
+import WAAnalytics from './whatsapp/WAAnalytics';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -499,30 +500,34 @@ const WhatsAppAPIManager = () => {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="projects" className="flex items-center gap-2">
             <Key className="w-4 h-4" />
-            Projetos
+            <span className="hidden sm:inline">Projetos</span>
           </TabsTrigger>
           <TabsTrigger value="instances" className="flex items-center gap-2">
             <Link2 className="w-4 h-4" />
-            Instâncias
+            <span className="hidden sm:inline">Instâncias</span>
           </TabsTrigger>
           <TabsTrigger value="webhooks" className="flex items-center gap-2">
             <Webhook className="w-4 h-4" />
-            Webhooks
+            <span className="hidden sm:inline">Webhooks</span>
           </TabsTrigger>
           <TabsTrigger value="automations" className="flex items-center gap-2">
             <Bot className="w-4 h-4" />
-            Automações
+            <span className="hidden sm:inline">Automações</span>
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            <span className="hidden sm:inline">Analytics</span>
           </TabsTrigger>
           <TabsTrigger value="api-test" className="flex items-center gap-2">
             <Zap className="w-4 h-4" />
-            Teste API
+            <span className="hidden sm:inline">Teste API</span>
           </TabsTrigger>
           <TabsTrigger value="logs" className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
-            Logs
+            <span className="hidden sm:inline">Logs</span>
           </TabsTrigger>
         </TabsList>
 
@@ -783,6 +788,11 @@ const WhatsAppAPIManager = () => {
         {/* Automations Tab */}
         <TabsContent value="automations" className="mt-6">
           <WAAutomationsManager />
+        </TabsContent>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics" className="mt-6">
+          <WAAnalytics />
         </TabsContent>
 
         {/* API Test Tab */}
