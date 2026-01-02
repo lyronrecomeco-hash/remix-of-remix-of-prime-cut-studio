@@ -23,8 +23,11 @@ import {
   FileText,
   AlertTriangle,
   Server,
-  ExternalLink
+  ExternalLink,
+  Bot
 } from 'lucide-react';
+import WAWebhooksManager from './whatsapp/WAWebhooksManager';
+import WAAutomationsManager from './whatsapp/WAAutomationsManager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -496,7 +499,7 @@ const WhatsAppAPIManager = () => {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="projects" className="flex items-center gap-2">
             <Key className="w-4 h-4" />
             Projetos
@@ -504,6 +507,14 @@ const WhatsAppAPIManager = () => {
           <TabsTrigger value="instances" className="flex items-center gap-2">
             <Link2 className="w-4 h-4" />
             Instâncias
+          </TabsTrigger>
+          <TabsTrigger value="webhooks" className="flex items-center gap-2">
+            <Webhook className="w-4 h-4" />
+            Webhooks
+          </TabsTrigger>
+          <TabsTrigger value="automations" className="flex items-center gap-2">
+            <Bot className="w-4 h-4" />
+            Automações
           </TabsTrigger>
           <TabsTrigger value="api-test" className="flex items-center gap-2">
             <Zap className="w-4 h-4" />
@@ -762,6 +773,16 @@ const WhatsAppAPIManager = () => {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Webhooks Tab */}
+        <TabsContent value="webhooks" className="mt-6">
+          <WAWebhooksManager />
+        </TabsContent>
+
+        {/* Automations Tab */}
+        <TabsContent value="automations" className="mt-6">
+          <WAAutomationsManager />
         </TabsContent>
 
         {/* API Test Tab */}
