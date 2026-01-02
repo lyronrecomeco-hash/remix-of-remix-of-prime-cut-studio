@@ -5,26 +5,27 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   AlertCircle, 
   MessageCircle,
-  ChevronDown,
   ArrowRight,
   Sparkles,
   Phone,
   Mail,
   Bot,
   X,
-  Send
+  Send,
+  Zap,
+  Shield,
+  TrendingUp,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 
-// Luna Decision Experience Components
+// Cinematic Components
 import { LunaAvatar } from '@/components/proposal/LunaAvatar';
-import { TypewriterText, CinematicText } from '@/components/proposal/TypewriterText';
-import { InteractiveBackground } from '@/components/proposal/InteractiveBackground';
-import { NicheFlowSimulation, getNicheSlug } from '@/components/proposal/NicheFlowSimulation';
-import { ROICounter } from '@/components/proposal/ROICounter';
-import { GuidedChoices, Choice } from '@/components/proposal/GuidedChoices';
+import { CinematicBackground } from '@/components/proposal/CinematicBackground';
+import { SeductiveText, DramaticReveal, ImpactNumber, GlitchText } from '@/components/proposal/CinematicText';
+import { CinematicEnter, FloatingElement, PulseGlow } from '@/components/proposal/PhaseTransition';
 
 // Types
 interface GeneratedProposal {
@@ -67,9 +68,9 @@ interface ChatMessage {
   content: string;
 }
 
-type Phase = 'entry' | 'mirror' | 'choice' | 'simulation' | 'roi' | 'reveal' | 'close';
+type Phase = 'entry' | 'desire' | 'vision' | 'power' | 'destiny' | 'action';
 
-// Luna Chat Component (Minimal version)
+// Luna Chat Component
 const LunaChat = ({ proposalContext, whatsappLink }: { 
   proposalContext: { companyName: string; contactName?: string } & GeneratedProposal;
   whatsappLink: string;
@@ -78,7 +79,7 @@ const LunaChat = ({ proposalContext, whatsappLink }: {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { 
       role: 'assistant', 
-      content: `Ficou com alguma dúvida sobre a proposta para ${proposalContext.companyName}? Estou aqui para ajudar!`
+      content: `Algo te chamou atenção? Estou aqui se quiser explorar mais...`
     }
   ]);
   const [input, setInput] = useState('');
@@ -113,7 +114,7 @@ const LunaChat = ({ proposalContext, whatsappLink }: {
         }
       );
 
-      if (!response.ok || !response.body) throw new Error('Failed to get response');
+      if (!response.ok || !response.body) throw new Error('Failed');
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -141,15 +142,14 @@ const LunaChat = ({ proposalContext, whatsappLink }: {
                   return newMessages;
                 });
               }
-            } catch { /* Skip invalid JSON */ }
+            } catch { /* Skip */ }
           }
         }
       }
-    } catch (error) {
-      console.error('Chat error:', error);
+    } catch {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'Desculpe, tive um problema. Que tal falar diretamente pelo WhatsApp? 💬' 
+        content: 'Prefere conversar pelo WhatsApp? Às vezes é mais fácil...' 
       }]);
     } finally {
       setIsLoading(false);
@@ -161,14 +161,23 @@ const LunaChat = ({ proposalContext, whatsappLink }: {
       <AnimatePresence>
         {!isOpen && (
           <motion.button
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0 }}
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            exit={{ scale: 0, rotate: 180 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full shadow-2xl shadow-violet-500/30 flex items-center justify-center hover:scale-110 transition-transform"
+            className="fixed bottom-8 right-8 z-50 group"
           >
-            <Bot className="w-7 h-7 text-white" />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
+            <div className="relative">
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-full blur-lg opacity-60"
+                animate={{ scale: [1, 1.3, 1], opacity: [0.6, 0.8, 0.6] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+              <div className="relative w-16 h-16 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-full shadow-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Bot className="w-7 h-7 text-white" />
+              </div>
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full animate-pulse border-2 border-slate-900" />
+            </div>
           </motion.button>
         )}
       </AnimatePresence>
@@ -176,23 +185,27 @@ const LunaChat = ({ proposalContext, whatsappLink }: {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 100, scale: 0.9 }}
+            initial={{ opacity: 0, y: 100, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 100, scale: 0.9 }}
-            className="fixed bottom-6 right-6 z-50 w-[340px] max-w-[calc(100vw-48px)] h-[450px] max-h-[calc(100vh-100px)] bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 flex flex-col overflow-hidden"
+            exit={{ opacity: 0, y: 100, scale: 0.8 }}
+            transition={{ type: 'spring', damping: 25 }}
+            className="fixed bottom-8 right-8 z-50 w-[380px] max-w-[calc(100vw-64px)] h-[500px] max-h-[calc(100vh-120px)] bg-slate-950/95 backdrop-blur-2xl rounded-3xl shadow-2xl shadow-violet-500/20 border border-white/10 flex flex-col overflow-hidden"
           >
-            <div className="bg-gradient-to-r from-violet-600 to-purple-600 p-4 flex items-center gap-3">
-              <LunaAvatar state="idle" size="sm" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-white text-sm">Luna</h3>
-                <p className="text-xs text-white/70">Assistente Genesis</p>
+            <div className="relative bg-gradient-to-r from-violet-600 via-fuchsia-600 to-violet-600 p-5">
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
+              <div className="relative flex items-center gap-4">
+                <LunaAvatar state="idle" size="sm" />
+                <div className="flex-1">
+                  <h3 className="font-bold text-white text-lg tracking-wide">Luna</h3>
+                  <p className="text-xs text-white/70">Sua guia nessa jornada</p>
+                </div>
+                <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-white" />
+                </button>
               </div>
-              <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-white/20 rounded-full">
-                <X className="w-5 h-5 text-white" />
-              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {messages.map((msg, i) => (
                 <motion.div
                   key={i}
@@ -200,21 +213,26 @@ const LunaChat = ({ proposalContext, whatsappLink }: {
                   animate={{ opacity: 1, y: 0 }}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
+                  <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                     msg.role === 'user' 
-                      ? 'bg-violet-600 text-white rounded-br-md' 
-                      : 'bg-white/10 text-white/90 rounded-bl-md'
+                      ? 'bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white' 
+                      : 'bg-white/5 text-white/90 border border-white/10'
                   }`}>
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                   </div>
                 </motion.div>
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-white/10 rounded-2xl rounded-bl-md px-4 py-2.5">
-                    <div className="flex gap-1">
+                  <div className="bg-white/5 rounded-2xl px-4 py-3 border border-white/10">
+                    <div className="flex gap-1.5">
                       {[0, 1, 2].map(i => (
-                        <span key={i} className="w-2 h-2 bg-white/50 rounded-full animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
+                        <motion.span 
+                          key={i} 
+                          className="w-2 h-2 bg-violet-400 rounded-full"
+                          animate={{ y: [-3, 3, -3] }}
+                          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+                        />
                       ))}
                     </div>
                   </div>
@@ -223,22 +241,22 @@ const LunaChat = ({ proposalContext, whatsappLink }: {
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-4 border-t border-white/10">
-              <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="flex gap-2">
+            <div className="p-5 border-t border-white/10 bg-slate-900/50">
+              <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="flex gap-3">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Digite sua dúvida..."
-                  className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                  placeholder="Escreva aqui..."
+                  className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl"
                   disabled={isLoading}
                 />
-                <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="bg-violet-600 hover:bg-violet-700">
+                <Button type="submit" size="icon" disabled={isLoading || !input.trim()} className="bg-gradient-to-br from-violet-600 to-fuchsia-600 hover:opacity-90 rounded-xl">
                   <Send className="w-4 h-4" />
                 </Button>
               </form>
-              <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="mt-2 flex items-center justify-center gap-2 py-2 text-xs text-emerald-400 hover:text-emerald-300">
+              <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-center gap-2 py-2 text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
                 <MessageCircle className="w-4 h-4" />
-                Falar com humano
+                Prefiro WhatsApp
               </a>
             </div>
           </motion.div>
@@ -256,20 +274,12 @@ const ProposalPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPhase, setCurrentPhase] = useState<Phase>('entry');
-  const [selectedChoice, setSelectedChoice] = useState<Choice | null>(null);
-  const [lunaState, setLunaState] = useState<'idle' | 'talking' | 'thinking' | 'excited'>('idle');
-  const [showScrollIndicator, setShowScrollIndicator] = useState(true);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [lunaState, setLunaState] = useState<'idle' | 'talking' | 'thinking' | 'excited' | 'seductive'>('idle');
+  const [showContinue, setShowContinue] = useState(false);
 
   useEffect(() => {
     fetchProposal();
   }, [slug]);
-
-  useEffect(() => {
-    const handleScroll = () => setShowScrollIndicator(false);
-    window.addEventListener('scroll', handleScroll, { once: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const fetchProposal = async () => {
     if (!slug) {
@@ -323,42 +333,36 @@ const ProposalPage = () => {
   const getWhatsAppLink = () => {
     if (!proposal?.affiliate?.whatsapp) return '#';
     const phone = proposal.affiliate.whatsapp.replace(/\D/g, '');
-    const message = encodeURIComponent(`Olá! Vi a proposta do Genesis Hub para ${proposal.company_name} e quero ativar minha estrutura!`);
+    const message = encodeURIComponent(`Quero ativar o Genesis para ${proposal.company_name}!`);
     return `https://wa.me/${phone}?text=${message}`;
   };
 
   const advancePhase = () => {
-    const phases: Phase[] = ['entry', 'mirror', 'choice', 'simulation', 'roi', 'reveal', 'close'];
+    const phases: Phase[] = ['entry', 'desire', 'vision', 'power', 'destiny', 'action'];
     const currentIndex = phases.indexOf(currentPhase);
     if (currentIndex < phases.length - 1) {
       setCurrentPhase(phases[currentIndex + 1]);
+      setShowContinue(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  };
-
-  const handleChoiceSelect = (choice: Choice) => {
-    setSelectedChoice(choice);
-    setLunaState('excited');
-    setTimeout(() => {
-      setLunaState('talking');
-      setTimeout(() => advancePhase(), 1500);
-    }, 800);
-  };
-
-  const getNiche = () => {
-    if (proposal?.business_niche?.slug) return proposal.business_niche.slug;
-    if (proposal?.business_niche?.name) return getNicheSlug(proposal.business_niche.name);
-    return 'default';
   };
 
   // Loading State
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <InteractiveBackground intensity="low" />
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-6 relative z-10">
-          <LunaAvatar state="thinking" size="lg" />
-          <p className="text-white/70 text-lg">Preparando sua experiência...</p>
+        <CinematicBackground />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-8 relative z-10">
+          <FloatingElement amplitude={15}>
+            <LunaAvatar state="thinking" size="xl" />
+          </FloatingElement>
+          <motion.p 
+            className="text-white/60 text-xl font-light tracking-widest"
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            Preparando algo especial...
+          </motion.p>
         </motion.div>
       </div>
     );
@@ -368,13 +372,16 @@ const ProposalPage = () => {
   if (error || !proposal) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="max-w-md w-full bg-white/5 border-white/10">
+        <CinematicBackground />
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10">
+          <Card className="max-w-md w-full bg-slate-900/80 backdrop-blur-xl border-white/10">
             <CardContent className="pt-8 text-center space-y-4">
-              <AlertCircle className="w-16 h-16 text-destructive mx-auto" />
+              <AlertCircle className="w-16 h-16 text-red-400 mx-auto" />
               <h1 className="text-2xl font-bold text-white">Proposta não encontrada</h1>
-              <p className="text-white/60">A proposta que você está procurando não existe ou foi removida.</p>
-              <Button onClick={() => navigate('/')} variant="outline">Voltar ao início</Button>
+              <p className="text-white/50">O link pode ter expirado ou estar incorreto.</p>
+              <Button onClick={() => navigate('/')} variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                Voltar ao início
+              </Button>
             </CardContent>
           </Card>
         </motion.div>
@@ -383,427 +390,526 @@ const ProposalPage = () => {
   }
 
   const gen = proposal.generated_proposal;
-  const contactName = proposal.contact_name?.split(' ')[0] || '';
+  const firstName = proposal.contact_name?.split(' ')[0] || '';
   const companyName = proposal.company_name;
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
-      <InteractiveBackground intensity="medium" />
+    <div className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
+      <CinematicBackground />
       
       <AnimatePresence mode="wait">
-        {/* PHASE 1: ENTRY - Immersive Introduction */}
+        {/* PHASE 1: ENTRY - The Seduction Begins */}
         {currentPhase === 'entry' && (
           <motion.section
             key="entry"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -50 }}
+            exit={{ opacity: 0, filter: 'blur(20px)', scale: 1.1 }}
+            transition={{ duration: 0.8 }}
             className="min-h-screen flex flex-col items-center justify-center px-6 relative z-10"
           >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-              className="mb-8"
-            >
-              <LunaAvatar state={lunaState} size="lg" />
-            </motion.div>
+            <CinematicEnter delay={0.5}>
+              <FloatingElement amplitude={8} duration={6}>
+                <LunaAvatar state="seductive" size="xl" />
+              </FloatingElement>
+            </CinematicEnter>
 
-            <div className="text-center max-w-2xl">
-              <CinematicText
+            <div className="text-center max-w-3xl mt-12">
+              <CinematicEnter delay={1.5}>
+                <motion.p 
+                  className="text-white/40 text-sm tracking-[0.3em] uppercase mb-6"
+                  animate={{ opacity: [0.4, 0.7, 0.4] }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                >
+                  Uma experiência exclusiva para
+                </motion.p>
+              </CinematicEnter>
+
+              <CinematicEnter delay={2}>
+                <GlitchText 
+                  text={companyName}
+                  className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-violet-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent mb-8"
+                />
+              </CinematicEnter>
+
+              <CinematicEnter delay={3}>
+                <DramaticReveal
+                  lines={[
+                    firstName ? `${firstName}, eu sou a Luna.` : "Eu sou a Luna.",
+                    "Vou te mostrar algo que vai mudar sua perspectiva.",
+                    "Isso não é uma proposta. É uma visão do que você pode se tornar."
+                  ]}
+                  className="text-xl md:text-2xl font-light text-white/80"
+                  lineDelay={2500}
+                  onComplete={() => {
+                    setLunaState('seductive');
+                    setShowContinue(true);
+                  }}
+                />
+              </CinematicEnter>
+            </div>
+
+            <AnimatePresence>
+              {showContinue && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-16"
+                >
+                  <PulseGlow color="violet" intensity="strong">
+                    <Button
+                      size="lg"
+                      onClick={advancePhase}
+                      className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-violet-600 hover:opacity-90 text-lg px-10 py-6 rounded-2xl gap-3 shadow-2xl shadow-violet-500/30"
+                    >
+                      Estou pronto
+                      <ArrowRight className="w-5 h-5" />
+                    </Button>
+                  </PulseGlow>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.section>
+        )}
+
+        {/* PHASE 2: DESIRE - Create the Want */}
+        {currentPhase === 'desire' && (
+          <motion.section
+            key="desire"
+            initial={{ opacity: 0, filter: 'blur(20px)' }}
+            animate={{ opacity: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, filter: 'blur(20px)' }}
+            transition={{ duration: 0.8 }}
+            className="min-h-screen flex flex-col items-center justify-center px-6 py-20 relative z-10"
+          >
+            <div className="max-w-4xl w-full">
+              <CinematicEnter>
+                <div className="flex items-start gap-6 mb-16">
+                  <LunaAvatar state="talking" size="md" />
+                  <div className="flex-1 bg-white/5 backdrop-blur-sm rounded-3xl p-8 border border-white/10">
+                    <DramaticReveal
+                      lines={[
+                        "Deixa eu te fazer uma pergunta sincera...",
+                        "Quantas horas você perde por semana apagando incêndios?",
+                        "Quantas oportunidades escapam enquanto você está ocupado demais?",
+                        "E se eu te dissesse que isso pode mudar?"
+                      ]}
+                      className="text-xl text-white/90 font-light"
+                      lineDelay={2500}
+                      onComplete={() => setShowContinue(true)}
+                    />
+                  </div>
+                </div>
+              </CinematicEnter>
+
+              {gen?.painPoints && gen.painPoints.length > 0 && (
+                <CinematicEnter delay={2}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {gen.painPoints.slice(0, 4).map((point, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 8 + index * 0.3 }}
+                        className="bg-gradient-to-br from-red-950/30 to-transparent p-6 rounded-2xl border border-red-500/20"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
+                          <p className="text-white/70">{point}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </CinematicEnter>
+              )}
+            </div>
+
+            <AnimatePresence>
+              {showContinue && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-16"
+                >
+                  <Button
+                    size="lg"
+                    onClick={advancePhase}
+                    className="bg-white/10 hover:bg-white/20 border border-white/20 text-lg px-10 py-6 rounded-2xl gap-3"
+                  >
+                    E se pudesse ser diferente?
+                    <Sparkles className="w-5 h-5" />
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.section>
+        )}
+
+        {/* PHASE 3: VISION - Show the Future */}
+        {currentPhase === 'vision' && (
+          <motion.section
+            key="vision"
+            initial={{ opacity: 0, filter: 'blur(20px)' }}
+            animate={{ opacity: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, filter: 'blur(20px)' }}
+            transition={{ duration: 0.8 }}
+            className="min-h-screen flex flex-col items-center justify-center px-6 py-20 relative z-10"
+          >
+            <div className="max-w-4xl w-full">
+              <CinematicEnter>
+                <div className="text-center mb-16">
+                  <motion.div
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 rounded-full border border-emerald-500/30 mb-8"
+                    animate={{ boxShadow: ['0 0 20px rgba(16,185,129,0.3)', '0 0 40px rgba(16,185,129,0.5)', '0 0 20px rgba(16,185,129,0.3)'] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <Sparkles className="w-4 h-4 text-emerald-400" />
+                    <span className="text-emerald-400 text-sm font-medium">Visão do Futuro</span>
+                  </motion.div>
+
+                  <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                    Imagine acordar assim
+                  </h2>
+                </div>
+              </CinematicEnter>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[
+                  { icon: Clock, title: 'Tempo Livre', desc: 'Processos rodando sozinhos enquanto você foca no que importa' },
+                  { icon: TrendingUp, title: 'Crescimento', desc: 'Cada cliente gerando mais valor, sem esforço extra' },
+                  { icon: Shield, title: 'Controle', desc: 'Visão completa do negócio na palma da sua mão' },
+                  { icon: Zap, title: 'Velocidade', desc: 'Decisões em segundos com dados em tempo real' }
+                ].map((item, index) => (
+                  <motion.div
+                    key={item.title}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 + index * 0.2 }}
+                    className="group relative bg-gradient-to-br from-white/5 to-white/0 p-8 rounded-3xl border border-white/10 hover:border-emerald-500/30 transition-all duration-500"
+                  >
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"
+                    />
+                    <div className="relative">
+                      <div className="w-14 h-14 bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 rounded-2xl flex items-center justify-center mb-4">
+                        <item.icon className="w-7 h-7 text-emerald-400" />
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
+                      <p className="text-white/60">{item.desc}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <CinematicEnter delay={1.5}>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 2 }}
+                  className="text-center text-xl text-white/60 mt-12 font-light"
+                  onAnimationComplete={() => setShowContinue(true)}
+                >
+                  Isso não é fantasia. É o que acontece quando você tem a estrutura certa.
+                </motion.p>
+              </CinematicEnter>
+            </div>
+
+            <AnimatePresence>
+              {showContinue && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-12"
+                >
+                  <Button
+                    size="lg"
+                    onClick={advancePhase}
+                    className="bg-gradient-to-r from-emerald-600 to-cyan-600 hover:opacity-90 text-lg px-10 py-6 rounded-2xl gap-3"
+                  >
+                    Me mostre os números
+                    <TrendingUp className="w-5 h-5" />
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.section>
+        )}
+
+        {/* PHASE 4: POWER - Show the Numbers */}
+        {currentPhase === 'power' && gen?.roiAnalysis && (
+          <motion.section
+            key="power"
+            initial={{ opacity: 0, filter: 'blur(20px)' }}
+            animate={{ opacity: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, filter: 'blur(20px)' }}
+            transition={{ duration: 0.8 }}
+            className="min-h-screen flex flex-col items-center justify-center px-6 py-20 relative z-10"
+          >
+            <div className="max-w-5xl w-full">
+              <CinematicEnter>
+                <div className="text-center mb-16">
+                  <LunaAvatar state="excited" size="lg" className="mx-auto mb-8" />
+                  <h2 className="text-3xl md:text-5xl font-bold mb-4">
+                    O impacto para a <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">{companyName}</span>
+                  </h2>
+                  <p className="text-xl text-white/50">Calculado especificamente para o seu cenário</p>
+                </div>
+              </CinematicEnter>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.5 }}
+                  className="bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 p-8 rounded-3xl border border-emerald-500/20 text-center"
+                >
+                  <ImpactNumber
+                    value={gen.roiAnalysis.estimatedSavings}
+                    prefix="R$ "
+                    className="text-4xl md:text-5xl font-bold text-emerald-400"
+                    delay={800}
+                  />
+                  <p className="text-white/60 mt-3">Economia mensal</p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.7 }}
+                  className="bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 p-8 rounded-3xl border border-cyan-500/20 text-center"
+                >
+                  <ImpactNumber
+                    value={gen.roiAnalysis.timeRecovery}
+                    suffix="h"
+                    className="text-4xl md:text-5xl font-bold text-cyan-400"
+                    delay={1000}
+                  />
+                  <p className="text-white/60 mt-3">Horas recuperadas/mês</p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.9 }}
+                  className="bg-gradient-to-br from-violet-500/20 to-violet-500/5 p-8 rounded-3xl border border-violet-500/20 text-center"
+                >
+                  <ImpactNumber
+                    value={gen.roiAnalysis.revenueIncrease}
+                    suffix="%"
+                    className="text-4xl md:text-5xl font-bold text-violet-400"
+                    delay={1200}
+                  />
+                  <p className="text-white/60 mt-3">Aumento potencial</p>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 1.1 }}
+                  className="bg-gradient-to-br from-fuchsia-500/20 to-fuchsia-500/5 p-8 rounded-3xl border border-fuchsia-500/20 text-center"
+                >
+                  <ImpactNumber
+                    value={gen.roiAnalysis.paybackPeriod}
+                    className="text-4xl md:text-5xl font-bold text-fuchsia-400"
+                    delay={1400}
+                  />
+                  <p className="text-white/60 mt-3">Meses para retorno</p>
+                </motion.div>
+              </div>
+
+              <CinematicEnter delay={2}>
+                <motion.div
+                  className="text-center bg-white/5 backdrop-blur-sm rounded-3xl p-8 border border-white/10"
+                  onAnimationComplete={() => setShowContinue(true)}
+                >
+                  <p className="text-2xl font-light text-white/80">
+                    Não é sobre custo. É sobre <span className="text-emerald-400 font-semibold">o que você está deixando de ganhar</span> a cada dia que passa.
+                  </p>
+                </motion.div>
+              </CinematicEnter>
+            </div>
+
+            <AnimatePresence>
+              {showContinue && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-12"
+                >
+                  <Button
+                    size="lg"
+                    onClick={advancePhase}
+                    className="bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:opacity-90 text-lg px-10 py-6 rounded-2xl gap-3"
+                  >
+                    Quero essa transformação
+                    <Sparkles className="w-5 h-5" />
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.section>
+        )}
+
+        {/* PHASE 5: DESTINY - The Revelation */}
+        {currentPhase === 'destiny' && (
+          <motion.section
+            key="destiny"
+            initial={{ opacity: 0, filter: 'blur(20px)' }}
+            animate={{ opacity: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, filter: 'blur(20px)' }}
+            transition={{ duration: 0.8 }}
+            className="min-h-screen flex flex-col items-center justify-center px-6 py-20 relative z-10"
+          >
+            <div className="max-w-3xl w-full text-center">
+              <CinematicEnter>
+                <FloatingElement amplitude={10}>
+                  <LunaAvatar state="seductive" size="xl" className="mx-auto mb-12" />
+                </FloatingElement>
+              </CinematicEnter>
+
+              <DramaticReveal
                 lines={[
-                  `Olá${contactName ? `, ${contactName}` : ''}. Eu sou a Luna.`,
-                  `Preparei algo especial para a ${companyName}.`,
-                  `Isso não é uma proposta. É uma simulação do seu futuro.`
+                  "Tudo que você viu até aqui...",
+                  "Cada número, cada insight, cada possibilidade...",
+                  "Foi criado especificamente para você.",
+                  "Porque eu entendo o seu negócio."
                 ]}
-                className="text-2xl md:text-3xl lg:text-4xl font-light leading-relaxed"
-                lineDelay={1500}
-                onComplete={() => {
-                  setLunaState('idle');
-                  setTimeout(() => setShowScrollIndicator(true), 500);
-                }}
-              />
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: showScrollIndicator ? 1 : 0 }}
-              transition={{ delay: 5 }}
-              className="absolute bottom-12 flex flex-col items-center gap-2 cursor-pointer"
-              onClick={advancePhase}
-            >
-              <span className="text-white/50 text-sm">Toque para continuar</span>
-              <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
-                <ChevronDown className="w-6 h-6 text-white/50" />
-              </motion.div>
-            </motion.div>
-          </motion.section>
-        )}
-
-        {/* PHASE 2: MIRROR - Niche Identification */}
-        {currentPhase === 'mirror' && (
-          <motion.section
-            key="mirror"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="min-h-screen flex flex-col items-center justify-center px-6 py-16 relative z-10"
-          >
-            <div className="flex items-center gap-4 mb-8">
-              <LunaAvatar state="talking" size="md" />
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-white/10 backdrop-blur-sm rounded-2xl rounded-bl-md px-6 py-4 max-w-md"
-              >
-                <TypewriterText 
-                  text="Empresas como a sua geralmente operam assim. Funciona. Mas você sabe que pode ser mais."
-                  speed={35}
-                  className="text-lg text-white/90"
-                />
-              </motion.div>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.5 }}
-              className="w-full max-w-4xl"
-            >
-              <NicheFlowSimulation 
-                niche={getNiche()} 
-                showAfter={false}
-                onTransitionComplete={() => {}}
-              />
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 3 }}
-              className="mt-12"
-            >
-              <Button 
-                size="lg" 
-                onClick={advancePhase}
-                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 gap-2"
-              >
-                Continuar <ArrowRight className="w-4 h-4" />
-              </Button>
-            </motion.div>
-          </motion.section>
-        )}
-
-        {/* PHASE 3: CHOICE - Guided Decision */}
-        {currentPhase === 'choice' && (
-          <motion.section
-            key="choice"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="min-h-screen flex flex-col items-center justify-center px-6 py-16 relative z-10"
-          >
-            <div className="flex items-center gap-4 mb-12">
-              <LunaAvatar state="idle" size="md" />
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-white/10 backdrop-blur-sm rounded-2xl rounded-bl-md px-6 py-4 max-w-md"
-              >
-                <TypewriterText 
-                  text="Qual é o seu principal objetivo agora?"
-                  speed={40}
-                  className="text-xl text-white/90"
-                />
-              </motion.div>
-            </div>
-
-            <GuidedChoices 
-              onSelect={handleChoiceSelect}
-              selectedId={selectedChoice?.id}
-            />
-          </motion.section>
-        )}
-
-        {/* PHASE 4: SIMULATION - Visual Transformation */}
-        {currentPhase === 'simulation' && (
-          <motion.section
-            key="simulation"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="min-h-screen flex flex-col items-center justify-center px-6 py-16 relative z-10"
-          >
-            <div className="flex items-center gap-4 mb-8">
-              <LunaAvatar state="excited" size="md" />
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-white/10 backdrop-blur-sm rounded-2xl rounded-bl-md px-6 py-4 max-w-lg"
-              >
-                <TypewriterText 
-                  text={`Entendi. Você quer ${selectedChoice?.title.toLowerCase()}. Veja como isso acontece.`}
-                  speed={35}
-                  className="text-lg text-white/90"
-                />
-              </motion.div>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 1.5 }}
-              className="w-full max-w-4xl"
-            >
-              <NicheFlowSimulation 
-                niche={getNiche()} 
-                showAfter={true}
-              />
-            </motion.div>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 3 }}
-              className="text-center text-white/60 mt-8 max-w-xl"
-            >
-              Isso não é teoria. É o que acontece quando processos viram estrutura.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 4 }}
-              className="mt-8"
-            >
-              <Button 
-                size="lg" 
-                onClick={advancePhase}
-                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 gap-2"
-              >
-                Ver Resultados <Sparkles className="w-4 h-4" />
-              </Button>
-            </motion.div>
-          </motion.section>
-        )}
-
-        {/* PHASE 5: ROI - Visual Impact */}
-        {currentPhase === 'roi' && gen?.roiAnalysis && (
-          <motion.section
-            key="roi"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="min-h-screen flex flex-col items-center justify-center px-6 py-16 relative z-10"
-          >
-            <div className="flex items-center gap-4 mb-12">
-              <LunaAvatar state="talking" size="md" />
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-white/10 backdrop-blur-sm rounded-2xl rounded-bl-md px-6 py-4 max-w-lg"
-              >
-                <TypewriterText 
-                  text={`Para a ${companyName}, isso representa potencial real.`}
-                  speed={40}
-                  className="text-xl text-white/90"
-                />
-              </motion.div>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.5 }}
-              className="w-full"
-            >
-              <ROICounter
-                estimatedSavings={gen.roiAnalysis.estimatedSavings}
-                timeRecovery={gen.roiAnalysis.timeRecovery}
-                revenueIncrease={gen.roiAnalysis.revenueIncrease}
-                paybackPeriod={gen.roiAnalysis.paybackPeriod}
-              />
-            </motion.div>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 4 }}
-              className="text-center text-xl text-white/70 mt-12 max-w-xl"
-            >
-              Não é sobre gastar. É sobre parar de perder.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 5 }}
-              className="mt-8"
-            >
-              <Button 
-                size="lg" 
-                onClick={advancePhase}
-                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 gap-2"
-              >
-                Como isso é possível? <ArrowRight className="w-4 h-4" />
-              </Button>
-            </motion.div>
-          </motion.section>
-        )}
-
-        {/* PHASE 6: REVEAL - Authority */}
-        {currentPhase === 'reveal' && (
-          <motion.section
-            key="reveal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="min-h-screen flex flex-col items-center justify-center px-6 py-16 relative z-10"
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 100 }}
-              className="mb-8"
-            >
-              <LunaAvatar state="excited" size="lg" />
-            </motion.div>
-
-            <div className="text-center max-w-2xl space-y-8">
-              <CinematicText
-                lines={[
-                  `Tudo que você viu foi criado especificamente para a ${companyName}.`,
-                  `Eu analisei seu segmento, suas necessidades, seu potencial.`,
-                  `Isso é o que a Genesis faz: transforma dados em clareza.`
-                ]}
-                className="text-xl md:text-2xl font-light leading-relaxed"
-                lineDelay={1800}
+                className="text-2xl md:text-3xl font-light text-white/90 leading-relaxed"
+                lineDelay={2500}
+                onComplete={() => setShowContinue(true)}
               />
 
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 6 }}
-                className="grid grid-cols-3 gap-6 mt-12"
+                transition={{ delay: 10 }}
+                className="mt-16 grid grid-cols-3 gap-8"
               >
                 {[
-                  { label: 'Adaptação', value: 'Inteligente' },
-                  { label: 'Organização', value: 'Automática' },
-                  { label: 'Escala', value: 'Ilimitada' }
+                  { label: 'Inteligência', value: 'Adaptativa' },
+                  { label: 'Escala', value: 'Ilimitada' },
+                  { label: 'Suporte', value: 'Humano' }
                 ].map((item, i) => (
-                  <div key={item.label} className="text-center">
-                    <div className="text-2xl font-bold text-violet-400">{item.value}</div>
-                    <div className="text-sm text-white/60">{item.label}</div>
+                  <div key={item.label}>
+                    <div className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+                      {item.value}
+                    </div>
+                    <div className="text-sm text-white/50 mt-1">{item.label}</div>
                   </div>
                 ))}
               </motion.div>
             </div>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 7 }}
-              className="mt-12"
-            >
-              <Button 
-                size="lg" 
-                onClick={advancePhase}
-                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 gap-2"
-              >
-                Ver Próximos Passos <ArrowRight className="w-4 h-4" />
-              </Button>
-            </motion.div>
+            <AnimatePresence>
+              {showContinue && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-16"
+                >
+                  <Button
+                    size="lg"
+                    onClick={advancePhase}
+                    className="bg-gradient-to-r from-violet-600 via-fuchsia-600 to-violet-600 hover:opacity-90 text-lg px-12 py-7 rounded-2xl gap-3 shadow-2xl shadow-violet-500/30"
+                  >
+                    Quero começar agora
+                    <ArrowRight className="w-5 h-5" />
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.section>
         )}
 
-        {/* PHASE 7: CLOSE - Strong CTA */}
-        {currentPhase === 'close' && (
+        {/* PHASE 6: ACTION - The Close */}
+        {currentPhase === 'action' && (
           <motion.section
-            key="close"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="min-h-screen flex flex-col items-center justify-center px-6 py-16 relative z-10"
+            key="action"
+            initial={{ opacity: 0, filter: 'blur(20px)' }}
+            animate={{ opacity: 1, filter: 'blur(0px)' }}
+            transition={{ duration: 0.8 }}
+            className="min-h-screen flex flex-col items-center justify-center px-6 py-20 relative z-10"
           >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="mb-8"
-            >
-              <LunaAvatar state="idle" size="lg" />
-            </motion.div>
+            <div className="max-w-2xl w-full text-center">
+              <CinematicEnter>
+                <LunaAvatar state="excited" size="xl" className="mx-auto mb-8" />
+              </CinematicEnter>
 
-            <div className="text-center max-w-2xl space-y-6">
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-3xl md:text-4xl font-bold"
-              >
-                A decisão é sua.
-              </motion.h2>
+              <CinematicEnter delay={0.5}>
+                <h2 className="text-4xl md:text-6xl font-bold mb-6">
+                  A decisão é{' '}
+                  <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-violet-400 bg-clip-text text-transparent">
+                    sua
+                  </span>
+                </h2>
+              </CinematicEnter>
 
-              <CinematicText
-                lines={[
-                  `Você pode continuar como está.`,
-                  `Ou pode ativar uma estrutura que trabalha para você.`,
-                  `Eu já mostrei o caminho.`
-                ]}
-                className="text-xl text-white/70"
-                lineDelay={1200}
-              />
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 4 }}
-              className="flex flex-col sm:flex-row gap-4 mt-12"
-            >
-              <motion.a
-                href={getWhatsAppLink()}
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/30 transition-all"
-              >
-                <MessageCircle className="w-5 h-5" />
-                Ativar minha estrutura
-              </motion.a>
-
-              {proposal.affiliate?.email && (
-                <motion.a
-                  href={`mailto:${proposal.affiliate.email}?subject=Proposta Genesis - ${companyName}`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 transition-all"
-                >
-                  <Mail className="w-5 h-5" />
-                  Enviar e-mail
-                </motion.a>
-              )}
-            </motion.div>
-
-            {proposal.affiliate && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 5 }}
-                className="mt-12 text-center text-white/40 text-sm"
-              >
-                <p>Proposta apresentada por <span className="text-white/60">{proposal.affiliate.name}</span></p>
-                <p className="flex items-center justify-center gap-2 mt-1">
-                  <Phone className="w-3 h-3" />
-                  {proposal.affiliate.whatsapp}
+              <CinematicEnter delay={1}>
+                <p className="text-xl text-white/60 mb-12 font-light leading-relaxed">
+                  Você pode continuar como está.<br />
+                  Ou pode ativar uma estrutura que trabalha para você.<br />
+                  <span className="text-white/90">Eu já te mostrei o caminho.</span>
                 </p>
+              </CinematicEnter>
+
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.5 }}
+                className="space-y-4"
+              >
+                <motion.a
+                  href={getWhatsAppLink()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative block"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl blur-lg opacity-50"
+                    animate={{ opacity: [0.5, 0.7, 0.5] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                  <div className="relative flex items-center justify-center gap-4 px-10 py-6 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-xl rounded-2xl shadow-2xl shadow-emerald-500/30">
+                    <MessageCircle className="w-6 h-6" />
+                    Ativar minha estrutura agora
+                  </div>
+                </motion.a>
+
+                {proposal.affiliate?.email && (
+                  <motion.a
+                    href={`mailto:${proposal.affiliate.email}?subject=Quero ativar o Genesis - ${companyName}`}
+                    className="flex items-center justify-center gap-3 px-10 py-5 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white rounded-2xl border border-white/10 hover:border-white/20 transition-all"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Mail className="w-5 h-5" />
+                    Prefiro enviar um e-mail
+                  </motion.a>
+                )}
               </motion.div>
-            )}
+
+              {proposal.affiliate && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 2.5 }}
+                  className="mt-16 text-white/40 text-sm"
+                >
+                  <p>Proposta apresentada por <span className="text-white/60">{proposal.affiliate.name}</span></p>
+                  <p className="flex items-center justify-center gap-2 mt-1">
+                    <Phone className="w-3 h-3" />
+                    {proposal.affiliate.whatsapp}
+                  </p>
+                </motion.div>
+              )}
+            </div>
           </motion.section>
         )}
       </AnimatePresence>
 
-      {/* Luna Chat Widget - Available after entry */}
+      {/* Luna Chat Widget */}
       {currentPhase !== 'entry' && gen && (
         <LunaChat
           proposalContext={{
@@ -815,19 +921,18 @@ const ProposalPage = () => {
         />
       )}
 
-      {/* Phase Navigation Dots */}
-      <div className="fixed left-6 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col gap-3">
-        {(['entry', 'mirror', 'choice', 'simulation', 'roi', 'reveal', 'close'] as Phase[]).map((phase, i) => (
+      {/* Phase Navigation */}
+      <div className="fixed left-6 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col gap-4">
+        {(['entry', 'desire', 'vision', 'power', 'destiny', 'action'] as Phase[]).map((phase) => (
           <motion.button
             key={phase}
             onClick={() => setCurrentPhase(phase)}
-            className={`w-3 h-3 rounded-full transition-all ${
+            className={`w-2.5 h-2.5 rounded-full transition-all ${
               currentPhase === phase 
-                ? 'bg-violet-500 scale-125' 
+                ? 'bg-violet-400 scale-150 shadow-lg shadow-violet-400/50' 
                 : 'bg-white/20 hover:bg-white/40'
             }`}
-            whileHover={{ scale: 1.3 }}
-            title={phase}
+            whileHover={{ scale: 1.5 }}
           />
         ))}
       </div>
