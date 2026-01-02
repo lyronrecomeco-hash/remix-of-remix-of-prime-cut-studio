@@ -21,7 +21,8 @@ import {
   Briefcase,
   Building2,
   Menu,
-  X
+  X,
+  Server
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,6 +41,7 @@ import AffiliateChatProConfig from '@/components/owner/AffiliateChatProConfig';
 import LeadsManager from '@/components/owner/LeadsManager';
 import AffiliateManager from '@/components/owner/AffiliateManager';
 import WhatsAppAutomation from '@/components/owner/WhatsAppAutomation';
+import WhatsAppAPIManager from '@/components/owner/WhatsAppAPIManager';
 import CRMUsersManager from '@/components/owner/CRMUsersManager';
 import ProposalsManager from '@/components/owner/ProposalsManager';
 import { OwnerProfileMenu } from '@/components/owner/OwnerProfileMenu';
@@ -90,7 +92,13 @@ const navSections: NavSection[] = [
   {
     title: 'Automação',
     items: [
-      { id: 'whatsapp-automation', label: 'WhatsApp Automação', icon: Bot, badge: 'Novo', badgeVariant: 'default' },
+      { id: 'whatsapp-automation', label: 'WhatsApp Automação', icon: Bot },
+    ]
+  },
+  {
+    title: 'API & Integração',
+    items: [
+      { id: 'api-projects', label: 'API & Projetos', icon: Server, badge: 'Core', badgeVariant: 'default' },
     ]
   },
   {
@@ -171,6 +179,8 @@ const OwnerPanel = () => {
         return <WhatsAppTemplatesManager />;
       case 'whatsapp-automation':
         return <WhatsAppAutomation />;
+      case 'api-projects':
+        return <WhatsAppAPIManager />;
       case 'logs':
         return <GlobalLogsViewer />;
       case 'settings':
