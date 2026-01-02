@@ -417,7 +417,7 @@ const ProposalPage = () => {
           >
             <CinematicEnter delay={0.5}>
               <FloatingElement amplitude={8} duration={6}>
-                <LunaAvatar state="seductive" size="xl" />
+                <LunaAvatar state="confident" size="xl" />
               </FloatingElement>
             </CinematicEnter>
 
@@ -821,7 +821,7 @@ const ProposalPage = () => {
           >
             <CinematicEnter delay={0.3}>
               <FloatingElement amplitude={5} duration={8}>
-                <LunaAvatar state="excited" size="xl" />
+                <LunaAvatar state="confident" size="xl" />
               </FloatingElement>
             </CinematicEnter>
 

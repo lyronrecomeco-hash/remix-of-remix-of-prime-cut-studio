@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, CheckCheck, Clock, Phone, Video, MoreVertical, Send, Mic, Paperclip, Camera } from 'lucide-react';
+import { Check, CheckCheck, Clock, Phone, Video, MoreVertical, Mic } from 'lucide-react';
 
 interface Message {
   id: number;
@@ -8,48 +8,111 @@ interface Message {
   time: string;
   isMe: boolean;
   status?: 'sending' | 'sent' | 'delivered' | 'read';
-  typing?: boolean;
 }
 
 interface WhatsAppSimulationProps {
   mode: 'chaos' | 'automated';
+  niche?: string;
   onComplete?: () => void;
+  onMessageShow?: () => void;
 }
 
-const chaosMessages: Message[] = [
-  { id: 1, text: "Oi, quero agendar um horário", time: "09:15", isMe: false },
-  { id: 2, text: "Boa tarde! Qual serviço?", time: "11:42", isMe: true, status: 'read' },
-  { id: 3, text: "Corte e barba", time: "11:43", isMe: false },
-  { id: 4, text: "Que dia você pode?", time: "14:20", isMe: true, status: 'read' },
-  { id: 5, text: "Sábado de manhã tem?", time: "14:21", isMe: false },
-  { id: 6, text: "Deixa eu ver a agenda...", time: "15:45", isMe: true, status: 'read' },
-  { id: 7, text: "Oi?? Tem ou não?", time: "17:30", isMe: false },
-  { id: 8, text: "Desculpa a demora! Sábado só 16h", time: "18:15", isMe: true, status: 'read' },
-  { id: 9, text: "Ah deixa, já agendei em outro lugar", time: "18:16", isMe: false },
-];
+// Mensagens por nicho - realistas e naturais
+const getNicheMessages = (niche: string): { chaos: Message[]; automated: Message[] } => {
+  const nicheMap: Record<string, { chaos: Message[]; automated: Message[] }> = {
+    barbearia: {
+      chaos: [
+        { id: 1, text: "Opa, tudo bem? Qual o valor do corte?", time: "09:15", isMe: false },
+        { id: 2, text: "Oi! 35 reais o corte simples", time: "11:42", isMe: true, status: 'read' },
+        { id: 3, text: "E pra degradê com barba?", time: "11:43", isMe: false },
+        { id: 4, text: "Esse sai 65", time: "14:20", isMe: true, status: 'read' },
+        { id: 5, text: "Blz, tem horário sábado de manhã?", time: "14:21", isMe: false },
+        { id: 6, text: "Peraí q to atendendo, já vejo", time: "15:45", isMe: true, status: 'read' },
+        { id: 7, text: "E aí mano?? Tem ou não", time: "17:30", isMe: false },
+        { id: 8, text: "Desculpa cara! Só tem 16h agora", time: "18:15", isMe: true, status: 'read' },
+        { id: 9, text: "Relaxa, já marquei em outra", time: "18:16", isMe: false },
+      ],
+      automated: [
+        { id: 1, text: "Opa, tudo bem? Qual o valor do corte?", time: "09:15", isMe: false },
+        { id: 2, text: "E aí! 👋 Sou o assistente da barbearia.\n\nCorte simples: R$ 35\nDegradê: R$ 45\nDegradê + Barba: R$ 65\n\nQual você quer?", time: "09:15", isMe: true, status: 'read' },
+        { id: 3, text: "Degradê com barba, tem sábado?", time: "09:16", isMe: false },
+        { id: 4, text: "Show! 💈 Sábado tem:\n\n🕐 09:00 - Carlos\n🕐 10:30 - Rafael\n🕐 14:00 - Carlos\n\nQual tu prefere?", time: "09:16", isMe: true, status: 'read' },
+        { id: 5, text: "10:30 com o Rafa", time: "09:16", isMe: false },
+        { id: 6, text: "✅ Fechado!\n\n📅 Sábado 10:30\n💈 Degradê + Barba\n✂️ Com Rafael\n\nTe mando lembrete antes! 🔔", time: "09:16", isMe: true, status: 'read' },
+        { id: 7, text: "Perfeito valeu!", time: "09:17", isMe: false },
+      ]
+    },
+    clinica: {
+      chaos: [
+        { id: 1, text: "Boa tarde, gostaria de agendar uma consulta com o Dr. Silva", time: "14:10", isMe: false },
+        { id: 2, text: "Boa tarde! Qual especialidade?", time: "16:30", isMe: true, status: 'read' },
+        { id: 3, text: "Cardiologia. Preciso de um retorno", time: "16:31", isMe: false },
+        { id: 4, text: "Vou verificar a agenda dele", time: "17:45", isMe: true, status: 'read' },
+        { id: 5, text: "Ok, aguardo", time: "17:46", isMe: false },
+        { id: 6, text: "Olá? Conseguiu ver?", time: "19:20", isMe: false },
+        { id: 7, text: "Desculpe! Amanhã tenho a agenda, pode ligar?", time: "08:15", isMe: true, status: 'read' },
+        { id: 8, text: "Obrigada mas já consegui em outra clínica", time: "08:20", isMe: false },
+      ],
+      automated: [
+        { id: 1, text: "Boa tarde, gostaria de agendar com Dr. Silva", time: "14:10", isMe: false },
+        { id: 2, text: "Boa tarde! 😊 Sou a assistente virtual.\n\nDr. Silva - Cardiologia\n\nConsulta ou retorno?", time: "14:10", isMe: true, status: 'read' },
+        { id: 3, text: "Retorno", time: "14:11", isMe: false },
+        { id: 4, text: "Perfeito! Horários disponíveis:\n\n📅 Terça 15/01\n🕐 09:00 | 11:00 | 15:00\n\n📅 Quarta 16/01\n🕐 08:30 | 14:00\n\nQual prefere?", time: "14:11", isMe: true, status: 'read' },
+        { id: 5, text: "Terça às 15h", time: "14:11", isMe: false },
+        { id: 6, text: "✅ Confirmado!\n\n👨‍⚕️ Dr. Silva - Cardiologia\n📅 Terça 15/01 às 15:00\n📍 Sala 203\n\nLeve exames anteriores.\nEnviarei lembrete 24h antes! 💙", time: "14:11", isMe: true, status: 'read' },
+        { id: 7, text: "Muito obrigada, atendimento excelente!", time: "14:12", isMe: false },
+      ]
+    },
+    restaurante: {
+      chaos: [
+        { id: 1, text: "Oi, vocês fazem entrega?", time: "12:05", isMe: false },
+        { id: 2, text: "Fazemos sim!", time: "12:45", isMe: true, status: 'read' },
+        { id: 3, text: "Qual o cardápio?", time: "12:46", isMe: false },
+        { id: 4, text: "Vou mandar foto", time: "13:10", isMe: true, status: 'read' },
+        { id: 5, text: "Tô esperando...", time: "13:40", isMe: false },
+        { id: 6, text: "Oi? Cadê o cardápio?", time: "14:15", isMe: false },
+        { id: 7, text: "Desculpa o movimento tá grande! Segue", time: "14:30", isMe: true, status: 'read' },
+        { id: 8, text: "Já pedi em outro lugar, obrigado", time: "14:31", isMe: false },
+      ],
+      automated: [
+        { id: 1, text: "Oi, vocês fazem entrega?", time: "12:05", isMe: false },
+        { id: 2, text: "Oii! 🍽️ Sim, entregamos!\n\nCardápio do dia:\n🥘 Executivo R$ 25\n🍖 Picanha R$ 45\n🐟 Peixe R$ 38\n\nEntrega grátis acima de R$ 40!\n\nO que vai ser?", time: "12:05", isMe: true, status: 'read' },
+        { id: 3, text: "Quero a picanha com fritas", time: "12:06", isMe: false },
+        { id: 4, text: "Ótima escolha! 🥩\n\nPicanha + Fritas: R$ 45\nEntrega: GRÁTIS\n\nEndereço?", time: "12:06", isMe: true, status: 'read' },
+        { id: 5, text: "Rua das Flores 123 apt 45", time: "12:06", isMe: false },
+        { id: 6, text: "✅ Pedido confirmado!\n\n🥩 Picanha + Fritas\n📍 Rua das Flores 123/45\n⏱️ 30-40 min\n💰 R$ 45 (PIX ou cartão na entrega)\n\nBom apetite! 😋", time: "12:06", isMe: true, status: 'read' },
+        { id: 7, text: "Maravilha! Rápido demais!", time: "12:07", isMe: false },
+      ]
+    },
+    servicos: {
+      chaos: [
+        { id: 1, text: "Oi, vocês fazem manutenção de ar condicionado?", time: "10:30", isMe: false },
+        { id: 2, text: "Fazemos sim, qual o problema?", time: "13:15", isMe: true, status: 'read' },
+        { id: 3, text: "Tá pingando água dentro de casa", time: "13:16", isMe: false },
+        { id: 4, text: "Entendi, vou ver agenda do técnico", time: "15:20", isMe: true, status: 'read' },
+        { id: 5, text: "E aí, tem pra quando?", time: "17:00", isMe: false },
+        { id: 6, text: "Olá?", time: "18:30", isMe: false },
+        { id: 7, text: "Desculpa! Só semana que vem", time: "09:00", isMe: true, status: 'read' },
+        { id: 8, text: "Não dá, chamei outro. Obrigado", time: "09:05", isMe: false },
+      ],
+      automated: [
+        { id: 1, text: "Oi, fazem manutenção de ar condicionado?", time: "10:30", isMe: false },
+        { id: 2, text: "Olá! 🔧 Sim, somos especialistas!\n\nQual o problema?\n\n1️⃣ Não gela\n2️⃣ Pingando água\n3️⃣ Barulho estranho\n4️⃣ Limpeza/Revisão", time: "10:30", isMe: true, status: 'read' },
+        { id: 3, text: "2", time: "10:31", isMe: false },
+        { id: 4, text: "Entendi! Problema no dreno.\n\n🗓️ Agenda disponível:\n\n📅 Hoje às 15:00\n📅 Amanhã às 09:00\n📅 Amanhã às 14:00\n\n💰 Visita + diagnóstico: R$ 80\n\nQual horário?", time: "10:31", isMe: true, status: 'read' },
+        { id: 5, text: "Hoje 15h, por favor!", time: "10:31", isMe: false },
+        { id: 6, text: "✅ Agendado!\n\n🔧 Manutenção - Dreno\n📅 Hoje às 15:00\n👷 Técnico João\n📞 (11) 99999-0000\n\nEle liga quando estiver a caminho! 👍", time: "10:31", isMe: true, status: 'read' },
+        { id: 7, text: "Excelente, muito obrigado!", time: "10:32", isMe: false },
+      ]
+    }
+  };
 
-const automatedMessages: Message[] = [
-  { id: 1, text: "Oi, quero agendar um horário", time: "09:15", isMe: false },
-  { id: 2, text: "Olá! 👋 Sou a assistente virtual. Vou te ajudar a agendar agora mesmo! Qual serviço você deseja?", time: "09:15", isMe: true, status: 'read' },
-  { id: 3, text: "Corte e barba", time: "09:16", isMe: false },
-  { id: 4, text: "Perfeito! 💈 Horários disponíveis para amanhã:\n\n🕐 09:00\n🕐 10:30\n🕐 14:00\n🕐 15:30\n\nQual prefere?", time: "09:16", isMe: true, status: 'read' },
-  { id: 5, text: "10:30", time: "09:16", isMe: false },
-  { id: 6, text: "✅ Agendado!\n\n📅 Amanhã às 10:30\n💈 Corte + Barba\n📍 Barbearia Premium\n\nTe envio um lembrete 1h antes! 🔔", time: "09:16", isMe: true, status: 'read' },
-  { id: 7, text: "Muito rápido! Obrigado! 🙌", time: "09:17", isMe: false },
-];
-
-const NotificationBadge = ({ count }: { count: number }) => (
-  <motion.div
-    initial={{ scale: 0 }}
-    animate={{ scale: 1 }}
-    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-  >
-    {count > 99 ? '99+' : count}
-  </motion.div>
-);
+  // Fallback para barbearia se nicho não encontrado
+  return nicheMap[niche] || nicheMap.barbearia;
+};
 
 const TypingIndicator = () => (
-  <div className="flex items-center gap-1 px-4 py-2 bg-white/10 rounded-2xl rounded-bl-md w-fit">
+  <div className="flex items-center gap-1 px-4 py-2 bg-[#1f2c34] rounded-2xl rounded-bl-md w-fit">
     <motion.div
       animate={{ opacity: [0.4, 1, 0.4] }}
       transition={{ duration: 1.5, repeat: Infinity, delay: 0 }}
@@ -76,92 +139,105 @@ const MessageStatus = ({ status }: { status?: string }) => {
   return null;
 };
 
-export const WhatsAppSimulation = ({ mode, onComplete }: WhatsAppSimulationProps) => {
+export const WhatsAppSimulation = ({ mode, niche = 'barbearia', onComplete, onMessageShow }: WhatsAppSimulationProps) => {
   const [visibleMessages, setVisibleMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const messages = mode === 'chaos' ? chaosMessages : automatedMessages;
+  const [lostClient, setLostClient] = useState(false);
+  
+  const nicheMessages = useMemo(() => getNicheMessages(niche), [niche]);
+  const messages = mode === 'chaos' ? nicheMessages.chaos : nicheMessages.automated;
   
   useEffect(() => {
     setVisibleMessages([]);
-    setUnreadCount(0);
+    setLostClient(false);
     let currentIndex = 0;
     
     const showNextMessage = () => {
       if (currentIndex >= messages.length) {
+        if (mode === 'chaos') setLostClient(true);
         onComplete?.();
         return;
       }
       
       const message = messages[currentIndex];
+      
+      // Timing realista baseado no modo
       const delay = mode === 'chaos' 
-        ? (message.isMe ? 2500 : 800) // Demora pra responder no caos
-        : (message.isMe ? 300 : 600); // Resposta instantânea na automação
+        ? (message.isMe ? 3500 : 1200) // Demora MUITO no caos
+        : (message.isMe ? 400 : 800); // Resposta rápida na automação
       
       if (message.isMe) {
         setIsTyping(true);
         setTimeout(() => {
           setIsTyping(false);
           setVisibleMessages(prev => [...prev, message]);
+          onMessageShow?.();
           currentIndex++;
-          setTimeout(showNextMessage, 500);
+          setTimeout(showNextMessage, 600);
         }, delay);
       } else {
         setVisibleMessages(prev => [...prev, message]);
-        if (mode === 'chaos') {
-          setUnreadCount(prev => prev + 1);
-        }
+        onMessageShow?.();
         currentIndex++;
         setTimeout(showNextMessage, delay);
       }
     };
     
-    setTimeout(showNextMessage, 1000);
-  }, [mode, messages, onComplete]);
+    setTimeout(showNextMessage, 1500);
+  }, [mode, messages, onComplete, onMessageShow]);
+
+  const getContactName = () => {
+    switch (niche) {
+      case 'clinica': return 'Clínica';
+      case 'restaurante': return 'Restaurante';
+      case 'servicos': return 'Empresa';
+      default: return 'Barbearia';
+    }
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="w-full max-w-[380px] mx-auto"
+      className="w-full max-w-[360px] mx-auto"
     >
       {/* Phone Frame */}
-      <div className="relative bg-black rounded-[3rem] p-2 shadow-2xl shadow-black/50">
+      <div className="relative bg-black rounded-[2.5rem] p-2 shadow-2xl shadow-black/50">
         {/* Notch */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-black rounded-b-2xl z-10" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-b-xl z-10" />
         
         {/* Screen */}
-        <div className="bg-[#0b141a] rounded-[2.5rem] overflow-hidden">
+        <div className="bg-[#0b141a] rounded-[2rem] overflow-hidden">
           {/* WhatsApp Header */}
-          <div className="bg-[#1f2c34] px-4 py-3 pt-10 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold">
+          <div className="bg-[#1f2c34] px-3 py-2 pt-8 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white font-bold text-sm">
               {mode === 'chaos' ? 'C' : 'G'}
             </div>
             <div className="flex-1">
               <p className="text-white font-medium text-sm">
-                {mode === 'chaos' ? 'Cliente WhatsApp' : 'Genesis Assistente'}
+                {mode === 'chaos' ? `Cliente - ${getContactName()}` : 'Genesis Assistente'}
               </p>
               <p className="text-emerald-400 text-xs">
                 {isTyping ? 'digitando...' : 'online'}
               </p>
             </div>
-            <div className="flex items-center gap-4 text-gray-400">
-              <Video className="w-5 h-5" />
-              <Phone className="w-5 h-5" />
-              <MoreVertical className="w-5 h-5" />
+            <div className="flex items-center gap-3 text-gray-400">
+              <Video className="w-4 h-4" />
+              <Phone className="w-4 h-4" />
+              <MoreVertical className="w-4 h-4" />
             </div>
           </div>
           
           {/* Chat Area */}
           <div 
-            className="h-[400px] overflow-y-auto p-3 space-y-2"
+            className="h-[360px] overflow-y-auto p-2 space-y-1.5"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
             }}
           >
-            {/* Time stamp */}
-            <div className="text-center mb-4">
-              <span className="bg-[#1f2c34] text-gray-400 text-[11px] px-3 py-1 rounded-lg">
+            {/* Timestamp */}
+            <div className="text-center mb-3">
+              <span className="bg-[#1f2c34] text-gray-400 text-[10px] px-2 py-0.5 rounded">
                 {mode === 'chaos' ? 'ONTEM' : 'HOJE'}
               </span>
             </div>
@@ -170,20 +246,21 @@ export const WhatsAppSimulation = ({ mode, onComplete }: WhatsAppSimulationProps
               {visibleMessages.map((message) => (
                 <motion.div
                   key={message.id}
-                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ type: 'spring', damping: 25 }}
                   className={`flex ${message.isMe ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] px-3 py-2 rounded-lg ${
+                    className={`max-w-[80%] px-2.5 py-1.5 rounded-lg ${
                       message.isMe
                         ? 'bg-[#005c4b] rounded-br-sm'
                         : 'bg-[#1f2c34] rounded-bl-sm'
                     }`}
                   >
-                    <p className="text-white text-sm whitespace-pre-line">{message.text}</p>
-                    <div className="flex items-center justify-end gap-1 mt-1">
-                      <span className="text-[10px] text-gray-400">{message.time}</span>
+                    <p className="text-white text-[13px] whitespace-pre-line leading-relaxed">{message.text}</p>
+                    <div className="flex items-center justify-end gap-1 mt-0.5">
+                      <span className="text-[9px] text-gray-400">{message.time}</span>
                       {message.isMe && <MessageStatus status={message.status} />}
                     </div>
                   </div>
@@ -203,44 +280,40 @@ export const WhatsAppSimulation = ({ mode, onComplete }: WhatsAppSimulationProps
           </div>
           
           {/* Input Area */}
-          <div className="bg-[#1f2c34] px-2 py-2 flex items-center gap-2">
-            <div className="flex-1 bg-[#2a3942] rounded-full px-4 py-2 flex items-center gap-2">
-              <span className="text-gray-400 text-sm">Mensagem</span>
+          <div className="bg-[#1f2c34] px-2 py-1.5 flex items-center gap-2">
+            <div className="flex-1 bg-[#2a3942] rounded-full px-3 py-1.5 flex items-center">
+              <span className="text-gray-500 text-xs">Mensagem</span>
             </div>
-            <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center">
-              <Mic className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+              <Mic className="w-4 h-4 text-white" />
             </div>
           </div>
         </div>
       </div>
       
-      {/* Chaos indicators */}
-      {mode === 'chaos' && unreadCount > 0 && (
+      {/* Status indicators */}
+      {mode === 'chaos' && lostClient && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           className="mt-4 text-center"
         >
           <div className="inline-flex items-center gap-2 bg-red-500/20 border border-red-500/30 rounded-full px-4 py-2">
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-red-400 text-sm font-medium">
-              Cliente perdido por demora
-            </span>
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <span className="text-red-400 text-sm">Cliente perdido</span>
           </div>
         </motion.div>
       )}
       
-      {mode === 'automated' && visibleMessages.length === automatedMessages.length && (
+      {mode === 'automated' && visibleMessages.length === messages.length && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           className="mt-4 text-center"
         >
           <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-500/30 rounded-full px-4 py-2">
             <CheckCheck className="w-4 h-4 text-emerald-400" />
-            <span className="text-emerald-400 text-sm font-medium">
-              Agendado em 2 minutos
-            </span>
+            <span className="text-emerald-400 text-sm">Cliente convertido</span>
           </div>
         </motion.div>
       )}
@@ -248,41 +321,45 @@ export const WhatsAppSimulation = ({ mode, onComplete }: WhatsAppSimulationProps
   );
 };
 
-// Múltiplas conversas simultâneas (para mostrar escala)
-export const WhatsAppMultipleChats = () => {
+// Múltiplas conversas simultâneas (inbox caótico)
+export const WhatsAppMultipleChats = ({ niche = 'barbearia' }: { niche?: string }) => {
   const [notifications, setNotifications] = useState(0);
   
   useEffect(() => {
     const interval = setInterval(() => {
-      setNotifications(prev => Math.min(prev + Math.floor(Math.random() * 3) + 1, 99));
-    }, 800);
+      setNotifications(prev => Math.min(prev + Math.floor(Math.random() * 2) + 1, 99));
+    }, 1200);
     
     return () => clearInterval(interval);
   }, []);
 
-  const chats = [
-    { name: 'Maria Silva', msg: 'Oi, quero agendar...', time: '09:15', unread: 3 },
-    { name: 'João Santos', msg: 'Tem horário hoje?', time: '09:12', unread: 2 },
-    { name: 'Ana Costa', msg: 'Quanto custa corte?', time: '09:10', unread: 5 },
-    { name: 'Pedro Lima', msg: 'Vocês trabalham sábado?', time: '09:08', unread: 1 },
-    { name: 'Lucas Oliveira', msg: 'Preciso remarcar...', time: '09:05', unread: 4 },
-    { name: 'Carla Souza', msg: 'Boa tarde!', time: '09:02', unread: 2 },
-  ];
+  const getChats = () => {
+    const baseChats = [
+      { name: 'Maria Silva', msg: 'Tem horário hoje?', time: '09:15', unread: 3 },
+      { name: 'João Santos', msg: 'Quanto custa?', time: '09:12', unread: 2 },
+      { name: 'Ana Costa', msg: 'Oi, boa tarde!', time: '09:10', unread: 4 },
+      { name: 'Pedro Lima', msg: 'Vocês abrem sábado?', time: '09:08', unread: 1 },
+      { name: 'Lucas Oliveira', msg: 'Preciso remarcar', time: '09:05', unread: 3 },
+    ];
+    return baseChats;
+  };
+
+  const chats = getChats();
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="w-full max-w-[380px] mx-auto"
+      className="w-full max-w-[360px] mx-auto"
     >
-      <div className="relative bg-black rounded-[3rem] p-2 shadow-2xl shadow-black/50">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-black rounded-b-2xl z-10" />
+      <div className="relative bg-black rounded-[2.5rem] p-2 shadow-2xl shadow-black/50">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-b-xl z-10" />
         
-        <div className="bg-[#0b141a] rounded-[2.5rem] overflow-hidden">
+        <div className="bg-[#0b141a] rounded-[2rem] overflow-hidden">
           {/* Header */}
-          <div className="bg-[#1f2c34] px-4 py-3 pt-10">
+          <div className="bg-[#1f2c34] px-3 py-2 pt-8">
             <div className="flex items-center justify-between">
-              <h2 className="text-white text-xl font-bold">WhatsApp</h2>
+              <h2 className="text-white text-lg font-bold">WhatsApp</h2>
               <div className="relative">
                 <span className="text-gray-400 text-sm">Conversas</span>
                 {notifications > 0 && (
@@ -290,7 +367,7 @@ export const WhatsAppMultipleChats = () => {
                     key={notifications}
                     initial={{ scale: 1.3 }}
                     animate={{ scale: 1 }}
-                    className="absolute -top-2 -right-4 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                    className="absolute -top-2 -right-4 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
                   >
                     {notifications}
                   </motion.div>
@@ -300,24 +377,24 @@ export const WhatsAppMultipleChats = () => {
           </div>
           
           {/* Chat List */}
-          <div className="h-[400px] overflow-hidden">
+          <div className="h-[360px] overflow-hidden">
             {chats.map((chat, i) => (
               <motion.div
                 key={chat.name}
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -15 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="flex items-center gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/5"
+                className="flex items-center gap-3 px-3 py-2.5 border-b border-white/5"
               >
                 <div className="relative">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center text-white font-bold">
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-gray-500 to-gray-700 flex items-center justify-center text-white font-bold text-sm">
                     {chat.name[0]}
                   </div>
                   {chat.unread > 0 && (
                     <motion.div
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ duration: 0.5, repeat: Infinity }}
-                      className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                      animate={{ scale: [1, 1.15, 1] }}
+                      transition={{ duration: 0.6, repeat: Infinity }}
+                      className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
                     >
                       {chat.unread}
                     </motion.div>
@@ -328,7 +405,7 @@ export const WhatsAppMultipleChats = () => {
                     <p className="text-white font-medium text-sm truncate">{chat.name}</p>
                     <span className="text-emerald-400 text-xs">{chat.time}</span>
                   </div>
-                  <p className="text-gray-400 text-sm truncate">{chat.msg}</p>
+                  <p className="text-gray-400 text-xs truncate">{chat.msg}</p>
                 </div>
               </motion.div>
             ))}
@@ -337,13 +414,13 @@ export const WhatsAppMultipleChats = () => {
             <motion.div
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 2, repeat: Infinity }}
-              className="px-4 py-6 text-center"
+              className="px-4 py-5 text-center"
             >
-              <p className="text-red-400 text-sm">
+              <p className="text-red-400 text-sm font-medium">
                 ⚠️ {notifications} mensagens não respondidas
               </p>
               <p className="text-gray-500 text-xs mt-1">
-                Tempo médio de resposta: 3h 42min
+                Tempo médio: 3h 42min
               </p>
             </motion.div>
           </div>
