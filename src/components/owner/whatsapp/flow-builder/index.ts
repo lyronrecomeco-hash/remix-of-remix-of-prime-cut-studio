@@ -1,5 +1,6 @@
 export { WAFlowBuilder } from './WAFlowBuilder';
 export { FlowNode } from './FlowNode';
+export { CustomEdge } from './CustomEdge';
 export { NodeSidebar } from './NodeSidebar';
 export { NodeConfigPanel } from './NodeConfigPanel';
 export { FlowToolbar } from './FlowToolbar';

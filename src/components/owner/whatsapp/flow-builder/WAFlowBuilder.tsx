@@ -79,24 +79,19 @@ import {
 import { useFlowClipboard, useAutoLayout, useFlowValidation } from './hooks';
 import { cn } from '@/lib/utils';
 
+import { CustomEdge } from './CustomEdge';
+
 const nodeTypes = { flowNode: FlowNode };
+const edgeTypes = { custom: CustomEdge };
 
 const defaultEdgeOptions = {
-  type: 'smoothstep',
-  animated: true,
-  style: { strokeWidth: 3, stroke: 'hsl(var(--primary))' },
-  markerEnd: {
-    type: MarkerType.ArrowClosed,
-    color: 'hsl(var(--primary))',
-    width: 20,
-    height: 20
-  }
+  type: 'custom',
+  animated: false
 };
 
 const getEdgeStyle = (sourceHandle?: string | null) => {
-  if (sourceHandle === 'yes') return { stroke: '#22c55e', strokeWidth: 3 };
-  if (sourceHandle === 'no') return { stroke: '#ef4444', strokeWidth: 3 };
-  return { strokeWidth: 3, stroke: 'hsl(var(--primary))' };
+  // Styles are now handled by CustomEdge component
+  return {};
 };
 
 interface WAFlowBuilderProps {
@@ -322,7 +317,11 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     if (!isValidConnection(connection)) { toast.error('Conexão inválida'); return; }
     const edgeStyle = getEdgeStyle(connection.sourceHandle);
     const markerColor = connection.sourceHandle === 'yes' ? '#22c55e' : connection.sourceHandle === 'no' ? '#ef4444' : 'hsl(var(--primary))';
-    setEdges((eds) => addEdge({ ...connection, type: 'smoothstep', animated: true, style: edgeStyle, markerEnd: { type: MarkerType.ArrowClosed, color: markerColor, width: 20, height: 20 }, label: connection.sourceHandle === 'yes' ? 'Sim' : connection.sourceHandle === 'no' ? 'Não' : undefined, labelStyle: { fill: markerColor, fontWeight: 600, fontSize: 11 }, labelBgStyle: { fill: 'hsl(var(--background))', fillOpacity: 0.9, rx: 4, ry: 4 }, labelBgPadding: [4, 6] as [number, number] }, eds));
+    setEdges((eds) => addEdge({ 
+      ...connection, 
+      type: 'custom',
+      data: { label: connection.sourceHandle === 'yes' ? 'SIM' : connection.sourceHandle === 'no' ? 'NÃO' : undefined }
+    }, eds));
     addToHistory();
   }, [setEdges, addToHistory, isValidConnection]);
 
@@ -393,38 +392,30 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     return (
       <div className="space-y-6">
         {/* Hero Header */}
-        <Card className="border-0 shadow-2xl bg-gradient-to-br from-card via-card to-primary/5 overflow-hidden relative">
-          <div className="absolute inset-0 bg-grid-pattern opacity-5" />
-          <CardHeader className="pb-6 relative z-10">
+        <Card className="border shadow-xl bg-card overflow-hidden relative">
+          <CardHeader className="pb-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-5">
-                <motion.div
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                  className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-xl shadow-primary/30"
-                >
-                  <GitBranch className="w-8 h-8 text-primary-foreground" />
-                </motion.div>
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <GitBranch className="w-7 h-7 text-primary" />
+                </div>
                 <div>
-                  <CardTitle className="text-3xl flex items-center gap-3">
+                  <CardTitle className="text-2xl flex items-center gap-3">
                     Flow Builder
-                    <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 shadow-lg">
-                      <Sparkles className="w-3 h-3 mr-1" /> Pro
-                    </Badge>
+                    <Badge variant="secondary" className="text-xs">Pro</Badge>
                   </CardTitle>
-                  <CardDescription className="text-base mt-1">
-                    Crie automações visuais poderosas • Superior ao N8N
+                  <CardDescription className="text-sm mt-1">
+                    Crie automações visuais poderosas para WhatsApp
                   </CardDescription>
                 </div>
               </div>
               <div className="flex gap-3">
-                <Button variant="outline" size="lg" className="gap-2" onClick={() => setIsLunaOpen(true)}>
-                  <Sparkles className="w-5 h-5 text-purple-500" />
+                <Button variant="outline" size="default" className="gap-2" onClick={() => setIsLunaOpen(true)}>
+                  <Sparkles className="w-4 h-4" />
                   Luna IA
                 </Button>
-                <Button onClick={() => setIsCreateDialogOpen(true)} size="lg" className="gap-2 shadow-lg bg-gradient-to-r from-primary to-primary/80">
-                  <Plus className="w-5 h-5" />
+                <Button onClick={() => setIsCreateDialogOpen(true)} size="default" className="gap-2">
+                  <Plus className="w-4 h-4" />
                   Novo Fluxo
                 </Button>
               </div>
@@ -432,27 +423,27 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
           </CardHeader>
 
           {/* Stats Row */}
-          <CardContent className="pb-6 relative z-10">
+          <CardContent className="pb-6">
             <div className="grid grid-cols-4 gap-4">
               {[
-                { icon: GitBranch, label: 'Total de Fluxos', value: rules.length, color: 'from-blue-500 to-cyan-500' },
-                { icon: CheckCircle2, label: 'Ativos', value: rules.filter(r => r.is_active).length, color: 'from-green-500 to-emerald-500' },
-                { icon: Activity, label: 'Execuções Hoje', value: rules.reduce((acc, r) => acc + (r.execution_count || 0), 0), color: 'from-purple-500 to-pink-500' },
-                { icon: TrendingUp, label: 'Taxa de Sucesso', value: '98%', color: 'from-orange-500 to-amber-500' }
+                { icon: GitBranch, label: 'Total de Fluxos', value: rules.length },
+                { icon: CheckCircle2, label: 'Ativos', value: rules.filter(r => r.is_active).length },
+                { icon: Activity, label: 'Execuções Hoje', value: rules.reduce((acc, r) => acc + (r.execution_count || 0), 0) },
+                { icon: TrendingUp, label: 'Taxa de Sucesso', value: '98%' }
               ].map((stat, idx) => (
                 <motion.div
                   key={idx}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.1 }}
-                  className="p-4 rounded-xl bg-gradient-to-br from-background/80 to-background/40 backdrop-blur border shadow-lg"
+                  className="p-4 rounded-xl bg-muted/50 border"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={cn('w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center', stat.color)}>
-                      <stat.icon className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <stat.icon className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold">{stat.value}</p>
+                      <p className="text-xl font-bold">{stat.value}</p>
                       <p className="text-xs text-muted-foreground">{stat.label}</p>
                     </div>
                   </div>
@@ -465,9 +456,9 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
         {/* Flows Grid */}
         {rules.length === 0 ? (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16">
-            <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 2, repeat: Infinity }} className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-              <Sparkles className="w-12 h-12 text-primary" />
-            </motion.div>
+            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-muted/50 flex items-center justify-center">
+              <Sparkles className="w-10 h-10 text-primary" />
+            </div>
             <h3 className="font-semibold text-xl mb-2">Comece a automatizar</h3>
             <p className="text-muted-foreground mb-6 max-w-md mx-auto">Crie seu primeiro fluxo de automação visual para responder mensagens automaticamente</p>
             <Button onClick={() => setIsCreateDialogOpen(true)} size="lg" className="gap-2">
@@ -489,29 +480,25 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
                 >
                   <Card 
                     className={cn(
-                      'cursor-pointer transition-all duration-300 group overflow-hidden relative',
-                      'hover:shadow-2xl hover:shadow-primary/10',
-                      rule.is_active ? 'border-primary/30 bg-gradient-to-br from-card to-primary/5' : 'border-muted bg-card/50'
+                      'cursor-pointer transition-all duration-300 group overflow-hidden',
+                      'hover:shadow-xl border',
+                      rule.is_active ? 'border-primary/20' : 'border-border'
                     )}
                     onClick={() => loadRule(rule)}
                   >
                     {/* Status indicator bar */}
-                    <div className={cn('h-1 w-full', rule.is_active ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-muted-foreground/20')} />
+                    <div className={cn('h-1 w-full', rule.is_active ? 'bg-primary' : 'bg-muted-foreground/20')} />
                     
                     <CardContent className="pt-5">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
-                          <motion.div 
-                            animate={rule.is_active ? { scale: [1, 1.2, 1] } : {}}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className={cn('w-12 h-12 rounded-xl flex items-center justify-center shadow-lg', rule.is_active ? 'bg-gradient-to-br from-green-500 to-emerald-500' : 'bg-muted')}
-                          >
-                            {rule.is_active ? <Zap className="w-6 h-6 text-white" /> : <Pause className="w-6 h-6 text-muted-foreground" />}
-                          </motion.div>
+                          <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center', rule.is_active ? 'bg-primary/10' : 'bg-muted')}>
+                            {rule.is_active ? <Zap className="w-5 h-5 text-primary" /> : <Pause className="w-5 h-5 text-muted-foreground" />}
+                          </div>
                           <div>
-                            <h3 className="font-bold text-lg group-hover:text-primary transition-colors">{rule.name}</h3>
+                            <h3 className="font-semibold text-base group-hover:text-primary transition-colors">{rule.name}</h3>
                             <Badge variant={rule.is_active ? 'default' : 'secondary'} className="text-[10px]">
-                              {rule.is_active ? '🟢 Ativo' : '⏸️ Pausado'}
+                              {rule.is_active ? 'Ativo' : 'Pausado'}
                             </Badge>
                           </div>
                         </div>
@@ -522,15 +509,15 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
                       {/* Metrics */}
                       <div className="grid grid-cols-3 gap-2 mb-4">
                         <div className="p-2 rounded-lg bg-muted/50 text-center">
-                          <p className="text-lg font-bold text-primary">{rule.flow_data?.nodes?.length || 0}</p>
+                          <p className="text-lg font-bold">{rule.flow_data?.nodes?.length || 0}</p>
                           <p className="text-[10px] text-muted-foreground">Nós</p>
                         </div>
                         <div className="p-2 rounded-lg bg-muted/50 text-center">
-                          <p className="text-lg font-bold text-green-500">{rule.execution_count || 0}</p>
+                          <p className="text-lg font-bold">{rule.execution_count || 0}</p>
                           <p className="text-[10px] text-muted-foreground">Execuções</p>
                         </div>
                         <div className="p-2 rounded-lg bg-muted/50 text-center">
-                          <p className="text-lg font-bold text-blue-500">v{rule.flow_version || 1}</p>
+                          <p className="text-lg font-bold">v{rule.flow_version || 1}</p>
                           <p className="text-[10px] text-muted-foreground">Versão</p>
                         </div>
                       </div>
@@ -686,6 +673,7 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
                 onDragOver={onDragOver}
                 onDrop={onDrop}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
                 connectionLineType={ConnectionLineType.SmoothStep}
                 connectionLineStyle={{ stroke: 'hsl(var(--primary))', strokeWidth: 3, strokeDasharray: '8 4' }}
@@ -761,15 +749,15 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
             <NodeConfigPanel node={selectedNode} onClose={() => setSelectedNode(null)} onSave={updateNodeData} onDelete={deleteNode} onDuplicate={duplicateNode} />
           )}
         </AnimatePresence>
-
-        {/* Modals */}
-        <LunaAIModal open={isLunaOpen} onOpenChange={setIsLunaOpen} onApplyFlow={handleApplyLunaFlow} currentNodes={nodes as unknown as FlowNodeType[]} currentEdges={edges as unknown as FlowEdge[]} />
-        <FlowTemplates open={showTemplates} onClose={() => setShowTemplates(false)} onSelectTemplate={handleApplyTemplate} />
-        <FlowSimulator open={showSimulator} onClose={() => setShowSimulator(false)} nodes={nodes as unknown as FlowNodeType[]} edges={edges as unknown as FlowEdge[]} onNavigateToNode={navigateToNode} />
-        <NodeSearch nodes={nodes as unknown as FlowNodeType[]} onNavigateToNode={navigateToNode} isOpen={showSearch} onClose={() => setShowSearch(false)} />
-        <KeyboardShortcutsPanel isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
-        <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
       </motion.div>
+
+      {/* Modals - outside fullscreen container for proper z-index */}
+      <LunaAIModal open={isLunaOpen} onOpenChange={setIsLunaOpen} onApplyFlow={handleApplyLunaFlow} currentNodes={nodes as unknown as FlowNodeType[]} currentEdges={edges as unknown as FlowEdge[]} />
+      <FlowTemplates open={showTemplates} onClose={() => setShowTemplates(false)} onSelectTemplate={handleApplyTemplate} />
+      <FlowSimulator open={showSimulator} onClose={() => setShowSimulator(false)} nodes={nodes as unknown as FlowNodeType[]} edges={edges as unknown as FlowEdge[]} onNavigateToNode={navigateToNode} />
+      <NodeSearch nodes={nodes as unknown as FlowNodeType[]} onNavigateToNode={navigateToNode} isOpen={showSearch} onClose={() => setShowSearch(false)} />
+      <KeyboardShortcutsPanel isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
     </TooltipProvider>
   );
 };
