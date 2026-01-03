@@ -3487,6 +3487,111 @@ export type Database = {
           },
         ]
       }
+      whatsapp_button_actions: {
+        Row: {
+          action_config: Json | null
+          action_type: string
+          button_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          template_id: string | null
+        }
+        Insert: {
+          action_config?: Json | null
+          action_type: string
+          button_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          template_id?: string | null
+        }
+        Update: {
+          action_config?: Json | null
+          action_type?: string
+          button_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_button_actions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_interactive_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_button_clicks: {
+        Row: {
+          action_result: Json | null
+          action_triggered: string | null
+          button_id: string
+          button_text: string | null
+          conversation_state_id: string | null
+          created_at: string | null
+          id: string
+          instance_id: string | null
+          phone: string
+          processed_at: string | null
+          template_id: string | null
+        }
+        Insert: {
+          action_result?: Json | null
+          action_triggered?: string | null
+          button_id: string
+          button_text?: string | null
+          conversation_state_id?: string | null
+          created_at?: string | null
+          id?: string
+          instance_id?: string | null
+          phone: string
+          processed_at?: string | null
+          template_id?: string | null
+        }
+        Update: {
+          action_result?: Json | null
+          action_triggered?: string | null
+          button_id?: string
+          button_text?: string | null
+          conversation_state_id?: string | null
+          created_at?: string | null
+          id?: string
+          instance_id?: string | null
+          phone?: string
+          processed_at?: string | null
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_button_clicks_conversation_state_id_fkey"
+            columns: ["conversation_state_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversation_states"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_button_clicks_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_button_clicks_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_interactive_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_contacts: {
         Row: {
           about: string | null
@@ -3551,6 +3656,63 @@ export type Database = {
             columns: ["instance_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_conversation_states: {
+        Row: {
+          contact_name: string | null
+          context_data: Json | null
+          created_at: string | null
+          current_state: string | null
+          id: string
+          instance_id: string | null
+          last_button_clicked: string | null
+          last_template_id: string | null
+          metadata: Json | null
+          phone: string
+          updated_at: string | null
+        }
+        Insert: {
+          contact_name?: string | null
+          context_data?: Json | null
+          created_at?: string | null
+          current_state?: string | null
+          id?: string
+          instance_id?: string | null
+          last_button_clicked?: string | null
+          last_template_id?: string | null
+          metadata?: Json | null
+          phone: string
+          updated_at?: string | null
+        }
+        Update: {
+          contact_name?: string | null
+          context_data?: Json | null
+          created_at?: string | null
+          current_state?: string | null
+          id?: string
+          instance_id?: string | null
+          last_button_clicked?: string | null
+          last_template_id?: string | null
+          metadata?: Json | null
+          phone?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_conversation_states_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_conversation_states_last_template_id_fkey"
+            columns: ["last_template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_interactive_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -4041,6 +4203,63 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_interactive_templates: {
+        Row: {
+          button_text: string | null
+          buttons: Json | null
+          category: string | null
+          created_at: string | null
+          description: string | null
+          footer_text: string | null
+          header_content: string | null
+          header_type: string | null
+          id: string
+          is_active: boolean | null
+          list_sections: Json | null
+          message_content: string
+          name: string
+          template_type: string
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          button_text?: string | null
+          buttons?: Json | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          footer_text?: string | null
+          header_content?: string | null
+          header_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          list_sections?: Json | null
+          message_content: string
+          name: string
+          template_type?: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          button_text?: string | null
+          buttons?: Json | null
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          footer_text?: string | null
+          header_content?: string | null
+          header_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          list_sections?: Json | null
+          message_content?: string
+          name?: string
+          template_type?: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       whatsapp_labels: {
         Row: {
           color: string | null
@@ -4498,6 +4717,66 @@ export type Database = {
             columns: ["instance_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_template_sends: {
+        Row: {
+          created_at: string | null
+          delivered_at: string | null
+          error_message: string | null
+          id: string
+          instance_id: string | null
+          phone: string
+          read_at: string | null
+          rendered_content: string | null
+          sent_at: string | null
+          status: string | null
+          template_id: string | null
+          variables_used: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          instance_id?: string | null
+          phone: string
+          read_at?: string | null
+          rendered_content?: string | null
+          sent_at?: string | null
+          status?: string | null
+          template_id?: string | null
+          variables_used?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          id?: string
+          instance_id?: string | null
+          phone?: string
+          read_at?: string | null
+          rendered_content?: string | null
+          sent_at?: string | null
+          status?: string | null
+          template_id?: string | null
+          variables_used?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_template_sends_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_template_sends_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_interactive_templates"
             referencedColumns: ["id"]
           },
         ]

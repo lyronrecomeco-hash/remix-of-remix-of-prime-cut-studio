@@ -12,5 +12,7 @@ export { WATestMessage } from './WATestMessage';
 export { WAInstances } from './WAInstances';
 export { WABackendConfig } from './WABackendConfig';
 export { WATemplates } from './WATemplates';
+export { WAInteractiveTemplates } from './WAInteractiveTemplates';
+export { WhatsAppPreview } from './preview/WhatsAppPreview';
 export * from './types';
 export * from './hooks';
