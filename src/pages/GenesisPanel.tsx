@@ -239,8 +239,10 @@ export default function GenesisPanel() {
   const { user, genesisUser, loading, isSuperAdmin, signOut } = useGenesisAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hideSidebar, setHideSidebar] = useState(false);
   const [instances, setInstances] = useState<Array<{ id: string; name: string; status: string }>>([]);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [isEditingFlow, setIsEditingFlow] = useState(false);
 
   // Check if first time user
   useEffect(() => {
@@ -310,7 +312,7 @@ export default function GenesisPanel() {
       case 'instances':
         return <InstancesManager />;
       case 'flows':
-        return <WAFlowBuilder onBack={() => setActiveTab('dashboard')} />;
+        return <WAFlowBuilder onBack={() => setActiveTab('dashboard')} onEditingChange={setIsEditingFlow} />;
       case 'chatbots':
         return <GenesisChatbots instances={instances} />;
       case 'analytics':
@@ -339,10 +341,13 @@ export default function GenesisPanel() {
     );
   }
 
+  // Hide sidebar when editing flow
+  const shouldHideSidebar = activeTab === 'flows' && isEditingFlow;
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex lg:flex-col w-72 border-r bg-card/50 backdrop-blur-sm">
+      <aside className={cn("hidden lg:flex lg:flex-col w-72 border-r bg-card/50 backdrop-blur-sm transition-all duration-300", shouldHideSidebar && "lg:hidden")}>
         {/* Logo */}
         <div className="flex items-center gap-3 p-5 border-b">
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">

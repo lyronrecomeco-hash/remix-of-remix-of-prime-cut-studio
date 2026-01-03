@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bell,
   Check,
   CheckCheck,
-  X,
   Trash2,
   CreditCard,
-  Smartphone,
   Zap,
   AlertTriangle,
   Info
@@ -15,7 +13,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
   Popover,
   PopoverContent,
@@ -35,18 +32,43 @@ interface Notification {
   created_at: string;
 }
 
+// Local storage keys for persistence
+const NOTIFICATIONS_KEY = 'genesis_notifications';
+const NOTIFICATIONS_INITIALIZED_KEY = 'genesis_notifications_initialized';
+
 export function NotificationsPanel() {
   const { genesisUser } = useGenesisAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
 
-  // Welcome notification + demo notifications for new accounts
+  // Get user-specific storage key
+  const getStorageKey = useCallback((key: string) => {
+    return genesisUser ? `${key}_${genesisUser.id}` : key;
+  }, [genesisUser]);
+
+  // Load notifications from localStorage
   useEffect(() => {
-    if (genesisUser) {
-      // All users get welcome notifications
-      const demoNotifications: Notification[] = [
+    if (!genesisUser) return;
+
+    const storageKey = getStorageKey(NOTIFICATIONS_KEY);
+    const initializedKey = getStorageKey(NOTIFICATIONS_INITIALIZED_KEY);
+
+    // Check if we already have stored notifications
+    const stored = localStorage.getItem(storageKey);
+    const initialized = localStorage.getItem(initializedKey);
+
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setNotifications(parsed);
+      } catch {
+        setNotifications([]);
+      }
+    } else if (!initialized) {
+      // First time - create welcome notifications
+      const welcomeNotifications: Notification[] = [
         {
-          id: '1',
+          id: `welcome-bonus-${Date.now()}`,
           type: 'credit',
           title: '🎉 Bônus de Boas-Vindas!',
           message: 'Você recebeu 300 créditos de bônus para começar a usar a plataforma!',
@@ -54,7 +76,7 @@ export function NotificationsPanel() {
           created_at: new Date().toISOString(),
         },
         {
-          id: '2',
+          id: `welcome-info-${Date.now() + 1}`,
           type: 'info',
           title: 'Bem-vindo ao Genesis Hub!',
           message: 'Configure sua primeira instância WhatsApp para começar a automatizar.',
@@ -62,10 +84,19 @@ export function NotificationsPanel() {
           created_at: new Date(Date.now() - 60000).toISOString(),
         },
       ];
-
-      setNotifications(demoNotifications);
+      
+      setNotifications(welcomeNotifications);
+      localStorage.setItem(storageKey, JSON.stringify(welcomeNotifications));
+      localStorage.setItem(initializedKey, 'true');
     }
-  }, [genesisUser]);
+  }, [genesisUser, getStorageKey]);
+
+  // Save notifications to localStorage whenever they change
+  useEffect(() => {
+    if (!genesisUser) return;
+    const storageKey = getStorageKey(NOTIFICATIONS_KEY);
+    localStorage.setItem(storageKey, JSON.stringify(notifications));
+  }, [notifications, genesisUser, getStorageKey]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -82,6 +113,7 @@ export function NotificationsPanel() {
 
   const deleteNotification = (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
+    toast.success('Notificação removida');
   };
 
   const getIcon = (type: string) => {
