@@ -45,6 +45,7 @@ interface ComponentsModalProps {
 export const ComponentsModal = ({ open, onClose, onSelectComponent, onOpenLuna }: ComponentsModalProps) => {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const filteredTemplates = NODE_TEMPLATES.filter(t =>
     (t.label.toLowerCase().includes(search.toLowerCase()) ||
@@ -55,6 +56,18 @@ export const ComponentsModal = ({ open, onClose, onSelectComponent, onOpenLuna }
   const handleSelect = (template: NodeTemplate) => {
     onSelectComponent(template);
     onClose();
+  };
+
+  const handleDragStart = (event: React.DragEvent, template: NodeTemplate) => {
+    event.dataTransfer.setData('application/reactflow', JSON.stringify(template));
+    event.dataTransfer.effectAllowed = 'move';
+    setIsDragging(true);
+    // Close modal after a short delay to allow drop on canvas
+    setTimeout(() => onClose(), 150);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
   };
 
   return (
@@ -68,7 +81,9 @@ export const ComponentsModal = ({ open, onClose, onSelectComponent, onOpenLuna }
               </div>
               <div>
                 <DialogTitle className="text-lg">Adicionar Componente</DialogTitle>
-                <p className="text-sm text-muted-foreground">Selecione um componente para adicionar ao fluxo</p>
+                <p className="text-sm text-muted-foreground">
+                  Clique para adicionar ou <span className="text-primary font-medium">arraste</span> para o canvas
+                </p>
               </div>
             </div>
           </div>
@@ -119,29 +134,37 @@ export const ComponentsModal = ({ open, onClose, onSelectComponent, onOpenLuna }
                 const categoryColor = NODE_CATEGORIES[template.category as keyof typeof NODE_CATEGORIES]?.color || '#6b7280';
                 
                 return (
-                  <motion.button
+                  <motion.div
                     key={`${template.type}-${template.label}`}
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ delay: index * 0.02 }}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent, template)}
+                    onDragEnd={handleDragEnd}
                     onClick={() => handleSelect(template)}
+                    data-allow-drag="true"
                     className={cn(
-                      'group flex items-center gap-3 p-4 rounded-xl border bg-card text-left transition-all',
-                      'hover:bg-muted/80 hover:shadow-lg hover:border-primary/30 hover:scale-[1.02]'
+                      'group flex items-center gap-3 p-4 rounded-xl border bg-card text-left transition-all cursor-grab active:cursor-grabbing',
+                      'hover:bg-muted/80 hover:shadow-lg hover:border-primary/30 hover:scale-[1.02]',
+                      isDragging && 'opacity-50'
                     )}
                   >
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm transition-transform group-hover:scale-110"
-                      style={{ backgroundColor: `${categoryColor}15` }}
-                    >
-                      <Icon className="w-6 h-6" style={{ color: categoryColor }} />
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <GripVertical className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm transition-transform group-hover:scale-110"
+                        style={{ backgroundColor: `${categoryColor}15` }}
+                      >
+                        <Icon className="w-5 h-5" style={{ color: categoryColor }} />
+                      </div>
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-sm">{template.label}</p>
                       <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{template.description}</p>
                     </div>
-                  </motion.button>
+                  </motion.div>
                 );
               })}
             </AnimatePresence>
