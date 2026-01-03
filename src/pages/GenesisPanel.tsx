@@ -39,6 +39,7 @@ import { CreditsManager } from '@/components/genesis/CreditsManager';
 import { AnalyticsDashboard } from '@/components/genesis/AnalyticsDashboard';
 import { NotificationsPanel } from '@/components/genesis/NotificationsPanel';
 import { GenesisChatbots } from '@/components/genesis/GenesisChatbots';
+import { WelcomeModal } from '@/components/genesis/WelcomeModal';
 
 // Dashboard component with real data
 const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
@@ -82,16 +83,16 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8">
       {/* Animated Welcome */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
         <div>
           <motion.h1 
-            className="text-3xl font-bold"
+            className="text-2xl sm:text-3xl font-bold"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
@@ -106,7 +107,7 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
             </motion.span>
           </motion.h1>
           <motion.p 
-            className="text-muted-foreground mt-1"
+            className="text-muted-foreground mt-1 text-sm sm:text-base"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
@@ -239,6 +240,29 @@ export default function GenesisPanel() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [instances, setInstances] = useState<Array<{ id: string; name: string; status: string }>>([]);
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  // Check if first time user
+  useEffect(() => {
+    const checkFirstTime = async () => {
+      if (!genesisUser) return;
+      
+      const welcomeKey = `genesis_welcome_shown_${genesisUser.id}`;
+      const hasSeenWelcome = localStorage.getItem(welcomeKey);
+      
+      if (!hasSeenWelcome) {
+        setShowWelcome(true);
+      }
+    };
+    checkFirstTime();
+  }, [genesisUser]);
+
+  const handleWelcomeComplete = () => {
+    if (genesisUser) {
+      localStorage.setItem(`genesis_welcome_shown_${genesisUser.id}`, 'true');
+    }
+    setShowWelcome(false);
+  };
 
   // Fetch instances for Chatbots
   useEffect(() => {
@@ -476,10 +500,17 @@ export default function GenesisPanel() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-4 md:p-6">
           {renderContent()}
         </div>
       </main>
+
+      {/* Welcome Modal for first-time users */}
+      <WelcomeModal 
+        open={showWelcome} 
+        onComplete={handleWelcomeComplete}
+        userName={genesisUser?.name?.split(' ')[0]}
+      />
     </div>
   );
 }

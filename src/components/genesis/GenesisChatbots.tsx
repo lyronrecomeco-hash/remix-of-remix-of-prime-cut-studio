@@ -291,55 +291,58 @@ export function GenesisChatbots({ instances }: GenesisChatbotsProps) {
     <div className="space-y-6">
       {/* Hero Card */}
       <Card className="border-0 shadow-xl bg-gradient-to-br from-primary/5 via-card to-card overflow-hidden">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 400 }}
-                className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center shadow-lg"
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center shadow-lg flex-shrink-0"
               >
-                <Bot className="w-7 h-7 text-primary-foreground" />
+                <Bot className="w-6 h-6 sm:w-7 sm:h-7 text-primary-foreground" />
               </motion.div>
               <div>
-                <CardTitle className="text-2xl flex items-center gap-2">
+                <CardTitle className="text-lg sm:text-2xl flex items-center gap-2 flex-wrap">
                   Chatbots Inteligentes
                   <Badge variant="secondary">IA</Badge>
                 </CardTitle>
-                <CardDescription className="text-base">
+                <CardDescription className="text-sm sm:text-base">
                   Configure respostas automáticas com inteligência artificial
                 </CardDescription>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button 
                 variant="outline" 
                 onClick={() => setIsLunaOpen(true)} 
                 className="gap-2"
+                size="sm"
               >
                 <img src={lunaAvatar} alt="Luna" className="w-5 h-5 rounded-full" />
-                Luna IA
+                <span className="hidden sm:inline">Luna IA</span>
+                <span className="sm:hidden">Luna</span>
               </Button>
-              <Button onClick={openCreateDialog} size="lg" className="gap-2 shadow-lg">
-                <Plus className="w-5 h-5" />
-                Novo Chatbot
+              <Button onClick={openCreateDialog} size="sm" className="gap-2 shadow-lg">
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Novo Chatbot</span>
+                <span className="sm:hidden">Novo</span>
               </Button>
             </div>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 mt-6">
-            <div className="p-4 bg-muted/50 rounded-xl">
-              <p className="text-2xl font-bold">{chatbots.length}</p>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-4 sm:mt-6">
+            <div className="p-3 sm:p-4 bg-muted/50 rounded-xl">
+              <p className="text-xl sm:text-2xl font-bold">{chatbots.length}</p>
               <p className="text-xs text-muted-foreground">Total</p>
             </div>
-            <div className="p-4 bg-green-500/10 rounded-xl">
-              <p className="text-2xl font-bold text-green-600">{activeChatbots}</p>
+            <div className="p-3 sm:p-4 bg-green-500/10 rounded-xl">
+              <p className="text-xl sm:text-2xl font-bold text-green-600">{activeChatbots}</p>
               <p className="text-xs text-muted-foreground">Ativos</p>
             </div>
-            <div className="p-4 bg-purple-500/10 rounded-xl">
-              <p className="text-2xl font-bold text-purple-600">{aiChatbots}</p>
+            <div className="p-3 sm:p-4 bg-primary/10 rounded-xl">
+              <p className="text-xl sm:text-2xl font-bold text-primary">{aiChatbots}</p>
               <p className="text-xs text-muted-foreground">Com IA</p>
             </div>
           </div>
@@ -349,24 +352,24 @@ export function GenesisChatbots({ instances }: GenesisChatbotsProps) {
       {/* Chatbots List */}
       {chatbots.length === 0 ? (
         <Card>
-          <CardContent className="py-16 text-center">
+          <CardContent className="py-10 sm:py-16 text-center px-4">
             <motion.div
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 2, repeat: Infinity }}
-              className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center"
+              className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center"
             >
-              <Sparkles className="w-10 h-10 text-primary" />
+              <Sparkles className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
             </motion.div>
-            <h3 className="font-semibold text-xl mb-2">Crie seu primeiro chatbot</h3>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+            <h3 className="font-semibold text-lg sm:text-xl mb-2">Crie seu primeiro chatbot</h3>
+            <p className="text-muted-foreground mb-4 sm:mb-6 max-w-md mx-auto text-sm sm:text-base">
               Configure respostas automáticas para atender seus clientes 24/7
             </p>
-            <div className="flex gap-2 justify-center">
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <Button onClick={() => setIsLunaOpen(true)} variant="outline" className="gap-2">
                 <img src={lunaAvatar} alt="Luna" className="w-5 h-5 rounded-full" />
                 Criar com Luna IA
               </Button>
-              <Button onClick={openCreateDialog} size="lg" className="gap-2">
+              <Button onClick={openCreateDialog} className="gap-2">
                 <Plus className="w-5 h-5" />
                 Criar Chatbot
               </Button>
@@ -646,14 +649,21 @@ export function GenesisChatbots({ instances }: GenesisChatbotsProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Luna AI Builder Dialog */}
+      {/* Luna AI Builder Dialog - Genesis Theme */}
       <Dialog open={isLunaOpen} onOpenChange={setIsLunaOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="max-w-lg bg-gradient-to-b from-background to-background/95">
+          <DialogHeader className="border-b border-border pb-4 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 -mx-6 -mt-6 px-6 pt-6 rounded-t-lg">
             <DialogTitle className="flex items-center gap-3">
-              <img src={lunaAvatar} alt="Luna" className="w-10 h-10 rounded-full" />
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center ring-2 ring-primary/30 overflow-hidden">
+                <img src={lunaAvatar} alt="Luna" className="w-full h-full object-cover" />
+              </div>
               <div>
-                <span>Luna IA</span>
+                <span className="flex items-center gap-2">
+                  Luna IA
+                  <Badge className="bg-gradient-to-r from-primary to-primary/60 text-primary-foreground border-0 text-[10px]">
+                    GENESIS
+                  </Badge>
+                </span>
                 <p className="text-sm font-normal text-muted-foreground">
                   Assistente de criação de chatbots
                 </p>
@@ -671,14 +681,24 @@ export function GenesisChatbots({ instances }: GenesisChatbotsProps) {
                 >
                   <img src={lunaAvatar} alt="Luna" className="w-full h-full rounded-full" />
                 </motion.div>
-                <motion.p
+                <motion.div
                   key={lunaBuildStep}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-sm text-muted-foreground"
+                  className="space-y-2"
                 >
-                  {lunaBuildStep}
-                </motion.p>
+                  <p className="text-sm font-medium">{lunaBuildStep}</p>
+                  <motion.div
+                    className="w-48 h-1 mx-auto bg-muted rounded-full overflow-hidden"
+                  >
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-primary to-primary/60"
+                      initial={{ width: 0 }}
+                      animate={{ width: '100%' }}
+                      transition={{ duration: 4, repeat: Infinity }}
+                    />
+                  </motion.div>
+                </motion.div>
               </div>
             ) : (
               <>
@@ -701,7 +721,7 @@ export function GenesisChatbots({ instances }: GenesisChatbotsProps) {
               <Button variant="outline" onClick={() => setIsLunaOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={buildWithLuna} className="gap-2 bg-gradient-to-r from-purple-500 to-blue-500">
+              <Button onClick={buildWithLuna} className="gap-2 bg-gradient-to-r from-primary to-primary/80">
                 <Sparkles className="w-4 h-4" />
                 Criar com Luna
               </Button>

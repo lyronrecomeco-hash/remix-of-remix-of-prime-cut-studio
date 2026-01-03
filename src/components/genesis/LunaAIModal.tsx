@@ -11,7 +11,6 @@ import {
   MessageSquare,
   Trash2,
   AlertCircle,
-  X,
   Zap,
   CheckCircle2,
   GitBranch,
@@ -25,8 +24,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { FlowNode, FlowEdge } from './types';
 import lunaAvatar from '@/assets/luna-avatar.png';
+
+interface FlowNode {
+  id: string;
+  type: string;
+  position: { x: number; y: number };
+  data: any;
+}
+
+interface FlowEdge {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
+  animated?: boolean;
+  style?: any;
+}
 
 interface Message {
   id: string;
@@ -89,28 +104,24 @@ export const LunaAIModal = ({
   const [generatedFlow, setGeneratedFlow] = useState<{ nodes: FlowNode[]; edges: FlowEdge[] } | null>(null);
   const [animatingNodes, setAnimatingNodes] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Reset state when modal opens
   useEffect(() => {
     if (open && messages.length === 0) {
       setMessages([{
         id: 'welcome',
         role: 'assistant',
-        content: 'Olá! 🤖✨ Sou a **Luna**, sua assistente de IA para criar fluxos de WhatsApp.\n\nMe diga o que você precisa e eu vou construir o fluxo completo para você, ao vivo!',
+        content: 'Olá! 🤖✨ Sou a **Luna**, sua assistente de IA do Genesis Hub.\n\nMe diga o que você precisa e eu vou construir o fluxo completo para você, ao vivo!',
         timestamp: new Date()
       }]);
     }
   }, [open, messages.length]);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, buildSteps]);
 
-  // Animate nodes being created
   const animateNodeCreation = useCallback(async (nodes: FlowNode[]) => {
     setAnimatingNodes([]);
     for (let i = 0; i < nodes.length; i++) {
@@ -130,7 +141,6 @@ export const LunaAIModal = ({
     
     setBuildSteps(steps);
 
-    // Animate through steps
     for (let i = 0; i < steps.length - 1; i++) {
       await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400));
       setBuildSteps(prev => prev.map((s, idx) => ({
@@ -158,7 +168,6 @@ export const LunaAIModal = ({
     setGeneratedFlow(null);
     setAnimatingNodes([]);
 
-    // Start build animation
     simulateBuildSteps();
 
     try {
@@ -171,20 +180,11 @@ export const LunaAIModal = ({
         body: { prompt: messageContent, context }
       });
 
-      if (error) {
-        // Check if the error response has a specific message
-        const errorBody = error.message;
-        throw new Error(errorBody || 'Erro ao conectar com a IA');
-      }
+      if (error) throw new Error(error.message || 'Erro ao conectar com a IA');
+      if (data.error) throw new Error(data.error);
 
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      // Complete all steps
       setBuildSteps(prev => prev.map(s => ({ ...s, status: 'done' as const })));
       
-      // Animate node creation
       if (data.flow?.nodes) {
         setGeneratedFlow(data.flow);
         await animateNodeCreation(data.flow.nodes);
@@ -204,7 +204,6 @@ export const LunaAIModal = ({
 
     } catch (error) {
       console.error('Erro ao gerar fluxo:', error);
-      
       setBuildSteps([]);
       
       const errorMessage: Message = {
@@ -216,14 +215,7 @@ export const LunaAIModal = ({
       };
 
       setMessages(prev => [...prev, errorMessage]);
-      
-      if (error instanceof Error && error.message.includes('Créditos')) {
-        toast.error('Créditos de IA insuficientes', {
-          description: 'Adicione fundos em Settings → Workspace → Usage'
-        });
-      } else {
-        toast.error('Erro ao gerar fluxo');
-      }
+      toast.error('Erro ao gerar fluxo');
     } finally {
       setIsLoading(false);
       setTimeout(() => setBuildSteps([]), 1000);
@@ -335,10 +327,7 @@ export const LunaAIModal = ({
                     >
                       {step.status === 'done' && <CheckCircle2 className="h-3 w-3" />}
                       {step.status === 'active' && (
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                        >
+                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
                           <Loader2 className="h-3 w-3" />
                         </motion.div>
                       )}
@@ -367,7 +356,7 @@ export const LunaAIModal = ({
                   <span className="text-sm font-medium">Criando nós ao vivo</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {generatedFlow.nodes.map((node, i) => {
+                  {generatedFlow.nodes.map((node) => {
                     const isAnimated = animatingNodes.includes(node.id);
                     return (
                       <motion.div
@@ -423,7 +412,6 @@ export const LunaAIModal = ({
                     message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
                   )}
                 >
-                  {/* Avatar */}
                   <div className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
                     message.role === 'user' 
@@ -437,7 +425,6 @@ export const LunaAIModal = ({
                     )}
                   </div>
 
-                  {/* Content */}
                   <div className={cn(
                     "flex-1 max-w-[400px]",
                     message.role === 'user' ? 'text-right' : 'text-left'
@@ -457,160 +444,127 @@ export const LunaAIModal = ({
                         </div>
                       )}
                       <div className="whitespace-pre-wrap break-words">
-                        {message.content.split('**').map((part, i) => 
-                          i % 2 === 1 ? <strong key={i}>{part}</strong> : part
-                        )}
+                        {message.content}
                       </div>
                     </div>
 
-                    {/* Flow Preview & Apply */}
+                    {/* Flow Preview */}
                     {message.flow && (
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="mt-3 p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border border-primary/20"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-3 p-3 rounded-xl bg-card border border-border"
                       >
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-primary" />
-                            <span className="text-sm font-medium">Fluxo Pronto!</span>
+                            <GitBranch className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium">Fluxo Gerado</span>
                           </div>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {message.flow.nodes.length} nós • {message.flow.edges.length} conexões
+                          <Badge variant="outline" className="text-xs">
+                            {message.flow.nodes.length} nós
                           </Badge>
                         </div>
                         
-                        {/* Node preview */}
                         <div className="flex flex-wrap gap-1.5 mb-3">
-                          {message.flow.nodes.slice(0, 8).map((node) => (
-                            <motion.div
+                          {message.flow.nodes.slice(0, 6).map((node) => (
+                            <span
                               key={node.id}
-                              whileHover={{ scale: 1.05 }}
-                              className="flex items-center gap-1 px-2 py-1 rounded bg-background/50 text-[10px]"
+                              className="px-2 py-0.5 rounded-full bg-primary/10 text-xs"
                             >
-                              <span>{NODE_ICONS[node.data.type] || '📦'}</span>
-                              <span className="truncate max-w-[60px]">{node.data.label}</span>
-                            </motion.div>
+                              {NODE_ICONS[node.data.type] || '📦'} {node.data.label}
+                            </span>
                           ))}
-                          {message.flow.nodes.length > 8 && (
-                            <div className="px-2 py-1 rounded bg-background/50 text-[10px] text-muted-foreground">
-                              +{message.flow.nodes.length - 8} mais
-                            </div>
+                          {message.flow.nodes.length > 6 && (
+                            <span className="px-2 py-0.5 rounded-full bg-muted text-xs">
+                              +{message.flow.nodes.length - 6} mais
+                            </span>
                           )}
                         </div>
-                        
-                        {message.tips && message.tips.length > 0 && (
-                          <div className="mb-3 space-y-1">
-                            {message.tips.slice(0, 2).map((tip, i) => (
-                              <div key={i} className="flex items-start gap-2 text-[11px] text-muted-foreground">
-                                <Lightbulb className="h-3 w-3 mt-0.5 text-yellow-500 shrink-0" />
-                                <span>{tip}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
 
                         <Button
-                          onClick={applyFlow}
-                          className="w-full bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 group"
                           size="sm"
+                          className="w-full bg-gradient-to-r from-primary to-primary/80"
+                          onClick={applyFlow}
                         >
-                          <Wand2 className="h-4 w-4 mr-2 group-hover:rotate-12 transition-transform" />
-                          Aplicar ao Canvas
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Aplicar no Canvas
                         </Button>
                       </motion.div>
                     )}
 
-                    <span className="text-[10px] text-muted-foreground mt-1 block">
-                      {message.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                    {/* Tips */}
+                    {message.tips && message.tips.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="mt-2 space-y-1"
+                      >
+                        {message.tips.map((tip, i) => (
+                          <div key={i} className="text-xs text-muted-foreground flex items-start gap-1">
+                            <Lightbulb className="h-3 w-3 mt-0.5 text-yellow-500" />
+                            {tip}
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
                   </div>
                 </motion.div>
               ))}
             </AnimatePresence>
 
-            {/* Loading */}
-            {isLoading && buildSteps.length === 0 && (
+            {/* Quick Prompts */}
+            {showQuickPrompts && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex gap-3"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-2 gap-2 pt-4"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-primary/60 flex items-center justify-center">
-                  <img src={lunaAvatar} alt="Luna" className="w-full h-full object-cover rounded-full" />
-                </div>
-                <div className="bg-muted rounded-2xl rounded-tl-sm p-3">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    <span className="text-sm text-muted-foreground">Iniciando...</span>
-                  </div>
-                </div>
+                {QUICK_PROMPTS.map((item) => (
+                  <motion.button
+                    key={item.label}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => sendMessage(item.prompt)}
+                    className="p-3 rounded-xl bg-card border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <item.icon className="h-4 w-4 text-primary" />
+                      <span className="font-medium text-sm">{item.label}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {item.prompt}
+                    </p>
+                  </motion.button>
+                ))}
               </motion.div>
             )}
           </div>
         </ScrollArea>
 
-        {/* Quick Prompts */}
-        <AnimatePresence>
-          {showQuickPrompts && !isLoading && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="px-4 pb-2 border-t border-border overflow-hidden"
-            >
-              <div className="pt-3">
-                <span className="text-xs text-muted-foreground mb-2 block">💡 Sugestões rápidas</span>
-                <div className="grid grid-cols-2 gap-2">
-                  {QUICK_PROMPTS.map((item, index) => (
-                    <motion.button
-                      key={index}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      onClick={() => sendMessage(item.prompt)}
-                      className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-all text-left group border border-transparent hover:border-primary/30"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-primary/20 to-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <item.icon className="h-4 w-4 text-primary" />
-                      </div>
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </motion.button>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Input */}
-        <div className="p-4 border-t border-border bg-background">
+        <div className="p-4 border-t border-border bg-card/50">
           <div className="flex gap-2">
             <Textarea
-              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Descreva o fluxo que você deseja criar..."
-              className="min-h-[50px] max-h-[120px] resize-none text-sm"
+              placeholder="Descreva o fluxo que você quer criar..."
+              className="resize-none min-h-[44px] max-h-[120px]"
               disabled={isLoading}
             />
             <Button
+              size="icon"
               onClick={() => sendMessage()}
               disabled={!input.trim() || isLoading}
-              className="bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shrink-0 h-[50px] w-[50px]"
-              size="icon"
+              className="h-[44px] w-[44px] bg-gradient-to-r from-primary to-primary/80"
             >
               {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Send className="h-5 w-5" />
+                <Send className="h-4 w-4" />
               )}
             </Button>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-2 text-center">
-            Pressione Enter para enviar • Shift+Enter para nova linha
-          </p>
         </div>
       </DialogContent>
     </Dialog>

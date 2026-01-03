@@ -254,12 +254,12 @@ export function GenesisAuthProvider({ children }: { children: ReactNode }) {
               role,
             });
 
-          // Create initial credits
+          // Create initial credits - 300 for new users!
           await supabase
             .from('genesis_credits')
             .insert({
               user_id: newUser.id,
-              available_credits: role === 'super_admin' ? 999999 : 10,
+              available_credits: role === 'super_admin' ? 999999 : 300,
             });
 
           // Create initial subscription
@@ -340,7 +340,7 @@ export function GenesisAuthProvider({ children }: { children: ReactNode }) {
           .from('genesis_credits')
           .insert({
             user_id: newUser.id,
-            available_credits: role === 'super_admin' ? 999999 : 10,
+            available_credits: role === 'super_admin' ? 999999 : 300,
           });
 
         await supabase
