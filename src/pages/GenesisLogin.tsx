@@ -24,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useGenesisAuth } from '@/contexts/GenesisAuthContext';
-import { FlowAnimation } from '@/components/genesis/FlowAnimation';
+
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -348,20 +348,6 @@ export default function GenesisLogin() {
                 </div>
               </motion.div>
             ))}
-          </motion.div>
-
-          {/* Interactive Flow Animation */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mt-8 p-4 rounded-2xl bg-card/30 backdrop-blur-sm border border-border/30"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-xs text-muted-foreground">Fluxo de automação ativo</span>
-            </div>
-            <FlowAnimation />
           </motion.div>
 
           {/* Stats */}
