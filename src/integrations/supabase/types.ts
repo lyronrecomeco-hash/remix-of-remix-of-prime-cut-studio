@@ -2015,6 +2015,215 @@ export type Database = {
         }
         Relationships: []
       }
+      genesis_credits: {
+        Row: {
+          available_credits: number
+          created_at: string
+          id: string
+          last_purchase_at: string | null
+          total_purchased: number
+          updated_at: string
+          used_credits: number
+          user_id: string
+        }
+        Insert: {
+          available_credits?: number
+          created_at?: string
+          id?: string
+          last_purchase_at?: string | null
+          total_purchased?: number
+          updated_at?: string
+          used_credits?: number
+          user_id: string
+        }
+        Update: {
+          available_credits?: number
+          created_at?: string
+          id?: string
+          last_purchase_at?: string | null
+          total_purchased?: number
+          updated_at?: string
+          used_credits?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "genesis_credits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "genesis_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      genesis_instances: {
+        Row: {
+          created_at: string
+          id: string
+          is_paused: boolean
+          last_activity_at: string | null
+          name: string
+          phone_number: string | null
+          qr_code: string | null
+          session_data: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_paused?: boolean
+          last_activity_at?: string | null
+          name: string
+          phone_number?: string | null
+          qr_code?: string | null
+          session_data?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_paused?: boolean
+          last_activity_at?: string | null
+          name?: string
+          phone_number?: string | null
+          qr_code?: string | null
+          session_data?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "genesis_instances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "genesis_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      genesis_subscriptions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          features: Json | null
+          id: string
+          max_flows: number
+          max_instances: number
+          plan: Database["public"]["Enums"]["genesis_plan"]
+          started_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          features?: Json | null
+          id?: string
+          max_flows?: number
+          max_instances?: number
+          plan?: Database["public"]["Enums"]["genesis_plan"]
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          features?: Json | null
+          id?: string
+          max_flows?: number
+          max_instances?: number
+          plan?: Database["public"]["Enums"]["genesis_plan"]
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "genesis_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "genesis_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      genesis_user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["genesis_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["genesis_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["genesis_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "genesis_user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "genesis_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      genesis_users: {
+        Row: {
+          auth_user_id: string
+          avatar_url: string | null
+          company_name: string | null
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id: string
+          avatar_url?: string | null
+          company_name?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string
+          avatar_url?: string | null
+          company_name?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       login_attempts: {
         Row: {
           attempted_at: string
@@ -5243,7 +5452,15 @@ export type Database = {
       get_affiliate_id: { Args: { _user_id: string }; Returns: string }
       get_crm_tenant_id: { Args: { _auth_user_id: string }; Returns: string }
       get_crm_user_id: { Args: { _auth_user_id: string }; Returns: string }
+      get_genesis_user_id: { Args: { _auth_user_id: string }; Returns: string }
       get_user_plan: { Args: { check_user_id: string }; Returns: string }
+      has_genesis_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["genesis_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -5266,6 +5483,7 @@ export type Database = {
         Args: { check_user_id: string; feature_name: string }
         Returns: boolean
       }
+      is_genesis_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_owner: { Args: { _user_id: string }; Returns: boolean }
       log_security_event: {
         Args: {
@@ -5301,6 +5519,8 @@ export type Database = {
       crm_role: "admin" | "manager" | "collaborator"
       crm_task_status: "pending" | "in_progress" | "completed" | "cancelled"
       crm_task_type: "call" | "meeting" | "followup" | "internal"
+      genesis_plan: "free" | "starter" | "professional" | "enterprise"
+      genesis_role: "super_admin" | "admin" | "user"
       pix_type: "cpf" | "cnpj" | "email" | "phone" | "random"
       proposal_status: "draft" | "sent" | "accepted" | "cancelled"
       referral_status: "pending" | "confirmed" | "cancelled" | "paid"
@@ -5438,6 +5658,8 @@ export const Constants = {
       crm_role: ["admin", "manager", "collaborator"],
       crm_task_status: ["pending", "in_progress", "completed", "cancelled"],
       crm_task_type: ["call", "meeting", "followup", "internal"],
+      genesis_plan: ["free", "starter", "professional", "enterprise"],
+      genesis_role: ["super_admin", "admin", "user"],
       pix_type: ["cpf", "cnpj", "email", "phone", "random"],
       proposal_status: ["draft", "sent", "accepted", "cancelled"],
       referral_status: ["pending", "confirmed", "cancelled", "paid"],
