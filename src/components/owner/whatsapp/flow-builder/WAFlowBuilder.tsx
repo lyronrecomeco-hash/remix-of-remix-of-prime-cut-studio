@@ -39,7 +39,10 @@ import {
   Activity,
   ZoomIn,
   ZoomOut,
-  Crosshair
+  Crosshair,
+  Search,
+  LayoutTemplate,
+  PlayCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FlowNode } from './FlowNode';
@@ -50,6 +53,11 @@ import { FlowStats } from './FlowStats';
 import { FlowValidationPanel } from './FlowValidationPanel';
 import { HelpModal } from './HelpModal';
 import { LunaAIModal } from './LunaAIModal';
+import { FlowTemplates } from './FlowTemplates';
+import { FlowSimulator } from './FlowSimulator';
+import { FlowControls } from './FlowControls';
+import { NodeSearch } from './NodeSearch';
+import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
 import { 
   FlowNode as FlowNodeType, 
   FlowEdge, 
@@ -102,6 +110,15 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isLunaOpen, setIsLunaOpen] = useState(false);
+  
+  // New features state
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showSimulator, setShowSimulator] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [snapToGrid, setSnapToGrid] = useState(true);
+  const [interactionMode, setInteractionMode] = useState<'select' | 'pan'>('select');
+  const [isCanvasLocked, setIsCanvasLocked] = useState(false);
   
   // History
   const [history, setHistory] = useState<{ nodes: any[]; edges: any[] }[]>([]);
@@ -169,6 +186,9 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMeta = e.metaKey || e.ctrlKey;
       
+      // Skip if typing in input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
       if (isMeta && e.key === 'z') {
         e.preventDefault();
         e.shiftKey ? redo() : undo();
@@ -193,6 +213,10 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
         e.preventDefault();
         setNodes(nds => nds.map(n => ({ ...n, selected: true })));
       }
+      if (isMeta && e.key === 'f') {
+        e.preventDefault();
+        setShowSearch(true);
+      }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedNodes.length > 0) {
           const idsToDelete = new Set(selectedNodes.map(n => n.id));
@@ -208,15 +232,27 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
         setSelectedNode(null);
         setNodes(nds => nds.map(n => ({ ...n, selected: false })));
         setShowValidation(false);
+        setShowSearch(false);
+        setShowShortcuts(false);
       }
       if (e.key === 'F11') {
         e.preventDefault();
         toggleFullscreen();
       }
+      // New shortcuts
+      if (e.key === '?') {
+        e.preventDefault();
+        setShowShortcuts(true);
+      }
+      if (e.key === 'v' && !isMeta) setInteractionMode('select');
+      if (e.key === 'h' && !isMeta) setInteractionMode('pan');
+      if (e.key === 'g' && !isMeta) setSnapToGrid(s => !s);
+      if (e.key === 'l' && !isMeta) handleAutoLayout();
+      if (e.key === '0' && !isMeta) fitView({ padding: 0.2 });
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, selectedRule, selectedNode, selectedNodes, copyNodes, pasteNodes, setNodes, addToHistory, toggleFullscreen]);
+  }, [undo, redo, selectedRule, selectedNode, selectedNodes, copyNodes, pasteNodes, setNodes, addToHistory, toggleFullscreen, fitView]);
 
   // Fetch rules
   const fetchRules = useCallback(async () => {
@@ -684,6 +720,33 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     setTimeout(() => fitView({ padding: 0.2 }), 100);
   }, [setNodes, setEdges, addToHistory, fitView]);
 
+  // Apply flow from template
+  const handleApplyTemplate = useCallback((templateNodes: FlowNodeType[], templateEdges: FlowEdge[]) => {
+    const rfNodes = templateNodes.map(n => ({
+      id: n.id,
+      type: 'flowNode',
+      position: n.position,
+      data: n.data
+    }));
+    
+    const rfEdges = templateEdges.map(e => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle,
+      targetHandle: e.targetHandle,
+      label: e.label,
+      ...defaultEdgeOptions,
+      style: getEdgeStyle(e.sourceHandle)
+    }));
+    
+    setNodes(rfNodes);
+    setEdges(rfEdges);
+    addToHistory();
+    setTimeout(() => fitView({ padding: 0.2 }), 100);
+    toast.success('Template aplicado com sucesso!');
+  }, [setNodes, setEdges, addToHistory, fitView]);
+
   // Loading
   if (isLoading) {
     return (
@@ -991,6 +1054,16 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
             />
           </ReactFlow>
 
+          {/* Custom Controls */}
+          <FlowControls
+            isLocked={isCanvasLocked}
+            onToggleLock={() => setIsCanvasLocked(!isCanvasLocked)}
+            snapToGrid={snapToGrid}
+            onToggleSnap={() => setSnapToGrid(!snapToGrid)}
+            interactionMode={interactionMode}
+            onToggleMode={() => setInteractionMode(m => m === 'select' ? 'pan' : 'select')}
+          />
+
           {/* Validation Panel */}
           <FlowValidationPanel
             isOpen={showValidation}
@@ -1023,13 +1096,77 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
           currentEdges={edges as unknown as FlowEdge[]}
         />
 
-        {/* Luna AI Floating Button */}
-        <motion.div
-          className="absolute bottom-4 right-4 z-10"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.5, type: 'spring' }}
-        >
+        {/* Templates Modal */}
+        <FlowTemplates
+          open={showTemplates}
+          onClose={() => setShowTemplates(false)}
+          onSelectTemplate={handleApplyTemplate}
+        />
+
+        {/* Simulator Modal */}
+        <FlowSimulator
+          open={showSimulator}
+          onClose={() => setShowSimulator(false)}
+          nodes={nodes as unknown as FlowNodeType[]}
+          edges={edges as unknown as FlowEdge[]}
+          onNavigateToNode={navigateToNode}
+        />
+
+        {/* Node Search */}
+        <NodeSearch
+          nodes={nodes as unknown as FlowNodeType[]}
+          onNavigateToNode={navigateToNode}
+          isOpen={showSearch}
+          onClose={() => setShowSearch(false)}
+        />
+
+        {/* Keyboard Shortcuts Panel */}
+        <KeyboardShortcutsPanel
+          isOpen={showShortcuts}
+          onClose={() => setShowShortcuts(false)}
+        />
+
+        {/* Floating Action Buttons */}
+        <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={() => setShowTemplates(true)}
+                className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:opacity-90 shadow-lg"
+                size="icon"
+              >
+                <LayoutTemplate className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">Templates</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={() => setShowSimulator(true)}
+                className="h-12 w-12 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 hover:opacity-90 shadow-lg"
+                size="icon"
+              >
+                <PlayCircle className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">Simulador</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={() => setShowSearch(true)}
+                className="h-12 w-12 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:opacity-90 shadow-lg"
+                size="icon"
+              >
+                <Search className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">Buscar (Ctrl+F)</TooltipContent>
+          </Tooltip>
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -1040,11 +1177,9 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
                 <Sparkles className="h-6 w-6" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left">
-              <p>Luna IA - Criar Fluxo com IA</p>
-            </TooltipContent>
+            <TooltipContent side="left">Luna IA</TooltipContent>
           </Tooltip>
-        </motion.div>
+        </div>
 
         {/* Help Modal */}
         <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
