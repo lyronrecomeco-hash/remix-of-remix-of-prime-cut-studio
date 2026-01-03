@@ -9,15 +9,12 @@ import {
   RefreshCw, 
   Trash2,
   QrCode,
-  Wifi,
-  WifiOff,
-  Clock,
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Zap,
   CreditCard,
-  Eye
+  Eye,
+  ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -30,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGenesisAuth } from '@/contexts/GenesisAuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { InstancePanel } from './InstancePanel';
 
 interface Instance {
   id: string;
@@ -39,6 +37,7 @@ interface Instance {
   is_paused: boolean;
   last_activity_at?: string;
   qr_code?: string;
+  created_at: string;
 }
 
 export function InstancesManager() {
@@ -49,6 +48,7 @@ export function InstancesManager() {
   const [newInstanceName, setNewInstanceName] = useState('');
   const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'connected' | 'disconnected'>('all');
+  const [selectedInstance, setSelectedInstance] = useState<Instance | null>(null);
 
   const maxInstances = subscription?.max_instances || 1;
 
@@ -168,6 +168,16 @@ export function InstancesManager() {
       };
     }
   };
+
+  // If viewing instance panel
+  if (selectedInstance) {
+    return (
+      <InstancePanel 
+        instance={selectedInstance} 
+        onBack={() => setSelectedInstance(null)} 
+      />
+    );
+  }
 
   // Compute filtered stats
   const connectedCount = instances.filter(i => i.status === 'connected' && !i.is_paused).length;
@@ -341,35 +351,15 @@ export function InstancesManager() {
                       {status.label}
                     </p>
 
-                    {/* Action Button */}
+                    {/* Action Button - Always "Acessar" */}
                     <div className="mt-6">
-                      {instance.status === 'connected' && !instance.is_paused ? (
-                        <Button 
-                          className="w-32 rounded-full gap-2"
-                          onClick={() => toast.info('Acessando instância...')}
-                        >
-                          <Eye className="w-4 h-4" />
-                          acessar
-                        </Button>
-                      ) : instance.status === 'qr_pending' ? (
-                        <Button 
-                          variant="outline"
-                          className="w-32 rounded-full gap-2"
-                          onClick={() => toast.info('Gerando QR Code...')}
-                        >
-                          <QrCode className="w-4 h-4" />
-                          Ver QR
-                        </Button>
-                      ) : (
-                        <Button 
-                          variant="outline"
-                          className="w-32 rounded-full gap-2"
-                          onClick={() => updateInstanceStatus(instance.id, { status: 'qr_pending' })}
-                        >
-                          <RefreshCw className="w-4 h-4" />
-                          Reconectar
-                        </Button>
-                      )}
+                      <Button 
+                        className="w-32 rounded-full gap-2"
+                        onClick={() => setSelectedInstance(instance)}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Acessar
+                      </Button>
                     </div>
 
                     {/* Actions Menu */}
@@ -487,36 +477,19 @@ export function InstancesManager() {
               <Label htmlFor="name">Nome da Instância</Label>
               <Input
                 id="name"
-                placeholder="Ex: Atendimento Principal"
                 value={newInstanceName}
                 onChange={(e) => setNewInstanceName(e.target.value)}
-                className="h-12"
+                placeholder="Ex: Vendas, Suporte, Marketing..."
               />
-              <p className="text-xs text-muted-foreground">
-                Escolha um nome que identifique facilmente esta conexão
-              </p>
             </div>
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setCreateModalOpen(false)}>
               Cancelar
             </Button>
-            <Button 
-              onClick={createInstance} 
-              disabled={creating || !newInstanceName.trim()}
-              className="gap-2"
-            >
-              {creating ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Criando...
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4" />
-                  Criar Instância
-                </>
-              )}
+            <Button onClick={createInstance} disabled={creating || !newInstanceName.trim()} className="gap-2">
+              {creating && <RefreshCw className="w-4 h-4 animate-spin" />}
+              Criar Instância
             </Button>
           </DialogFooter>
         </DialogContent>

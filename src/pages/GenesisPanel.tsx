@@ -17,11 +17,11 @@ import {
   Smartphone,
   Crown,
   ChevronRight,
-  Bell,
   Search,
   HelpCircle,
   Sparkles,
-  Activity
+  Activity,
+  Gift
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,21 +33,46 @@ import { useGenesisAuth } from '@/contexts/GenesisAuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { WAFlowBuilder } from '@/components/owner/whatsapp/flow-builder';
-import { WAChatbots } from '@/components/owner/whatsapp/WAChatbots';
 import { AnimatedStatCard, QuickActionCard, AnimatedPlanFeature } from '@/components/genesis/AnimatedStats';
 import { InstancesManager } from '@/components/genesis/InstancesManager';
 import { CreditsManager } from '@/components/genesis/CreditsManager';
 import { AnalyticsDashboard } from '@/components/genesis/AnalyticsDashboard';
+import { NotificationsPanel } from '@/components/genesis/NotificationsPanel';
+import { GenesisChatbots } from '@/components/genesis/GenesisChatbots';
 
-// Dashboard component with enhanced animations
+// Dashboard component with real data
 const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
   const { genesisUser, credits, subscription, isSuperAdmin } = useGenesisAuth();
+  const [realStats, setRealStats] = useState({
+    instances: 0,
+    flows: 0,
+    creditsAvailable: 0,
+  });
+
+  useEffect(() => {
+    const fetchRealStats = async () => {
+      if (!genesisUser) return;
+
+      const [instancesRes, flowsRes] = await Promise.all([
+        supabase.from('genesis_instances').select('id', { count: 'exact' }).eq('user_id', genesisUser.id),
+        supabase.from('whatsapp_automation_rules').select('id', { count: 'exact' }),
+      ]);
+
+      setRealStats({
+        instances: instancesRes.count || 0,
+        flows: flowsRes.count || 0,
+        creditsAvailable: credits?.available_credits || 0,
+      });
+    };
+
+    fetchRealStats();
+  }, [genesisUser, credits]);
 
   const stats = [
-    { label: 'Instâncias Ativas', value: 3, max: subscription?.max_instances || 1, icon: Smartphone, color: 'text-green-500' },
-    { label: 'Fluxos Criados', value: 12, max: subscription?.max_flows || 5, icon: GitBranch, color: 'text-blue-500' },
-    { label: 'Créditos Disponíveis', value: credits?.available_credits || 0, icon: CreditCard, color: 'text-amber-500' },
-    { label: 'Taxa de Sucesso', value: 98, icon: Activity, color: 'text-purple-500', suffix: '%' },
+    { label: 'Instâncias Ativas', value: realStats.instances, max: subscription?.max_instances || 1, icon: Smartphone, color: 'text-green-500' },
+    { label: 'Fluxos Criados', value: realStats.flows, max: subscription?.max_flows || 5, icon: GitBranch, color: 'text-blue-500' },
+    { label: 'Créditos Disponíveis', value: realStats.creditsAvailable, icon: CreditCard, color: 'text-amber-500' },
+    { label: 'Status', value: 'Ativo', icon: Activity, color: 'text-purple-500' },
   ];
 
   const quickActions = [
@@ -113,7 +138,6 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
             max={stat.max}
             icon={stat.icon}
             color={stat.color}
-            suffix={stat.suffix}
             delay={index * 100}
           />
         ))}
@@ -180,19 +204,19 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               <AnimatedPlanFeature 
                 label="Instâncias" 
-                current={3} 
+                current={realStats.instances} 
                 max={subscription?.max_instances || 1} 
                 delay={800}
               />
               <AnimatedPlanFeature 
                 label="Fluxos" 
-                current={12} 
+                current={realStats.flows} 
                 max={subscription?.max_flows || 5} 
                 delay={900}
               />
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Créditos</p>
-                <p className="text-lg font-semibold">{credits?.available_credits || 0}</p>
+                <p className="text-lg font-semibold">{realStats.creditsAvailable}</p>
               </div>
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Status</p>
@@ -264,7 +288,7 @@ export default function GenesisPanel() {
       case 'flows':
         return <WAFlowBuilder onBack={() => setActiveTab('dashboard')} />;
       case 'chatbots':
-        return <WAChatbots instances={instances} />;
+        return <GenesisChatbots instances={instances} />;
       case 'analytics':
         return <AnalyticsDashboard />;
       case 'credits':
@@ -294,27 +318,27 @@ export default function GenesisPanel() {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex lg:flex-col w-64 border-r bg-card/50 backdrop-blur-sm">
+      <aside className="hidden lg:flex lg:flex-col w-72 border-r bg-card/50 backdrop-blur-sm">
         {/* Logo */}
-        <div className="flex items-center gap-3 p-4 border-b">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-            <Zap className="w-5 h-5 text-primary-foreground" />
+        <div className="flex items-center gap-3 p-5 border-b">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+            <Zap className="w-6 h-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-bold">Genesis Hub</h1>
+            <h1 className="font-bold text-lg">Genesis Hub</h1>
             <p className="text-xs text-muted-foreground">v1.0.0</p>
           </div>
         </div>
 
         {/* Nav */}
-        <ScrollArea className="flex-1 p-3">
-          <nav className="space-y-1">
+        <ScrollArea className="flex-1 p-4">
+          <nav className="space-y-1.5">
             {navItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
                   activeTab === item.id 
                     ? "bg-primary text-primary-foreground" 
                     : "hover:bg-muted text-muted-foreground hover:text-foreground"
@@ -328,11 +352,11 @@ export default function GenesisPanel() {
         </ScrollArea>
 
         {/* User */}
-        <div className="p-3 border-t">
+        <div className="p-4 border-t">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors">
-                <Avatar className="w-9 h-9">
+              <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors">
+                <Avatar className="w-10 h-10">
                   <AvatarImage src={genesisUser?.avatar_url} />
                   <AvatarFallback>{genesisUser?.name?.charAt(0) || 'U'}</AvatarFallback>
                 </Avatar>
@@ -376,31 +400,31 @@ export default function GenesisPanel() {
               onClick={() => setSidebarOpen(false)}
             />
             <motion.aside
-              initial={{ x: -280 }}
+              initial={{ x: -300 }}
               animate={{ x: 0 }}
-              exit={{ x: -280 }}
-              className="fixed left-0 top-0 bottom-0 w-64 bg-card border-r z-50 lg:hidden flex flex-col"
+              exit={{ x: -300 }}
+              className="fixed left-0 top-0 bottom-0 w-72 bg-card border-r z-50 lg:hidden flex flex-col"
             >
-              <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex items-center justify-between p-5 border-b">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                    <Zap className="w-5 h-5 text-primary-foreground" />
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+                    <Zap className="w-6 h-6 text-primary-foreground" />
                   </div>
-                  <span className="font-bold">Genesis Hub</span>
+                  <span className="font-bold text-lg">Genesis Hub</span>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
                   <X className="w-5 h-5" />
                 </Button>
               </div>
 
-              <ScrollArea className="flex-1 p-3">
-                <nav className="space-y-1">
+              <ScrollArea className="flex-1 p-4">
+                <nav className="space-y-1.5">
                   {navItems.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
                       className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
+                        "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
                         activeTab === item.id 
                           ? "bg-primary text-primary-foreground" 
                           : "hover:bg-muted text-muted-foreground hover:text-foreground"
@@ -436,13 +460,18 @@ export default function GenesisPanel() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Bonus Badge */}
+            <Badge variant="secondary" className="gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
+              <Gift className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">300 créditos para conta nova!</span>
+            </Badge>
+
             <Button variant="ghost" size="icon">
               <Search className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
-            </Button>
+            
+            {/* Notifications Panel */}
+            <NotificationsPanel />
           </div>
         </header>
 
