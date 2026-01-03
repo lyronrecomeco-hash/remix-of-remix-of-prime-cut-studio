@@ -748,6 +748,383 @@ export const NodeConfigPanel = ({ node, onClose, onSave, onDelete, onDuplicate }
           </div>
         );
 
+      // ==================== WHATSAPP NATIVE NODES ====================
+      case 'wa_start':
+        return (
+          <div className="space-y-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="text-lg">📱</div>
+                <div>
+                  <p className="text-sm font-medium">Início do Fluxo WhatsApp</p>
+                  <p className="text-[11px] text-muted-foreground">Este nó inicia quando uma conversa começa</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Gatilho</Label>
+              <Select value={formData.startTrigger || 'first_message'} onValueChange={(v) => updateField('startTrigger', v)}>
+                <SelectTrigger className="bg-muted/50"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="first_message">💬 Primeira mensagem</SelectItem>
+                  <SelectItem value="keyword">🔑 Palavra-chave específica</SelectItem>
+                  <SelectItem value="any_message">📨 Qualquer mensagem</SelectItem>
+                  <SelectItem value="menu_return">↩️ Retorno ao menu</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {formData.startTrigger === 'keyword' && (
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Palavras-chave</Label>
+                <Textarea
+                  value={formData.keywords || ''}
+                  onChange={(e) => updateField('keywords', e.target.value)}
+                  placeholder="menu, início, oi, olá"
+                  className="bg-muted/50 resize-none"
+                  rows={2}
+                />
+                <p className="text-[11px] text-muted-foreground">Separe por vírgula</p>
+              </div>
+            )}
+            
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
+              <div>
+                <Label className="text-sm">Salvar dados do contato</Label>
+                <p className="text-[11px] text-muted-foreground">Nome e telefone em variáveis</p>
+              </div>
+              <Switch checked={formData.saveContactData ?? true} onCheckedChange={(v) => updateField('saveContactData', v)} />
+            </div>
+          </div>
+        );
+
+      case 'wa_send_text':
+        return (
+          <div className="space-y-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20">
+              <div className="flex items-center gap-2">
+                <div className="text-lg">💬</div>
+                <p className="text-sm font-medium">Enviar Mensagem de Texto</p>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Mensagem</Label>
+                <Button variant="ghost" size="sm" className="h-6 text-xs gap-1"><Wand2 className="w-3 h-3" /> IA</Button>
+              </div>
+              <Textarea
+                value={formData.message || ''}
+                onChange={(e) => updateField('message', e.target.value)}
+                placeholder="Olá {{nome}}! Como posso ajudar?"
+                className="bg-muted/50 resize-none min-h-[120px]"
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {['{{nome}}', '{{telefone}}', '{{data}}', '{{hora}}'].map((variable) => (
+                  <Badge key={variable} variant="secondary" className="text-[10px] cursor-pointer hover:bg-primary/20" onClick={() => updateField('message', (formData.message || '') + ' ' + variable)}>{variable}</Badge>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">⌨️</div>
+                <div>
+                  <Label className="text-sm">Simular digitação</Label>
+                  <p className="text-[11px] text-muted-foreground">Mostra "digitando..."</p>
+                </div>
+              </div>
+              <Switch checked={formData.showTyping ?? true} onCheckedChange={(v) => updateField('showTyping', v)} />
+            </div>
+            
+            {formData.showTyping && (
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Duração (ms)</Label>
+                <Slider value={[formData.typingDuration || 2000]} onValueChange={(v) => updateField('typingDuration', v[0])} min={500} max={5000} step={100} className="py-2" />
+                <p className="text-[11px] text-muted-foreground text-right">{formData.typingDuration || 2000}ms</p>
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Anexar mídia (Opcional)</Label>
+              <Select value={formData.mediaType || 'none'} onValueChange={(v) => updateField('mediaType', v)}>
+                <SelectTrigger className="bg-muted/50"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem mídia</SelectItem>
+                  <SelectItem value="image">🖼️ Imagem</SelectItem>
+                  <SelectItem value="video">🎬 Vídeo</SelectItem>
+                  <SelectItem value="audio">🎵 Áudio</SelectItem>
+                  <SelectItem value="document">📄 Documento</SelectItem>
+                </SelectContent>
+              </Select>
+              {formData.mediaType && formData.mediaType !== 'none' && (
+                <Input value={formData.mediaUrl || ''} onChange={(e) => updateField('mediaUrl', e.target.value)} placeholder="URL da mídia" className="bg-muted/50 mt-2" />
+              )}
+            </div>
+          </div>
+        );
+
+      case 'wa_send_buttons':
+        return (
+          <div className="space-y-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20">
+              <div className="flex items-center gap-2">
+                <div className="text-lg">🔘</div>
+                <div>
+                  <p className="text-sm font-medium">Enviar Botões Interativos</p>
+                  <p className="text-[11px] text-muted-foreground">Máximo 3 botões por mensagem</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Texto da Mensagem</Label>
+              <Textarea value={formData.message || ''} onChange={(e) => updateField('message', e.target.value)} placeholder="Escolha uma opção:" className="bg-muted/50 resize-none" rows={3} />
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Título (Opcional)</Label>
+              <Input value={formData.title || ''} onChange={(e) => updateField('title', e.target.value)} placeholder="Menu Principal" className="bg-muted/50" maxLength={60} />
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Rodapé (Opcional)</Label>
+              <Input value={formData.footer || ''} onChange={(e) => updateField('footer', e.target.value)} placeholder="Powered by Genesis" className="bg-muted/50" maxLength={60} />
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Botões (máx. 3)</Label>
+              <Textarea
+                value={formData.buttonsConfig || ''}
+                onChange={(e) => updateField('buttonsConfig', e.target.value)}
+                placeholder="btn_1|✅ Confirmar&#10;btn_2|❌ Cancelar&#10;btn_3|❓ Ajuda"
+                className="bg-muted/50 resize-none font-mono text-sm"
+                rows={4}
+              />
+              <p className="text-[11px] text-muted-foreground">Formato: <code className="bg-muted px-1 rounded">id|texto</code> (um por linha, máx 20 caracteres)</p>
+            </div>
+            
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
+              <div>
+                <Label className="text-sm">Aguardar resposta</Label>
+                <p className="text-[11px] text-muted-foreground">Pausa fluxo até clique</p>
+              </div>
+              <Switch checked={formData.waitForResponse ?? true} onCheckedChange={(v) => updateField('waitForResponse', v)} />
+            </div>
+            
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5" />
+                <p className="text-xs text-muted-foreground">Requer WhatsApp Business API ou backend v4.0.1+ conectado.</p>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'wa_send_list':
+        return (
+          <div className="space-y-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20">
+              <div className="flex items-center gap-2">
+                <div className="text-lg">📋</div>
+                <div>
+                  <p className="text-sm font-medium">Enviar Lista Interativa</p>
+                  <p className="text-[11px] text-muted-foreground">Até 10 seções com 10 itens cada</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Texto da Mensagem</Label>
+              <Textarea value={formData.message || ''} onChange={(e) => updateField('message', e.target.value)} placeholder="Veja nossas opções disponíveis:" className="bg-muted/50 resize-none" rows={3} />
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Título</Label>
+              <Input value={formData.title || ''} onChange={(e) => updateField('title', e.target.value)} placeholder="Menu de Serviços" className="bg-muted/50" maxLength={60} />
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Texto do Botão</Label>
+              <Input value={formData.buttonText || ''} onChange={(e) => updateField('buttonText', e.target.value)} placeholder="Ver opções" className="bg-muted/50" maxLength={20} />
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Seções e Itens</Label>
+              <Textarea
+                value={formData.sectionsConfig || ''}
+                onChange={(e) => updateField('sectionsConfig', e.target.value)}
+                placeholder="# Produtos&#10;prod_1|Produto 1|Descrição do produto&#10;prod_2|Produto 2|Descrição&#10;# Serviços&#10;serv_1|Serviço 1|Descrição do serviço"
+                className="bg-muted/50 resize-none font-mono text-sm"
+                rows={8}
+              />
+              <p className="text-[11px] text-muted-foreground"># para seção, <code className="bg-muted px-1 rounded">id|título|descrição</code> para itens</p>
+            </div>
+            
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
+              <div>
+                <Label className="text-sm">Aguardar seleção</Label>
+                <p className="text-[11px] text-muted-foreground">Pausa fluxo até seleção</p>
+              </div>
+              <Switch checked={formData.waitForSelection ?? true} onCheckedChange={(v) => updateField('waitForSelection', v)} />
+            </div>
+          </div>
+        );
+
+      case 'wa_wait_response':
+        return (
+          <div className="space-y-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20">
+              <div className="flex items-center gap-2">
+                <div className="text-lg">⏳</div>
+                <div>
+                  <p className="text-sm font-medium">Aguardar Resposta</p>
+                  <p className="text-[11px] text-muted-foreground">Pausa o fluxo até receber mensagem</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tipo de Resposta Esperada</Label>
+              <Select value={formData.expectedType || 'any'} onValueChange={(v) => updateField('expectedType', v)}>
+                <SelectTrigger className="bg-muted/50"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">📨 Qualquer resposta</SelectItem>
+                  <SelectItem value="text">💬 Texto</SelectItem>
+                  <SelectItem value="button">🔘 Clique em botão</SelectItem>
+                  <SelectItem value="list">📋 Seleção de lista</SelectItem>
+                  <SelectItem value="media">🖼️ Mídia (imagem/vídeo/áudio)</SelectItem>
+                  <SelectItem value="location">📍 Localização</SelectItem>
+                  <SelectItem value="contact">👤 Contato</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Timeout (segundos)</Label>
+              <Input type="number" min="30" max="86400" value={formData.timeout || 300} onChange={(e) => updateField('timeout', parseInt(e.target.value))} className="bg-muted/50" />
+              <p className="text-[11px] text-muted-foreground">Tempo máximo de espera (5 min = 300s)</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Salvar resposta em variável</Label>
+              <Input value={formData.saveAs || ''} onChange={(e) => updateField('saveAs', e.target.value)} placeholder="resposta_usuario" className="bg-muted/50" />
+            </div>
+            
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
+              <div>
+                <Label className="text-sm">Mensagem de timeout</Label>
+                <p className="text-[11px] text-muted-foreground">Enviar se não responder</p>
+              </div>
+              <Switch checked={formData.sendTimeoutMessage ?? false} onCheckedChange={(v) => updateField('sendTimeoutMessage', v)} />
+            </div>
+            
+            {formData.sendTimeoutMessage && (
+              <div className="space-y-2">
+                <Textarea value={formData.timeoutMessage || ''} onChange={(e) => updateField('timeoutMessage', e.target.value)} placeholder="Não recebi sua resposta. Digite algo para continuar." className="bg-muted/50 resize-none" rows={2} />
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Validação (Opcional)</Label>
+              <Select value={formData.validation || 'none'} onValueChange={(v) => updateField('validation', v)}>
+                <SelectTrigger className="bg-muted/50"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem validação</SelectItem>
+                  <SelectItem value="email">📧 E-mail válido</SelectItem>
+                  <SelectItem value="phone">📱 Telefone</SelectItem>
+                  <SelectItem value="cpf">🆔 CPF</SelectItem>
+                  <SelectItem value="number">🔢 Número</SelectItem>
+                  <SelectItem value="regex">⟨⟩ Regex customizado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {formData.validation === 'regex' && (
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Padrão Regex</Label>
+                <Input value={formData.validationRegex || ''} onChange={(e) => updateField('validationRegex', e.target.value)} placeholder="^\d{5}-?\d{3}$" className="bg-muted/50 font-mono" />
+              </div>
+            )}
+            
+            {formData.validation && formData.validation !== 'none' && (
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Mensagem de erro</Label>
+                <Input value={formData.validationError || ''} onChange={(e) => updateField('validationError', e.target.value)} placeholder="Formato inválido. Tente novamente." className="bg-muted/50" />
+              </div>
+            )}
+          </div>
+        );
+
+      case 'wa_receive':
+        return (
+          <div className="space-y-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+              <div className="flex items-center gap-2">
+                <div className="text-lg">📥</div>
+                <div>
+                  <p className="text-sm font-medium">Processar Entrada</p>
+                  <p className="text-[11px] text-muted-foreground">Captura e processa dados recebidos</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">O que capturar</Label>
+              <Select value={formData.captureType || 'message'} onValueChange={(v) => updateField('captureType', v)}>
+                <SelectTrigger className="bg-muted/50"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="message">💬 Texto da mensagem</SelectItem>
+                  <SelectItem value="button_id">🔘 ID do botão clicado</SelectItem>
+                  <SelectItem value="list_id">📋 ID do item selecionado</SelectItem>
+                  <SelectItem value="media_url">🖼️ URL da mídia</SelectItem>
+                  <SelectItem value="location">📍 Coordenadas</SelectItem>
+                  <SelectItem value="contact">👤 Dados do contato</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Salvar como variável</Label>
+              <Input value={formData.variableName || ''} onChange={(e) => updateField('variableName', e.target.value)} placeholder="dados_capturados" className="bg-muted/50" />
+            </div>
+            
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
+              <div>
+                <Label className="text-sm">Transformar dados</Label>
+                <p className="text-[11px] text-muted-foreground">Aplicar formatação</p>
+              </div>
+              <Switch checked={formData.transform ?? false} onCheckedChange={(v) => updateField('transform', v)} />
+            </div>
+            
+            {formData.transform && (
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Transformação</Label>
+                <Select value={formData.transformType || 'none'} onValueChange={(v) => updateField('transformType', v)}>
+                  <SelectTrigger className="bg-muted/50"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="uppercase">MAIÚSCULAS</SelectItem>
+                    <SelectItem value="lowercase">minúsculas</SelectItem>
+                    <SelectItem value="capitalize">Primeira Maiúscula</SelectItem>
+                    <SelectItem value="trim">Remover espaços</SelectItem>
+                    <SelectItem value="extract_numbers">Só números</SelectItem>
+                    <SelectItem value="format_phone">Formatar telefone</SelectItem>
+                    <SelectItem value="format_cpf">Formatar CPF</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-primary mt-0.5" />
+                <p className="text-xs text-muted-foreground">Os dados capturados ficam disponíveis como <code className="bg-muted px-1 rounded">{'{{' + (formData.variableName || 'variavel') + '}}'}</code> nos próximos nós.</p>
+              </div>
+            </div>
+          </div>
+        );
+
       default:
         return (
           <div className="text-center py-8 text-muted-foreground">
