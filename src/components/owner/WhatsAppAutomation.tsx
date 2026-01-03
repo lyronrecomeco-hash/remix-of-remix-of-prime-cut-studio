@@ -24,7 +24,8 @@ import {
   Webhook,
   Users,
   Contact,
-  Plug
+  Plug,
+  BookOpen
 } from 'lucide-react';
 import { 
   WADashboard, 
@@ -45,7 +46,8 @@ import {
   WAButtonActions,
   WAConversationStates,
   WATestSimulator,
-  WAExampleFlow
+  WAExampleFlow,
+  InteractiveTemplatesDocs
 } from './whatsapp';
 
 interface BackendConfig {
@@ -129,6 +131,7 @@ const NAV_SECTIONS = [
       { id: 'conversation-states', label: 'Estados de Conversa', icon: Users },
       { id: 'test-simulator', label: 'Modo Teste', icon: TestTube },
       { id: 'example-flow', label: 'Fluxo de Exemplo', icon: Zap },
+      { id: 'interactive-docs', label: 'Documentação', icon: BookOpen },
       { id: 'templates', label: 'Templates Simples', icon: FileText },
       { id: 'quick-replies', label: 'Respostas Rápidas', icon: Zap },
     ]
@@ -330,6 +333,8 @@ const WhatsAppAutomation = () => {
         return <WATestSimulator />;
       case 'example-flow':
         return <WAExampleFlow />;
+      case 'interactive-docs':
+        return <InteractiveTemplatesDocs />;
       case 'templates':
         return <WATemplates />;
       case 'quick-replies':
