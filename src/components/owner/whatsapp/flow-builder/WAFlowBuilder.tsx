@@ -461,141 +461,143 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
     );
   }
 
-  // List view when no rule selected - IMPROVED COMPACT CARDS
+  // List view when no rule selected - COMPACT & PROFESSIONAL
   if (!selectedRule) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-4 max-w-6xl mx-auto">
         {/* Compact Hero Header */}
-        <Card className="border shadow-lg bg-card overflow-hidden">
-          <CardContent className="p-5">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <Card className="border shadow-md bg-card overflow-hidden">
+          <CardContent className="p-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <GitBranch className="w-6 h-6 text-primary" />
+                <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <GitBranch className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2">
+                  <h2 className="text-lg font-bold flex items-center gap-2">
                     Genesis Flow
                     <Badge variant="secondary" className="text-[10px]">Pro</Badge>
                   </h2>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Automações visuais para WhatsApp
                   </p>
                 </div>
               </div>
+              
+              {/* Inline Stats */}
+              <div className="hidden md:flex items-center gap-6 text-sm">
+                <div className="text-center">
+                  <p className="text-xl font-bold text-primary">{rules.length}</p>
+                  <p className="text-[10px] text-muted-foreground">Fluxos</p>
+                </div>
+                <div className="w-px h-8 bg-border" />
+                <div className="text-center">
+                  <p className="text-xl font-bold text-green-500">{rules.filter(r => r.is_active).length}</p>
+                  <p className="text-[10px] text-muted-foreground">Ativos</p>
+                </div>
+                <div className="w-px h-8 bg-border" />
+                <div className="text-center">
+                  <p className="text-xl font-bold">{rules.reduce((acc, r) => acc + (r.execution_count || 0), 0)}</p>
+                  <p className="text-[10px] text-muted-foreground">Execuções</p>
+                </div>
+              </div>
+              
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsLunaOpen(true)}>
                   <Sparkles className="w-4 h-4" />
-                  Luna IA
+                  <span className="hidden sm:inline">Luna IA</span>
                 </Button>
-                <Button onClick={() => setIsCreateDialogOpen(true)} size="sm" className="gap-2">
+                <Button onClick={() => setIsCreateDialogOpen(true)} size="sm" className="gap-2 shadow-md">
                   <Plus className="w-4 h-4" />
                   Novo Fluxo
                 </Button>
               </div>
-            </div>
-
-            {/* Compact Stats Row */}
-            <div className="grid grid-cols-4 gap-3 mt-4">
-              {[
-                { icon: GitBranch, label: 'Fluxos', value: rules.length },
-                { icon: CheckCircle2, label: 'Ativos', value: rules.filter(r => r.is_active).length },
-                { icon: Activity, label: 'Execuções', value: rules.reduce((acc, r) => acc + (r.execution_count || 0), 0) },
-                { icon: TrendingUp, label: 'Sucesso', value: '98%' }
-              ].map((stat, idx) => (
-                <motion.div
-                  key={idx}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="p-3 rounded-lg bg-muted/40 border text-center"
-                >
-                  <p className="text-lg font-bold">{stat.value}</p>
-                  <p className="text-[10px] text-muted-foreground">{stat.label}</p>
-                </motion.div>
-              ))}
             </div>
           </CardContent>
         </Card>
 
         {/* Flows Grid */}
         {rules.length === 0 ? (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-12">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted/50 flex items-center justify-center">
               <Sparkles className="w-8 h-8 text-primary" />
             </div>
             <h3 className="font-semibold text-lg mb-2">Comece a automatizar</h3>
-            <p className="text-muted-foreground mb-4 max-w-sm mx-auto text-sm">Crie seu primeiro fluxo de automação visual</p>
-            <Button onClick={() => setIsCreateDialogOpen(true)} size="default" className="gap-2">
-              <Plus className="w-4 h-4" />
-              Criar Primeiro Fluxo
-            </Button>
+            <p className="text-muted-foreground mb-6 max-w-sm mx-auto text-sm">Crie seu primeiro fluxo de automação visual</p>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" onClick={() => setIsLunaOpen(true)} className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                Criar com Luna IA
+              </Button>
+              <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Criar Manualmente
+              </Button>
+            </div>
           </motion.div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <AnimatePresence>
               {rules.map((rule, index) => (
                 <motion.div
                   key={rule.id}
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  initial={{ opacity: 0, y: 20, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ delay: index * 0.05 }}
-                  whileHover={{ y: -4, scale: 1.02 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ delay: index * 0.03 }}
+                  whileHover={{ y: -2 }}
                 >
                   <Card 
                     className={cn(
-                      'cursor-pointer transition-all duration-300 group overflow-hidden',
-                      'hover:shadow-xl border',
+                      'cursor-pointer transition-all duration-200 group overflow-hidden h-full',
+                      'hover:shadow-lg border',
                       rule.is_active ? 'border-primary/20' : 'border-border'
                     )}
                     onClick={() => loadRule(rule)}
                   >
                     {/* Status indicator bar */}
-                    <div className={cn('h-1 w-full', rule.is_active ? 'bg-primary' : 'bg-muted-foreground/20')} />
+                    <div className={cn('h-0.5 w-full', rule.is_active ? 'bg-primary' : 'bg-muted-foreground/20')} />
                     
-                    <CardContent className="pt-5">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center', rule.is_active ? 'bg-primary/10' : 'bg-muted')}>
-                            {rule.is_active ? <Zap className="w-5 h-5 text-primary" /> : <Pause className="w-5 h-5 text-muted-foreground" />}
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', rule.is_active ? 'bg-primary/10' : 'bg-muted')}>
+                            {rule.is_active ? <Zap className="w-4 h-4 text-primary" /> : <Pause className="w-4 h-4 text-muted-foreground" />}
                           </div>
-                          <div>
-                            <h3 className="font-semibold text-base group-hover:text-primary transition-colors">{rule.name}</h3>
-                            <Badge variant={rule.is_active ? 'default' : 'secondary'} className="text-[10px]">
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-sm group-hover:text-primary transition-colors truncate">{rule.name}</h3>
+                            <Badge variant={rule.is_active ? 'default' : 'secondary'} className="text-[9px] px-1.5 py-0">
                               {rule.is_active ? 'Ativo' : 'Pausado'}
                             </Badge>
                           </div>
                         </div>
                       </div>
                       
-                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{rule.description || 'Sem descrição'}</p>
-                      
-                      {/* Metrics */}
-                      <div className="grid grid-cols-3 gap-2 mb-4">
-                        <div className="p-2 rounded-lg bg-muted/50 text-center">
-                          <p className="text-lg font-bold">{rule.flow_data?.nodes?.length || 0}</p>
-                          <p className="text-[10px] text-muted-foreground">Nós</p>
-                        </div>
-                        <div className="p-2 rounded-lg bg-muted/50 text-center">
-                          <p className="text-lg font-bold">{rule.execution_count || 0}</p>
-                          <p className="text-[10px] text-muted-foreground">Execuções</p>
-                        </div>
-                        <div className="p-2 rounded-lg bg-muted/50 text-center">
-                          <p className="text-lg font-bold">v{rule.flow_version || 1}</p>
-                          <p className="text-[10px] text-muted-foreground">Versão</p>
-                        </div>
+                      {/* Compact Metrics */}
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+                        <span className="flex items-center gap-1">
+                          <Activity className="w-3 h-3" />
+                          {rule.flow_data?.nodes?.length || 0} nós
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <PlayCircle className="w-3 h-3" />
+                          {rule.execution_count || 0}x
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          v{rule.flow_version || 1}
+                        </span>
                       </div>
                       
-                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="sm" className="flex-1 gap-1.5" onClick={() => toggleRuleActive(rule)}>
-                          {rule.is_active ? <><Pause className="w-4 h-4" /> Pausar</> : <><Play className="w-4 h-4" /> Ativar</>}
+                      <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs gap-1" onClick={() => toggleRuleActive(rule)}>
+                          {rule.is_active ? <><Pause className="w-3 h-3" /> Pausar</> : <><Play className="w-3 h-3" /> Ativar</>}
                         </Button>
-                        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => loadRule(rule)}>
-                          <ArrowRight className="w-4 h-4" /> Editar
+                        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 px-2" onClick={() => loadRule(rule)}>
+                          <ArrowRight className="w-3 h-3" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteRule(rule.id)}>
-                          <Trash2 className="w-4 h-4" />
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteRule(rule.id)}>
+                          <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
                     </CardContent>
