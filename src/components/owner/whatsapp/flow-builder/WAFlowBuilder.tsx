@@ -545,21 +545,21 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
   // List view when no rule selected - COMPACT & PROFESSIONAL
   if (!selectedRule) {
     return (
-      <div className="space-y-4 w-full">
+      <div className="space-y-6 w-full max-w-7xl mx-auto">
         {/* Compact Hero Header */}
         <Card className="border shadow-md bg-card overflow-hidden">
-          <CardContent className="p-4">
+          <CardContent className="p-5 sm:p-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <GitBranch className="w-5 h-5 text-primary" />
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <GitBranch className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold flex items-center gap-2">
+                  <h2 className="text-xl font-bold flex items-center gap-2">
                     Genesis Flow
                     <Badge variant="secondary" className="text-[10px]">Pro</Badge>
                   </h2>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     Automações visuais para WhatsApp
                   </p>
                 </div>
@@ -568,17 +568,17 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
               {/* Inline Stats */}
               <div className="hidden md:flex items-center gap-6 text-sm">
                 <div className="text-center">
-                  <p className="text-xl font-bold text-primary">{rules.length}</p>
+                  <p className="text-2xl font-bold text-primary">{rules.length}</p>
                   <p className="text-[10px] text-muted-foreground">Fluxos</p>
                 </div>
                 <div className="w-px h-8 bg-border" />
                 <div className="text-center">
-                  <p className="text-xl font-bold text-green-500">{rules.filter(r => r.is_active).length}</p>
+                  <p className="text-2xl font-bold text-green-500">{rules.filter(r => r.is_active).length}</p>
                   <p className="text-[10px] text-muted-foreground">Ativos</p>
                 </div>
                 <div className="w-px h-8 bg-border" />
                 <div className="text-center">
-                  <p className="text-xl font-bold">{rules.reduce((acc, r) => acc + (r.execution_count || 0), 0)}</p>
+                  <p className="text-2xl font-bold">{rules.reduce((acc, r) => acc + (r.execution_count || 0), 0)}</p>
                   <p className="text-[10px] text-muted-foreground">Execuções</p>
                 </div>
               </div>
@@ -617,7 +617,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
             </div>
           </motion.div>
         ) : (
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-5 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <AnimatePresence>
               {rules.map((rule, index) => (
                 <motion.div
@@ -639,46 +639,47 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
                     {/* Status indicator bar */}
                     <div className={cn('h-0.5 w-full', rule.is_active ? 'bg-primary' : 'bg-muted-foreground/20')} />
                     
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', rule.is_active ? 'bg-primary/10' : 'bg-muted')}>
-                            {rule.is_active ? <Zap className="w-4 h-4 text-primary" /> : <Pause className="w-4 h-4 text-muted-foreground" />}
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', rule.is_active ? 'bg-primary/10' : 'bg-muted')}>
+                            {rule.is_active ? <Zap className="w-5 h-5 text-primary" /> : <Pause className="w-5 h-5 text-muted-foreground" />}
                           </div>
                           <div className="min-w-0">
-                            <h3 className="font-semibold text-sm group-hover:text-primary transition-colors truncate">{rule.name}</h3>
-                            <Badge variant={rule.is_active ? 'default' : 'secondary'} className="text-[9px] px-1.5 py-0">
+                            <h3 className="font-semibold text-base group-hover:text-primary transition-colors truncate">{rule.name}</h3>
+                            <Badge variant={rule.is_active ? 'default' : 'secondary'} className="text-[10px] px-2 py-0.5 mt-1">
                               {rule.is_active ? 'Ativo' : 'Pausado'}
                             </Badge>
                           </div>
                         </div>
                       </div>
                       
-                      {/* Compact Metrics */}
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
-                        <span className="flex items-center gap-1">
-                          <Activity className="w-3 h-3" />
+                      {/* Metrics */}
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                        <span className="flex items-center gap-1.5">
+                          <Activity className="w-4 h-4" />
                           {rule.flow_data?.nodes?.length || 0} nós
                         </span>
-                        <span className="flex items-center gap-1">
-                          <PlayCircle className="w-3 h-3" />
+                        <span className="flex items-center gap-1.5">
+                          <PlayCircle className="w-4 h-4" />
                           {rule.execution_count || 0}x
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="w-4 h-4" />
                           v{rule.flow_version || 1}
                         </span>
                       </div>
                       
-                      <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs gap-1" onClick={() => toggleRuleActive(rule)}>
-                          {rule.is_active ? <><Pause className="w-3 h-3" /> Pausar</> : <><Play className="w-3 h-3" /> Ativar</>}
+                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="sm" className="flex-1 h-9 text-sm gap-2" onClick={() => toggleRuleActive(rule)}>
+                          {rule.is_active ? <><Pause className="w-4 h-4" /> Pausar</> : <><Play className="w-4 h-4" /> Ativar</>}
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-8 text-xs gap-1 px-2" onClick={() => loadRule(rule)}>
-                          <ArrowRight className="w-3 h-3" />
+                        <Button variant="ghost" size="sm" className="h-9 text-sm gap-2 px-3" onClick={() => loadRule(rule)}>
+                          <ArrowRight className="w-4 h-4" />
+                          Abrir
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteRule(rule.id)}>
-                          <Trash2 className="w-3 h-3" />
+                        <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => deleteRule(rule.id)}>
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </CardContent>
@@ -785,15 +786,6 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
                 proOptions={{ hideAttribution: true }}
               >
                 <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--muted-foreground) / 0.2)" />
-                
-                {/* Empty Canvas State */}
-                {nodes.length === 0 && (
-                  <EmptyCanvasState 
-                    onAddComponent={() => setShowComponentsModal(true)} 
-                    onCreateWithLuna={() => setIsLunaOpen(true)} 
-                  />
-                )}
-                
                 <MinimalToolbar
                   ruleName={selectedRule.name}
                   ruleVersion={selectedRule.flow_version || 1}
@@ -835,6 +827,16 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
                   zoomable 
                 />
               </ReactFlow>
+
+              {/* Empty Canvas State (overlay above canvas) */}
+              {nodes.length === 0 && (
+                <div className="absolute inset-0 z-40">
+                  <EmptyCanvasState 
+                    onAddComponent={() => setShowComponentsModal(true)} 
+                    onCreateWithLuna={() => setIsLunaOpen(true)} 
+                  />
+                </div>
+              )}
 
               {/* Luna Building Overlay */}
               <AnimatePresence>

@@ -108,13 +108,50 @@ export function GenesisAuthProvider({ children }: { children: ReactNode }) {
       setRoles((rolesData || []) as GenesisRole[]);
 
       // Fetch credits
-      const { data: creditsData } = await supabase
+      const welcomeCredits = (authUser?.email || '') === SUPER_ADMIN_EMAIL ? 999999 : 300;
+
+      const { data: creditsData, error: creditsError } = await supabase
         .from('genesis_credits')
         .select('*')
         .eq('user_id', userData.id)
         .single();
 
-      setCredits(creditsData as GenesisCredits | null);
+      // Guarantee welcome credits for new accounts / missing rows
+      if (creditsError || !creditsData) {
+        const { data: inserted, error: insertError } = await supabase
+          .from('genesis_credits')
+          .insert({ user_id: userData.id, available_credits: welcomeCredits })
+          .select('*')
+          .single();
+
+        if (!insertError && inserted) {
+          setCredits(inserted as GenesisCredits);
+        } else {
+          setCredits(null);
+        }
+      } else {
+        // If the account is effectively "new" (no usage/purchases), ensure it has at least the welcome bonus.
+        if (
+          (creditsData.used_credits ?? 0) === 0 &&
+          (creditsData.total_purchased ?? 0) === 0 &&
+          (creditsData.available_credits ?? 0) < welcomeCredits
+        ) {
+          const { data: updated, error: updateError } = await supabase
+            .from('genesis_credits')
+            .update({ available_credits: welcomeCredits })
+            .eq('user_id', userData.id)
+            .select('*')
+            .single();
+
+          if (!updateError && updated) {
+            setCredits(updated as GenesisCredits);
+          } else {
+            setCredits(creditsData as GenesisCredits);
+          }
+        } else {
+          setCredits(creditsData as GenesisCredits);
+        }
+      }
 
       // Fetch subscription
       const { data: subscriptionData } = await supabase

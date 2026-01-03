@@ -233,7 +233,10 @@ export function GenesisChatbots({ instances }: GenesisChatbotsProps) {
       ...config,
       buttons: config.ai_enabled ? [] : [{ id: '', text: '' }]
     });
-    setIsDialogOpen(true);
+
+    // Ensure Luna modal closes before opening the create/edit dialog
+    setIsLunaOpen(false);
+    setTimeout(() => setIsDialogOpen(true), 50);
   };
 
   // Stats
