@@ -312,7 +312,11 @@ export default function GenesisPanel() {
       case 'instances':
         return <InstancesManager />;
       case 'flows':
-        return <WAFlowBuilder onBack={() => setActiveTab('dashboard')} onEditingChange={setIsEditingFlow} />;
+        return <WAFlowBuilder 
+          onBack={() => setActiveTab('dashboard')} 
+          onEditingChange={setIsEditingFlow} 
+          onNavigateToInstances={() => setActiveTab('instances')}
+        />;
       case 'chatbots':
         return <GenesisChatbots instances={instances} />;
       case 'analytics':

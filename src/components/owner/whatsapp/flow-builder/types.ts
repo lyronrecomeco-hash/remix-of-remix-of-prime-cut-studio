@@ -21,7 +21,14 @@ export type NodeType =
   | 'http_request'
   | 'webhook_in'
   | 'ecommerce'
-  | 'crm_sheets';
+  | 'crm_sheets'
+  // Native WhatsApp Components
+  | 'wa_start'
+  | 'wa_send_text'
+  | 'wa_send_buttons'
+  | 'wa_send_list'
+  | 'wa_wait_response'
+  | 'wa_receive';
 
 export interface FlowNodeData {
   label: string;
@@ -87,8 +94,9 @@ export interface NodeTemplate {
   label: string;
   icon: string;
   description: string;
-  category: 'triggers' | 'conditions' | 'actions' | 'flow' | 'advanced';
+  category: 'triggers' | 'conditions' | 'actions' | 'flow' | 'advanced' | 'nativos';
   defaultConfig: Record<string, any>;
+  requiresInstance?: boolean; // If true, requires connected WhatsApp instance
 }
 
 export const NODE_TEMPLATES: NodeTemplate[] = [
@@ -276,7 +284,66 @@ export const NODE_TEMPLATES: NodeTemplate[] = [
   }
 ];
 
+// Native WhatsApp Templates (Genesis)
+export const NATIVE_WA_TEMPLATES: NodeTemplate[] = [
+  {
+    type: 'wa_start',
+    label: 'Início do Fluxo',
+    icon: 'Smartphone',
+    description: 'Ponto de partida quando uma mensagem é recebida no WhatsApp',
+    category: 'nativos',
+    defaultConfig: { triggerType: 'message_received' },
+    requiresInstance: true
+  },
+  {
+    type: 'wa_send_text',
+    label: 'Enviar Texto',
+    icon: 'MessageSquare',
+    description: 'Envia uma mensagem de texto no WhatsApp',
+    category: 'nativos',
+    defaultConfig: { text: '', typing: true, typingDuration: 2 },
+    requiresInstance: true
+  },
+  {
+    type: 'wa_send_buttons',
+    label: 'Enviar Botões',
+    icon: 'LayoutGrid',
+    description: 'Envia mensagem com botões de resposta rápida',
+    category: 'nativos',
+    defaultConfig: { text: '', buttons: [{ id: 'btn_1', text: 'Opção 1' }] },
+    requiresInstance: true
+  },
+  {
+    type: 'wa_send_list',
+    label: 'Enviar Lista',
+    icon: 'List',
+    description: 'Envia um menu de lista interativa',
+    category: 'nativos',
+    defaultConfig: { title: '', buttonText: 'Ver opções', sections: [] },
+    requiresInstance: true
+  },
+  {
+    type: 'wa_wait_response',
+    label: 'Aguardar Resposta',
+    icon: 'Clock',
+    description: 'Aguarda a resposta do cliente',
+    category: 'nativos',
+    defaultConfig: { timeout: 300, timeoutAction: 'end', saveResponseTo: 'last_response' },
+    requiresInstance: true
+  },
+  {
+    type: 'wa_receive',
+    label: 'Receber Mensagem',
+    icon: 'Inbox',
+    description: 'Captura a mensagem recebida do cliente',
+    category: 'nativos',
+    defaultConfig: { saveAs: 'message', captureMedia: true },
+    requiresInstance: true
+  }
+];
+
 export const NODE_CATEGORIES = {
+  nativos: { label: 'Nativos', color: '#25D366' }, // WhatsApp green
   triggers: { label: 'Gatilhos', color: '#22c55e' },
   conditions: { label: 'Condições', color: '#eab308' },
   actions: { label: 'Ações', color: '#3b82f6' },
@@ -304,16 +371,26 @@ export const NODE_COLORS: Record<NodeType, string> = {
   webhook_in: '#7c3aed',
   ecommerce: '#f43f5e',
   crm_sheets: '#059669',
+  // Native WhatsApp nodes (Genesis green)
+  wa_start: '#25D366',
+  wa_send_text: '#25D366',
+  wa_send_buttons: '#128C7E',
+  wa_send_list: '#075E54',
+  wa_wait_response: '#34B7F1',
+  wa_receive: '#25D366',
 };
 
 // Connection validation rules
 export const CONNECTION_RULES = {
   // Nodes that can only have one outgoing connection
-  singleOutput: ['trigger', 'message', 'button', 'list', 'ai', 'webhook', 'delay', 'variable', 'integration', 'http_request', 'webhook_in', 'ecommerce', 'crm_sheets'],
+  singleOutput: ['trigger', 'message', 'button', 'list', 'ai', 'webhook', 'delay', 'variable', 'integration', 'http_request', 'webhook_in', 'ecommerce', 'crm_sheets', 'wa_start', 'wa_send_text', 'wa_send_buttons', 'wa_send_list', 'wa_wait_response', 'wa_receive'],
   // Nodes that can have multiple outgoing connections (yes/no)
   conditionalOutput: ['condition', 'split'],
   // Nodes that cannot have outgoing connections
   noOutput: ['end'],
   // Nodes that can be connected from any node
-  universalInput: ['message', 'button', 'list', 'ai', 'webhook', 'delay', 'condition', 'split', 'variable', 'integration', 'end', 'goto', 'note', 'http_request', 'ecommerce', 'crm_sheets'],
+  universalInput: ['message', 'button', 'list', 'ai', 'webhook', 'delay', 'condition', 'split', 'variable', 'integration', 'end', 'goto', 'note', 'http_request', 'ecommerce', 'crm_sheets', 'wa_send_text', 'wa_send_buttons', 'wa_send_list', 'wa_wait_response', 'wa_receive'],
 };
+
+// Get all templates including native
+export const getAllTemplates = () => [...NATIVE_WA_TEMPLATES, ...NODE_TEMPLATES];

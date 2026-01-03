@@ -100,9 +100,10 @@ const getEdgeStyle = (sourceHandle?: string | null) => {
 interface WAFlowBuilderProps {
   onBack?: () => void;
   onEditingChange?: (isEditing: boolean) => void;
+  onNavigateToInstances?: () => void;
 }
 
-const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => {
+const FlowBuilderContent = ({ onBack, onEditingChange, onNavigateToInstances }: WAFlowBuilderProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { fitView, zoomIn, zoomOut, setCenter, getNodes, getViewport, setViewport } = useReactFlow();
@@ -945,6 +946,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
         onClose={() => setShowComponentsModal(false)} 
         onSelectComponent={addComponentFromModal}
         onOpenLuna={() => { setShowComponentsModal(false); setIsLunaOpen(true); }}
+        onNavigateToInstances={onNavigateToInstances}
       />
       <LunaAIModal open={isLunaOpen} onOpenChange={setIsLunaOpen} onApplyFlow={handleApplyLunaFlow} currentNodes={nodes as unknown as FlowNodeType[]} currentEdges={edges as unknown as FlowEdge[]} />
       <FlowTemplates open={showTemplates} onClose={() => setShowTemplates(false)} onSelectTemplate={handleApplyTemplate} />

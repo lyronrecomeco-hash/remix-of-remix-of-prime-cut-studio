@@ -80,6 +80,13 @@ const getIconForType = (type: NodeType, iconName?: string) => {
     webhook_in: Zap,
     ecommerce: LayoutGrid,
     crm_sheets: List,
+    // Native WhatsApp nodes
+    wa_start: Zap,
+    wa_send_text: MessageSquare,
+    wa_send_buttons: LayoutGrid,
+    wa_send_list: List,
+    wa_wait_response: Timer,
+    wa_receive: MessageSquare,
   };
   
   return typeIcons[type] || Zap;
@@ -91,6 +98,8 @@ const getNodeCategory = (type: NodeType): string => {
   if (type === 'end') return 'FIM';
   if (type === 'delay' || type === 'goto') return 'CONTROLE';
   if (type === 'variable' || type === 'integration' || type === 'note' || type === 'http_request' || type === 'ecommerce' || type === 'crm_sheets') return 'AVANÇADO';
+  // Native WhatsApp nodes
+  if (type.startsWith('wa_')) return 'NATIVO';
   return 'AÇÃO';
 };
 

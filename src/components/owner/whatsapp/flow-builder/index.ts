@@ -18,5 +18,6 @@ export { VariableAutocomplete, VariableBadges } from './VariableAutocomplete';
 export { FlowBuilderSidebar } from './FlowBuilderSidebar';
 export { ComponentsModal } from './ComponentsModal';
 export { EmptyCanvasState } from './EmptyCanvasState';
+export { InstanceRequiredModal } from './InstanceRequiredModal';
 export * from './types';
 export * from './hooks';
