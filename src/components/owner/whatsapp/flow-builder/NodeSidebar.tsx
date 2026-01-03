@@ -130,11 +130,7 @@ export const NodeSidebar = ({ onDragStart, isCollapsed = false, onToggleCollapse
   }
 
   return (
-    <motion.div 
-      initial={{ width: 280 }}
-      animate={{ width: 280 }}
-      className="bg-card/80 backdrop-blur-xl border-r flex flex-col h-full"
-    >
+    <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b space-y-3">
         <div className="flex items-center justify-between">
@@ -144,16 +140,6 @@ export const NodeSidebar = ({ onDragStart, isCollapsed = false, onToggleCollapse
             </div>
             <h3 className="font-semibold">Componentes</h3>
           </div>
-          {onToggleCollapse && (
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={onToggleCollapse}
-              className="h-8 w-8"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          )}
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -273,6 +259,6 @@ export const NodeSidebar = ({ onDragStart, isCollapsed = false, onToggleCollapse
           <span>Arraste para adicionar ao fluxo</span>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -5,114 +6,120 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Luna - IA especializada em criação de fluxos de WhatsApp
-const LUNA_SYSTEM_PROMPT = `Você é a Luna, uma IA especializada em criar fluxos de automação para WhatsApp de forma visual e profissional.
+// Luna AI - Prompt Ultra-Profissional para ChatGPT
+const LUNA_SYSTEM_PROMPT = `# 🌙 Luna AI - Arquiteta de Fluxos WhatsApp
 
-## SUA MISSÃO
-Analisar a descrição do usuário e gerar um fluxo de automação COMPLETO com nós e conexões.
+Você é a **Luna**, uma IA especializada em criar fluxos de automação WhatsApp ultra-profissionais. Você foi treinada com milhares de fluxos de sucesso e conhece profundamente as melhores práticas de conversação automatizada.
 
-## TIPOS DE NÓS DISPONÍVEIS
-1. **trigger** - Gatilhos iniciais:
-   - keywords: palavras-chave que ativam o fluxo
-   - triggerType: 'keyword' | 'first_contact' | 'button_click' | 'webhook'
+## 📋 TIPOS DE NÓS DISPONÍVEIS
 
-2. **message** - Enviar mensagem de texto:
-   - text: conteúdo da mensagem
-   - typing: true/false (simular digitação)
+### GATILHOS (obrigatórios - iniciam o fluxo)
+- **trigger**: Gatilho inicial (palavra-chave, primeiro contato, botão clicado)
 
-3. **button** - Mensagem com botões interativos:
-   - text: texto da mensagem
-   - buttons: array de {id: string, text: string}
+### AÇÕES
+- **message**: Envia mensagem de texto (suporta variáveis: {{nome}}, {{telefone}})
+- **button**: Envia mensagem com botões interativos (máximo 3 botões)
+- **list**: Envia lista de opções selecionáveis
+- **delay**: Aguarda tempo antes de continuar (simula digitação humana)
+- **ai**: Resposta gerada por IA em tempo real
+- **webhook**: Integração com sistema externo (API)
+- **variable**: Define/modifica variável do contexto
+- **end**: Finaliza o fluxo
 
-4. **list** - Menu de lista:
-   - title: título do menu
-   - sections: array de {title: string, items: [{id: string, title: string, description?: string}]}
+### CONTROLE DE FLUXO
+- **condition**: Bifurcação condicional (SIM/NÃO)
+- **split**: Teste A/B (divide tráfego)
+- **goto**: Pula para outro nó específico
 
-5. **condition** - Condições/Decisões:
-   - field: campo a verificar (ex: 'message', 'button_id', 'user_name')
-   - operator: 'equals' | 'contains' | 'starts_with' | 'ends_with' | 'regex'
-   - value: valor a comparar
+### ESPECIAIS
+- **integration**: Conecta com CRM/sistemas
+- **note**: Nota/comentário (não executa)
 
-6. **delay** - Aguardar tempo:
-   - seconds: tempo em segundos
-   - showTyping: true/false
+## 🔗 REGRAS DE CONEXÃO
 
-7. **ai** - Resposta com IA:
-   - prompt: contexto/instruções para a IA
-   - model: 'gemini-2.5-flash'
-   - temperature: 0.0 a 1.0
+1. Todo fluxo DEVE começar com um nó 'trigger'
+2. Nós de 'condition' têm 2 saídas: 'yes' e 'no'
+3. Nós de 'split' têm 2 saídas para teste A/B
+4. Nó 'end' não tem saídas
+5. Todos os outros nós têm 1 saída padrão
+6. IDs devem ser únicos (use prefixo do tipo + timestamp/número)
 
-8. **webhook** - Chamar API externa:
-   - url: URL da API
-   - method: 'GET' | 'POST' | 'PUT' | 'DELETE'
-   - headers: objeto com headers
-   - body: corpo da requisição
+## 📐 REGRAS DE LAYOUT
 
-9. **variable** - Definir variável:
-   - name: nome da variável
-   - value: valor
-   - source: 'static' | 'response' | 'user_input'
+- Posição inicial: x=400, y=80
+- Espaçamento vertical: 150px entre nós
+- Espaçamento horizontal: 350px para bifurcações
+- Caminho principal: centro (x=400)
+- Caminho SIM: esquerda (x=150)
+- Caminho NÃO: direita (x=650)
 
-10. **end** - Finalizar fluxo:
-    - endType: 'complete' | 'transfer' | 'error'
+## 💡 BOAS PRÁTICAS
 
-## REGRAS DE CONEXÃO
-- Nós de condição têm DUAS saídas: 'yes' e 'no'
-- Nós de split dividem em 'a' e 'b'
-- Outros nós têm apenas uma saída padrão
-- Todo fluxo DEVE começar com um nó 'trigger'
-- Fluxos devem ter pelo menos um nó 'end' ou serem cíclicos
+1. Sempre adicione delays (2-5s) entre mensagens para parecer humano
+2. Use no máximo 3 botões por mensagem
+3. Mensagens curtas e objetivas (máximo 3 linhas)
+4. Sempre tenha um caminho de "ajuda" ou "falar com humano"
+5. Personalize com {{nome}} quando possível
+6. Finalize fluxos com agradecimento
 
-## LAYOUT AUTOMÁTICO
-- Posicione nós de forma hierárquica (trigger no topo)
-- Use espaçamento X de 300px entre colunas
-- Use espaçamento Y de 150px entre linhas
-- Ramificações devem ir para a direita
+## 📤 FORMATO DE RESPOSTA
 
-## FORMATO DE RESPOSTA (JSON VÁLIDO)
+Responda SEMPRE em JSON válido com esta estrutura:
 {
   "flow": {
     "nodes": [
       {
-        "id": "node-1",
-        "position": { "x": 400, "y": 50 },
+        "id": "string",
+        "type": "flowNode",
+        "position": { "x": number, "y": number },
         "data": {
-          "label": "Nome do Nó",
-          "type": "trigger",
-          "config": { "keywords": ["oi", "olá"], "triggerType": "keyword" },
-          "description": "Descrição breve"
+          "label": "string",
+          "type": "trigger|message|button|list|condition|delay|ai|webhook|variable|split|goto|integration|note|end",
+          "config": { ... },
+          "description": "string",
+          "icon": "string"
         }
       }
     ],
     "edges": [
       {
-        "id": "edge-1",
-        "source": "node-1",
-        "target": "node-2",
-        "sourceHandle": null,
-        "label": null
+        "id": "string",
+        "source": "nodeId",
+        "target": "nodeId",
+        "sourceHandle": "yes|no|null",
+        "targetHandle": null,
+        "label": "Sim|Não|null"
       }
     ]
   },
-  "summary": "Breve resumo do que o fluxo faz",
+  "summary": "Resumo curto do fluxo criado",
   "tips": ["Dica 1", "Dica 2"]
 }
 
-## EXEMPLOS DE FLUXOS
+## 🎯 EXEMPLOS DE CONFIGURAÇÕES
 
-### Atendimento Básico
-Trigger → Saudação → Menu de Opções → Condição por botão → Respostas específicas → Encerramento
+### Trigger
+{ "triggerType": "keyword", "keywords": "oi,olá,bom dia" }
 
-### Qualificação de Lead
-Trigger → Pergunta nome → Captura → Pergunta interesse → Menu → Encaminha ou Agenda
+### Message
+{ "text": "Olá {{nome}}! Como posso ajudar?", "typing": true }
 
-### Suporte Técnico
-Trigger → Menu de problemas → Condição → Sub-menus → IA para resolução ou Escalação
+### Button
+{ "text": "Escolha uma opção:", "buttonsRaw": "btn_1|✅ Opção 1\\nbtn_2|❌ Opção 2" }
 
-### Vendas
-Trigger → Apresentação → Catálogo (lista) → Pergunta quantidade → Calcula total → Pagamento
+### Condition
+{ "field": "message", "operator": "contains", "value": "sim" }
 
-SEMPRE gere um fluxo COMPLETO, FUNCIONAL e BEM CONECTADO. Não deixe nós soltos.`;
+### Delay
+{ "seconds": 3, "unit": "seconds" }
+
+### AI
+{ "prompt": "Responda de forma amigável sobre...", "model": "gpt-4o-mini", "useContext": true }
+
+### Webhook
+{ "url": "https://api.example.com", "method": "POST" }
+
+IMPORTANTE: Gere fluxos completos, funcionais e prontos para produção!`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -123,40 +130,68 @@ serve(async (req) => {
     const { prompt, context } = await req.json();
     
     if (!prompt) {
-      throw new Error('Prompt é obrigatório');
+      return new Response(
+        JSON.stringify({ error: 'Prompt é obrigatório' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Tentar GEMINI_API_KEY primeiro, depois LOVABLE_API_KEY como fallback
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
-    const useGeminiDirect = !!GEMINI_API_KEY;
+    let content: string = '';
+
+    // Build the user message
+    let userMessage = `Crie um fluxo de automação WhatsApp profissional para: ${prompt}`;
     
-    if (!GEMINI_API_KEY && !LOVABLE_API_KEY) {
-      throw new Error("Nenhuma chave de API configurada (GEMINI_API_KEY ou LOVABLE_API_KEY)");
+    if (context?.currentNodes?.length > 0) {
+      userMessage += `\n\nContexto atual do fluxo (${context.currentNodes.length} nós existentes):`;
+      userMessage += `\nNós: ${context.currentNodes.map((n: any) => n.data?.label || n.id).join(', ')}`;
     }
 
-    console.log('[Luna] Processando prompt:', prompt.substring(0, 100));
-    console.log('[Luna] Usando API:', useGeminiDirect ? 'Gemini Direct' : 'Lovable Gateway');
+    // Priority: OpenAI > Gemini > Lovable Gateway
+    if (OPENAI_API_KEY) {
+      console.log('[Luna AI] Using OpenAI API...');
+      
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: LUNA_SYSTEM_PROMPT },
+            { role: 'user', content: userMessage }
+          ],
+          temperature: 0.7,
+          max_tokens: 4000,
+          response_format: { type: "json_object" }
+        }),
+      });
 
-    const userPrompt = context 
-      ? `Contexto atual do fluxo:
-${JSON.stringify(context, null, 2)}
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Luna AI] OpenAI Error:', response.status, errorText);
+        
+        if (response.status === 401) {
+          throw new Error('API Key do OpenAI inválida');
+        }
+        if (response.status === 429) {
+          throw new Error('Limite de requisições OpenAI excedido');
+        }
+        throw new Error(`OpenAI error: ${response.status}`);
+      }
 
-Solicitação do usuário: ${prompt}
-
-Analise o contexto e a solicitação. Se for para modificar o fluxo existente, retorne o fluxo COMPLETO modificado. Se for um fluxo novo, crie do zero.`
-      : `Crie um fluxo completo de automação WhatsApp baseado nesta descrição:
-
-${prompt}
-
-Gere um fluxo COMPLETO com todos os nós e conexões necessárias.`;
-
-    let content: string;
-
-    if (useGeminiDirect) {
-      // Usar API Gemini diretamente
-      const geminiResponse = await fetch(
+      const data = await response.json();
+      content = data.choices?.[0]?.message?.content || '';
+      
+    } else if (GEMINI_API_KEY) {
+      console.log('[Luna AI] Using Gemini API...');
+      
+      const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: 'POST',
@@ -164,38 +199,26 @@ Gere um fluxo COMPLETO com todos os nós e conexões necessárias.`;
           body: JSON.stringify({
             contents: [{
               role: 'user',
-              parts: [{ text: LUNA_SYSTEM_PROMPT + '\n\n---\n\n' + userPrompt }]
+              parts: [{ text: LUNA_SYSTEM_PROMPT + '\n\n---\n\n' + userMessage }]
             }],
             generationConfig: {
               temperature: 0.7,
-              topK: 40,
-              topP: 0.95,
               maxOutputTokens: 8192,
             },
-            safetySettings: [
-              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
-            ]
           }),
         }
       );
 
-      if (!geminiResponse.ok) {
-        const errorText = await geminiResponse.text();
-        console.error('[Luna] Erro na API Gemini:', geminiResponse.status, errorText);
-        throw new Error(`Erro na API Gemini: ${geminiResponse.status}`);
+      if (!response.ok) {
+        throw new Error(`Gemini error: ${response.status}`);
       }
 
-      const geminiData = await geminiResponse.json();
-      content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+      const data = await response.json();
+      content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
       
-      if (!content) {
-        throw new Error('Resposta vazia do Gemini');
-      }
-    } else {
-      // Usar Lovable Gateway como fallback
+    } else if (LOVABLE_API_KEY) {
+      console.log('[Luna AI] Using Lovable Gateway...');
+      
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -206,105 +229,91 @@ Gere um fluxo COMPLETO com todos os nós e conexões necessárias.`;
           model: "google/gemini-2.5-flash",
           messages: [
             { role: "system", content: LUNA_SYSTEM_PROMPT },
-            { role: "user", content: userPrompt }
+            { role: "user", content: userMessage }
           ],
           temperature: 0.7,
-          max_tokens: 8000,
         }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[Luna] Erro na API:', response.status, errorText);
-        
         if (response.status === 429) {
-          return new Response(
-            JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }),
-            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          throw new Error('Limite de requisições excedido');
         }
         if (response.status === 402) {
-          return new Response(
-            JSON.stringify({ error: "Créditos insuficientes. Configure GEMINI_API_KEY nas secrets." }),
-            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          throw new Error('Créditos insuficientes. Configure OPENAI_API_KEY.');
         }
-        throw new Error(`Erro na API: ${response.status}`);
+        throw new Error(`Gateway error: ${response.status}`);
       }
 
       const data = await response.json();
-      content = data.choices?.[0]?.message?.content;
-
-      if (!content) {
-        throw new Error('Resposta vazia da IA');
-      }
+      content = data.choices?.[0]?.message?.content || '';
+    } else {
+      throw new Error('Nenhuma API Key configurada (OPENAI_API_KEY, GEMINI_API_KEY ou LOVABLE_API_KEY)');
     }
 
-    console.log('[Luna] Resposta recebida, processando...');
-
-    // Extrair JSON da resposta
-    let jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
-    let jsonStr = jsonMatch ? jsonMatch[1] : content;
-    
-    // Tentar encontrar o JSON de outra forma se não encontrou
-    if (!jsonMatch) {
-      const startIndex = content.indexOf('{');
-      const endIndex = content.lastIndexOf('}');
-      if (startIndex !== -1 && endIndex !== -1) {
-        jsonStr = content.substring(startIndex, endIndex + 1);
-      }
+    if (!content) {
+      throw new Error('Resposta vazia da IA');
     }
 
-    let parsed;
+    console.log('[Luna AI] Response received, parsing...');
+
+    // Parse JSON response
+    let result;
     try {
-      parsed = JSON.parse(jsonStr);
-    } catch (parseError) {
-      console.error('[Luna] Erro ao parsear JSON:', parseError);
-      console.log('[Luna] Conteúdo recebido:', content.substring(0, 500));
-      throw new Error('Não foi possível interpretar a resposta da IA. Tente reformular sua descrição.');
-    }
-
-    // Validar estrutura
-    if (!parsed.flow || !parsed.flow.nodes || !parsed.flow.edges) {
-      throw new Error('Estrutura de fluxo inválida gerada pela IA');
-    }
-
-    // Garantir IDs únicos
-    const nodeIds = new Set();
-    parsed.flow.nodes = parsed.flow.nodes.map((node: any, index: number) => {
-      let id = node.id || `node-${index + 1}`;
-      while (nodeIds.has(id)) {
-        id = `${id}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      result = JSON.parse(content);
+    } catch {
+      // Try to extract JSON from markdown
+      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[1].trim());
+      } else {
+        const startIndex = content.indexOf('{');
+        const endIndex = content.lastIndexOf('}');
+        if (startIndex !== -1 && endIndex !== -1) {
+          result = JSON.parse(content.substring(startIndex, endIndex + 1));
+        } else {
+          throw new Error('Falha ao processar resposta da IA');
+        }
       }
-      nodeIds.add(id);
-      return { ...node, id };
-    });
+    }
 
-    // Garantir conexões válidas
-    parsed.flow.edges = parsed.flow.edges.filter((edge: any) => {
-      return nodeIds.has(edge.source) && nodeIds.has(edge.target);
-    }).map((edge: any, index: number) => ({
-      ...edge,
-      id: edge.id || `edge-${index + 1}-${Date.now()}`
-    }));
+    // Validate and fix the flow
+    if (result.flow) {
+      const seenIds = new Set();
+      result.flow.nodes = result.flow.nodes.map((node: any, index: number) => {
+        if (seenIds.has(node.id)) {
+          node.id = `${node.data?.type || 'node'}-${Date.now()}-${index}`;
+        }
+        seenIds.add(node.id);
+        return node;
+      });
 
-    console.log('[Luna] Fluxo gerado:', parsed.flow.nodes.length, 'nós,', parsed.flow.edges.length, 'conexões');
+      const nodeIds = new Set(result.flow.nodes.map((n: any) => n.id));
+      result.flow.edges = (result.flow.edges || []).filter((edge: any) => 
+        nodeIds.has(edge.source) && nodeIds.has(edge.target)
+      ).map((edge: any, index: number) => ({
+        ...edge,
+        id: edge.id || `edge-${Date.now()}-${index}`
+      }));
+    }
+
+    console.log('[Luna AI] Flow generated:', result.flow?.nodes?.length, 'nodes');
 
     return new Response(
       JSON.stringify({
         success: true,
-        flow: parsed.flow,
-        summary: parsed.summary || 'Fluxo gerado com sucesso',
-        tips: parsed.tips || []
+        flow: result.flow,
+        summary: result.summary || 'Fluxo gerado com sucesso',
+        tips: result.tips || []
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('[Luna] Erro:', error);
+    console.error('[Luna AI] Error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro ao gerar fluxo',
         success: false 
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
