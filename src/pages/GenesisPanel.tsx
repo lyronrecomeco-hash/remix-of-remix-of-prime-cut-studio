@@ -236,7 +236,7 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
 // Main Panel
 export default function GenesisPanel() {
   const navigate = useNavigate();
-  const { user, genesisUser, loading, isSuperAdmin, signOut } = useGenesisAuth();
+  const { user, genesisUser, credits, loading, isSuperAdmin, signOut } = useGenesisAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hideSidebar, setHideSidebar] = useState(false);
@@ -374,10 +374,10 @@ export default function GenesisPanel() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Bonus Badge */}
+            {/* Credits Balance Badge with Genesis Coin */}
             <Badge variant="secondary" className="gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-600 border-amber-500/20 hidden sm:flex">
-              <Gift className="w-3.5 h-3.5" />
-              <span className="text-xs font-medium">300 créditos para conta nova!</span>
+              <span className="w-4 h-4 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-[9px] font-bold text-white shadow-sm">G</span>
+              <span className="text-xs font-medium">{credits?.available_credits ?? 300} créditos disponíveis!</span>
             </Badge>
 
             <Button variant="ghost" size="icon">
