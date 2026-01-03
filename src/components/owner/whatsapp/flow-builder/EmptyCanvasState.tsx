@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
-import { Plus, Sparkles, GitBranch, ArrowDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Plus, Sparkles } from 'lucide-react';
 import { Panel } from '@xyflow/react';
 
 interface EmptyCanvasStateProps {
@@ -12,92 +11,42 @@ export const EmptyCanvasState = ({ onAddComponent, onCreateWithLuna }: EmptyCanv
   return (
     <Panel position="top-center" className="!top-1/2 !-translate-y-1/2">
       <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="flex flex-col items-center text-center"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+        className="flex items-center gap-6"
       >
-        {/* Animated Icon */}
-        <motion.div
-          animate={{ 
-            y: [0, -8, 0],
-            rotate: [0, 5, -5, 0]
-          }}
-          transition={{ 
-            duration: 4, 
-            repeat: Infinity, 
-            ease: 'easeInOut' 
-          }}
-          className="mb-6"
+        {/* Add first step - dashed box */}
+        <motion.button
+          onClick={onAddComponent}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="group flex flex-col items-center gap-3 p-8 rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 cursor-pointer min-w-[160px]"
         >
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 shadow-xl shadow-primary/10">
-            <GitBranch className="w-10 h-10 text-primary" />
+          <div className="w-12 h-12 rounded-lg border-2 border-dashed border-muted-foreground/40 group-hover:border-primary/60 flex items-center justify-center transition-colors">
+            <Plus className="w-6 h-6 text-muted-foreground/60 group-hover:text-primary transition-colors" />
           </div>
-        </motion.div>
+          <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+            Adicionar passo...
+          </span>
+        </motion.button>
 
-        {/* Title */}
-        <motion.h3 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-xl font-semibold mb-2"
-        >
-          Comece seu fluxo
-        </motion.h3>
-        
-        <motion.p 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="text-muted-foreground mb-8 max-w-sm"
-        >
-          Adicione componentes para construir sua automação ou deixe a Luna IA criar para você
-        </motion.p>
+        <span className="text-muted-foreground/50 text-sm font-medium">ou</span>
 
-        {/* Action Buttons */}
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="flex flex-col sm:flex-row gap-3"
+        {/* Build with AI - dashed box */}
+        <motion.button
+          onClick={onCreateWithLuna}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="group flex flex-col items-center gap-3 p-8 rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all duration-200 cursor-pointer min-w-[160px]"
         >
-          <Button
-            onClick={onAddComponent}
-            size="lg"
-            className="gap-2 shadow-lg min-w-[200px]"
-          >
-            <Plus className="w-5 h-5" />
-            Adicionar Componente
-          </Button>
-          
-          <Button
-            onClick={onCreateWithLuna}
-            variant="outline"
-            size="lg"
-            className="gap-2 min-w-[200px] bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-blue-500/30 hover:from-blue-500/20 hover:to-cyan-500/20"
-          >
-            <Sparkles className="w-5 h-5 text-blue-500" />
-            Criar com Luna IA
-          </Button>
-        </motion.div>
-
-        {/* Arrow hint */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.5 }}
-          transition={{ delay: 1 }}
-          className="mt-8"
-        >
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <ArrowDown className="w-6 h-6 text-muted-foreground/50" />
-          </motion.div>
-          <p className="text-xs text-muted-foreground/50 mt-2">
-            Ou arraste componentes do menu
-          </p>
-        </motion.div>
+          <div className="w-12 h-12 rounded-lg border-2 border-dashed border-muted-foreground/40 group-hover:border-blue-500/60 flex items-center justify-center transition-colors">
+            <Sparkles className="w-6 h-6 text-muted-foreground/60 group-hover:text-blue-500 transition-colors" />
+          </div>
+          <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+            Criar com IA
+          </span>
+        </motion.button>
       </motion.div>
     </Panel>
   );
