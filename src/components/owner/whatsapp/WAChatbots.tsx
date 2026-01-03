@@ -222,21 +222,23 @@ export const WAChatbots = ({ instances }: WAChatbotsProps) => {
 
     setIsSaving(true);
     try {
-      const data = {
+      const isAI = form.response_type === 'ai';
+      const data: Record<string, unknown> = {
         name: form.name,
         trigger_type: form.trigger_type,
         trigger_keywords: form.keywords.split(',').map(k => k.trim()).filter(Boolean),
-        response_type: form.response_type === 'ai' ? 'text' : form.response_type,
+        response_type: isAI ? 'text' : form.response_type,
         response_content: form.response || null,
         response_buttons: form.response_type === 'buttons' ? form.buttons.filter(b => b.text.trim()) : null,
         delay_seconds: form.delay,
         instance_id: form.instance_id || null,
-        ai_enabled: form.response_type === 'ai',
-        ai_model: form.response_type === 'ai' ? form.ai_model : null,
+        ai_enabled: isAI,
+        ai_model: isAI ? form.ai_model : null,
         ai_temperature: form.ai_temperature,
         ai_max_tokens: form.ai_max_tokens,
         ai_system_prompt: form.ai_system_prompt || null,
         working_hours_only: form.working_hours_only,
+        trigger_conditions: null,
       };
 
       if (editingChatbot) {
@@ -247,9 +249,10 @@ export const WAChatbots = ({ instances }: WAChatbotsProps) => {
         if (error) throw error;
         toast.success('Chatbot atualizado!');
       } else {
+        const insertData = { ...data, priority: chatbots.length + 1 } as any;
         const { error } = await supabase
           .from('whatsapp_automations')
-          .insert({ ...data, priority: chatbots.length + 1 });
+          .insert(insertData);
         if (error) throw error;
         toast.success('Chatbot criado!');
       }
@@ -291,16 +294,22 @@ export const WAChatbots = ({ instances }: WAChatbotsProps) => {
 
   const duplicateChatbot = async (chatbot: Chatbot) => {
     try {
+      const duplicateData = {
+        name: `${chatbot.name} (Cópia)`,
+        instance_id: chatbot.instance_id,
+        trigger_type: chatbot.trigger_type,
+        trigger_keywords: chatbot.trigger_keywords,
+        response_type: chatbot.response_type,
+        response_content: chatbot.response_content,
+        response_buttons: chatbot.response_buttons,
+        response_list: chatbot.response_list,
+        delay_seconds: chatbot.delay_seconds,
+        is_active: false,
+        priority: chatbots.length + 1,
+      };
       const { error } = await supabase
         .from('whatsapp_automations')
-        .insert({
-          ...chatbot,
-          id: undefined,
-          name: `${chatbot.name} (Cópia)`,
-          is_active: false,
-          match_count: 0,
-          created_at: undefined,
-        });
+        .insert(duplicateData);
       if (error) throw error;
       toast.success('Chatbot duplicado!');
       fetchData();

@@ -3329,6 +3329,11 @@ export type Database = {
       }
       whatsapp_automations: {
         Row: {
+          ai_enabled: boolean | null
+          ai_max_tokens: number | null
+          ai_model: string | null
+          ai_system_prompt: string | null
+          ai_temperature: number | null
           created_at: string | null
           delay_seconds: number | null
           id: string
@@ -3346,8 +3351,14 @@ export type Database = {
           trigger_keywords: string[] | null
           trigger_type: string
           updated_at: string | null
+          working_hours_only: boolean | null
         }
         Insert: {
+          ai_enabled?: boolean | null
+          ai_max_tokens?: number | null
+          ai_model?: string | null
+          ai_system_prompt?: string | null
+          ai_temperature?: number | null
           created_at?: string | null
           delay_seconds?: number | null
           id?: string
@@ -3365,8 +3376,14 @@ export type Database = {
           trigger_keywords?: string[] | null
           trigger_type: string
           updated_at?: string | null
+          working_hours_only?: boolean | null
         }
         Update: {
+          ai_enabled?: boolean | null
+          ai_max_tokens?: number | null
+          ai_model?: string | null
+          ai_system_prompt?: string | null
+          ai_temperature?: number | null
           created_at?: string | null
           delay_seconds?: number | null
           id?: string
@@ -3384,6 +3401,7 @@ export type Database = {
           trigger_keywords?: string[] | null
           trigger_type?: string
           updated_at?: string | null
+          working_hours_only?: boolean | null
         }
         Relationships: [
           {
