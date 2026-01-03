@@ -360,6 +360,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
       if (error) throw error;
 
       toast.success('Fluxo salvo!');
+      // Sync local state and rules list
       setSelectedRule((prev) =>
         prev
           ? {
@@ -369,6 +370,14 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
               flow_version: (prev.flow_version || 1) + 1,
             }
           : null
+      );
+      // Update rules list to reflect saved data
+      setRules((prevRules) =>
+        prevRules.map((r) =>
+          r.id === selectedRule.id
+            ? { ...r, flow_data: flowData, canvas_position: canvasPosition, flow_version: (r.flow_version || 1) + 1 }
+            : r
+        )
       );
     } catch (error) {
       console.error('Error saving flow:', error);
@@ -545,7 +554,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
   // List view when no rule selected - COMPACT & PROFESSIONAL
   if (!selectedRule) {
     return (
-      <div className="space-y-6 w-full max-w-7xl mx-auto">
+      <div className="space-y-6 w-full">
         {/* Compact Hero Header */}
         <Card className="border shadow-md bg-card overflow-hidden">
           <CardContent className="p-5 sm:p-6">
@@ -798,7 +807,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
                   validationErrors={validationResult.errors.length}
                   validationWarnings={validationResult.warnings.length}
                   isFullscreen={isFullscreen}
-                  onBack={() => setSelectedRule(null)}
+                  onBack={() => { fetchRules(); setSelectedRule(null); }}
                   onSave={saveFlow}
                   onUndo={undo}
                   onRedo={redo}
