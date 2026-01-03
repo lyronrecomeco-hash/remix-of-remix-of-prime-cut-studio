@@ -83,7 +83,14 @@ export const WARealTest = ({
   const [isSending, setIsSending] = useState(false);
   const [recentLogs, setRecentLogs] = useState<MessageLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
-  
+
+  const [localCapabilities, setLocalCapabilities] = useState<{ buttons: boolean | null; list: boolean | null }>({
+    buttons: null,
+    list: null,
+  });
+
+  const connectedInstance = instances.find((i) => i.status === 'connected');
+
   // Text message
   const [textMessage, setTextMessage] = useState('');
   
@@ -139,6 +146,47 @@ export const WARealTest = ({
       setVariableValues({});
     }
   }, [selectedTemplateId, templates]);
+
+  // Detect whether the running local backend supports interactive endpoints.
+  useEffect(() => {
+    if (backendMode !== 'local' || !isBackendActive || !connectedInstance) {
+      setLocalCapabilities({ buttons: null, list: null });
+      return;
+    }
+
+    const base = `${localEndpoint}:${localPort}`;
+
+    const checkEndpoint = async (path: string) => {
+      try {
+        const resp = await fetch(`${base}/api/instance/${connectedInstance.id}/${path}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localToken}`,
+          },
+          body: JSON.stringify({}),
+        });
+
+        // If the route doesn't exist, Express returns HTML 404.
+        if (resp.status === 404) return false;
+        return true; // any other status means route exists (might still error for bad payload)
+      } catch {
+        return null;
+      }
+    };
+
+    (async () => {
+      const [buttonsSupport, listSupport] = await Promise.all([
+        checkEndpoint('send-buttons'),
+        checkEndpoint('send-list'),
+      ]);
+
+      setLocalCapabilities({
+        buttons: buttonsSupport,
+        list: listSupport,
+      });
+    })();
+  }, [backendMode, isBackendActive, connectedInstance?.id, localEndpoint, localPort, localToken]);
 
   const fetchTemplates = async () => {
     const { data, error } = await supabase
@@ -328,7 +376,20 @@ export const WARealTest = ({
         body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
+      const raw = await response.text();
+      let result: any = {};
+      try {
+        result = raw ? JSON.parse(raw) : {};
+      } catch {
+        result = { raw };
+      }
+
+      // Local backend outdated => interactive endpoint doesn't exist
+      if (backendMode === 'local' && response.status === 404 && (messageType === 'buttons' || messageType === 'list' || (messageType === 'template' && ['buttons', 'list'].includes(selectedTemplate?.template_type || '')))) {
+        throw new Error(
+          'Seu backend local está desatualizado e não possui suporte a botões/listas. Vá em “Backend” → “Baixar Script” e reinicie o whatsapp-local.js.'
+        );
+      }
 
       if (response.ok && result.success !== false) {
         toast.success('Mensagem enviada com sucesso!');
@@ -344,7 +405,7 @@ export const WARealTest = ({
 
         fetchRecentLogs();
       } else {
-        throw new Error(result.error || result.message || 'Erro ao enviar mensagem');
+        throw new Error(result?.error || result?.message || (typeof raw === 'string' && raw) || 'Erro ao enviar mensagem');
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
@@ -378,6 +439,9 @@ export const WARealTest = ({
         return <Badge variant="outline" className="text-[10px]"><MessageSquare className="w-2.5 h-2.5 mr-1" />Texto</Badge>;
     }
   };
+
+  const requiresButtons = messageType === 'buttons' || (messageType === 'template' && selectedTemplate?.template_type === 'buttons');
+  const requiresList = messageType === 'list' || (messageType === 'template' && selectedTemplate?.template_type === 'list');
 
   return (
     <div className="space-y-6">
@@ -425,6 +489,23 @@ export const WARealTest = ({
             <div>
               <p className="font-medium">Nenhuma instância conectada</p>
               <p className="text-sm opacity-80">Conecte uma instância na aba "Instâncias".</p>
+            </div>
+          </motion.div>
+        )}
+
+        {backendMode === 'local' && isBackendActive && ((requiresButtons && localCapabilities.buttons === false) || (requiresList && localCapabilities.list === false)) && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 flex items-center gap-3"
+          >
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Botões/Listas não suportados no seu backend local</p>
+              <p className="text-sm opacity-80">
+                O serviço em execução não tem os endpoints de interativos (404). Baixe o script atualizado em “Backend” → “Baixar Script” e reinicie o whatsapp-local.js.
+              </p>
             </div>
           </motion.div>
         )}
