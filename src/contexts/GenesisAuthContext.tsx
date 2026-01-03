@@ -40,9 +40,12 @@ interface GenesisAuthState {
   subscription: GenesisSubscription | null;
   loading: boolean;
   isSuperAdmin: boolean;
+  needsRegistration: boolean;
+  googleUserData: { email: string; name: string; avatarUrl?: string } | null;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, name: string, phone?: string, companyName?: string) => Promise<{ error: any }>;
   signInWithGoogle: () => Promise<{ error: any }>;
+  createGenesisAccountForGoogleUser: (name: string, phone?: string, companyName?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -59,10 +62,12 @@ export function GenesisAuthProvider({ children }: { children: ReactNode }) {
   const [credits, setCredits] = useState<GenesisCredits | null>(null);
   const [subscription, setSubscription] = useState<GenesisSubscription | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsRegistration, setNeedsRegistration] = useState(false);
+  const [googleUserData, setGoogleUserData] = useState<{ email: string; name: string; avatarUrl?: string } | null>(null);
 
   const isSuperAdmin = roles.some(r => r.role === 'super_admin');
 
-  const fetchGenesisData = useCallback(async (authUserId: string) => {
+  const fetchGenesisData = useCallback(async (authUserId: string, authUser?: User) => {
     try {
       // Fetch genesis user
       const { data: userData, error: userError } = await supabase
@@ -77,9 +82,21 @@ export function GenesisAuthProvider({ children }: { children: ReactNode }) {
         setRoles([]);
         setCredits(null);
         setSubscription(null);
+        
+        // Check if this is a Google user that needs registration
+        if (authUser?.app_metadata?.provider === 'google' || authUser?.user_metadata?.full_name) {
+          setNeedsRegistration(true);
+          setGoogleUserData({
+            email: authUser.email || '',
+            name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
+            avatarUrl: authUser.user_metadata?.avatar_url,
+          });
+        }
         return;
       }
 
+      setNeedsRegistration(false);
+      setGoogleUserData(null);
       setGenesisUser(userData as GenesisUser);
 
       // Fetch roles
@@ -127,13 +144,15 @@ export function GenesisAuthProvider({ children }: { children: ReactNode }) {
         
         if (newSession?.user) {
           setTimeout(() => {
-            fetchGenesisData(newSession.user.id);
+            fetchGenesisData(newSession.user.id, newSession.user);
           }, 0);
         } else {
           setGenesisUser(null);
           setRoles([]);
           setCredits(null);
           setSubscription(null);
+          setNeedsRegistration(false);
+          setGoogleUserData(null);
         }
         setLoading(false);
       }
@@ -144,7 +163,7 @@ export function GenesisAuthProvider({ children }: { children: ReactNode }) {
       setUser(existingSession?.user ?? null);
       
       if (existingSession?.user) {
-        fetchGenesisData(existingSession.user.id);
+        fetchGenesisData(existingSession.user.id, existingSession.user);
       }
       setLoading(false);
     });
@@ -266,11 +285,78 @@ export function GenesisAuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/genesis`,
+          redirectTo: `${window.location.origin}/genesis/login?google_callback=true`,
         }
       });
 
       return { error };
+    } catch (error: any) {
+      return { error };
+    }
+  };
+
+  // Create genesis account for Google user
+  const createGenesisAccountForGoogleUser = async (authUser: User, name: string, phone?: string, companyName?: string) => {
+    try {
+      // Check if already exists
+      const { data: existing } = await supabase
+        .from('genesis_users')
+        .select('id')
+        .eq('auth_user_id', authUser.id)
+        .single();
+
+      if (existing) {
+        return { error: null, alreadyExists: true };
+      }
+
+      const email = authUser.email || '';
+      
+      // Create genesis user
+      const { data: newUser, error: userError } = await supabase
+        .from('genesis_users')
+        .insert({
+          auth_user_id: authUser.id,
+          email,
+          name,
+          phone,
+          company_name: companyName,
+          avatar_url: authUser.user_metadata?.avatar_url,
+        })
+        .select()
+        .single();
+
+      if (userError) {
+        return { error: userError };
+      }
+
+      if (newUser) {
+        const role = email === SUPER_ADMIN_EMAIL ? 'super_admin' : 'user';
+
+        await supabase
+          .from('genesis_user_roles')
+          .insert({ user_id: newUser.id, role });
+
+        await supabase
+          .from('genesis_credits')
+          .insert({
+            user_id: newUser.id,
+            available_credits: role === 'super_admin' ? 999999 : 10,
+          });
+
+        await supabase
+          .from('genesis_subscriptions')
+          .insert({
+            user_id: newUser.id,
+            plan: role === 'super_admin' ? 'enterprise' : 'free',
+            max_instances: role === 'super_admin' ? 100 : 1,
+            max_flows: role === 'super_admin' ? 1000 : 5,
+          });
+
+        // Refresh data
+        await fetchGenesisData(authUser.id);
+      }
+
+      return { error: null, alreadyExists: false };
     } catch (error: any) {
       return { error };
     }
@@ -282,6 +368,20 @@ export function GenesisAuthProvider({ children }: { children: ReactNode }) {
     setRoles([]);
     setCredits(null);
     setSubscription(null);
+    setNeedsRegistration(false);
+    setGoogleUserData(null);
+  };
+
+  const handleCreateGenesisAccountForGoogleUser = async (name: string, phone?: string, companyName?: string) => {
+    if (!user) {
+      return { error: { message: 'Usuário não autenticado' } };
+    }
+    const result = await createGenesisAccountForGoogleUser(user, name, phone, companyName);
+    if (!result.error) {
+      setNeedsRegistration(false);
+      setGoogleUserData(null);
+    }
+    return result;
   };
 
   return (
@@ -295,9 +395,12 @@ export function GenesisAuthProvider({ children }: { children: ReactNode }) {
         subscription,
         loading,
         isSuperAdmin,
+        needsRegistration,
+        googleUserData,
         signIn,
         signUp,
         signInWithGoogle,
+        createGenesisAccountForGoogleUser: handleCreateGenesisAccountForGoogleUser,
         signOut,
         refreshUser,
       }}

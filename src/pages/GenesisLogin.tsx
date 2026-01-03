@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Zap, 
@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useGenesisAuth } from '@/contexts/GenesisAuthContext';
+import { FlowAnimation } from '@/components/genesis/FlowAnimation';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -45,11 +46,30 @@ const registerSchema = z.object({
   path: ['confirmPassword'],
 });
 
+const googleRegisterSchema = z.object({
+  name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  email: z.string().email('Email inválido'),
+  phone: z.string().optional(),
+  companyName: z.string().optional(),
+  acceptTerms: z.boolean().refine(val => val === true, 'Você deve aceitar os termos'),
+});
+
 export default function GenesisLogin() {
   const navigate = useNavigate();
-  const { user, genesisUser, loading, signIn, signUp, signInWithGoogle } = useGenesisAuth();
+  const [searchParams] = useSearchParams();
+  const { 
+    user, 
+    genesisUser, 
+    loading, 
+    needsRegistration, 
+    googleUserData,
+    signIn, 
+    signUp, 
+    signInWithGoogle,
+    createGenesisAccountForGoogleUser 
+  } = useGenesisAuth();
   
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'google-complete'>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,11 +86,20 @@ export default function GenesisLogin() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Handle Google OAuth callback - check if user needs registration
   useEffect(() => {
-    if (!loading && user && genesisUser) {
+    if (!loading && user && needsRegistration && googleUserData) {
+      // User authenticated with Google but has no genesis account
+      setMode('google-complete');
+      setFormData(prev => ({
+        ...prev,
+        name: googleUserData.name || '',
+        email: googleUserData.email || '',
+      }));
+    } else if (!loading && user && genesisUser) {
       navigate('/genesis');
     }
-  }, [loading, user, genesisUser, navigate]);
+  }, [loading, user, genesisUser, needsRegistration, googleUserData, navigate]);
 
   const updateField = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -161,8 +190,48 @@ export default function GenesisLogin() {
     const { error } = await signInWithGoogle();
     if (error) {
       toast.error('Erro ao fazer login com Google');
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
+    // Don't set isSubmitting to false here - OAuth redirects
+  };
+
+  const handleGoogleComplete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+    
+    try {
+      const result = googleRegisterSchema.parse({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || undefined,
+        companyName: formData.companyName || undefined,
+        acceptTerms: formData.acceptTerms,
+      });
+      
+      setIsSubmitting(true);
+      const { error } = await createGenesisAccountForGoogleUser(
+        result.name,
+        result.phone,
+        result.companyName
+      );
+      
+      if (error) {
+        toast.error(error.message || 'Erro ao completar cadastro');
+      } else {
+        toast.success('Conta criada com sucesso!');
+        navigate('/genesis');
+      }
+    } catch (err: any) {
+      if (err.errors) {
+        const newErrors: Record<string, string> = {};
+        err.errors.forEach((e: any) => {
+          if (e.path[0]) newErrors[e.path[0]] = e.message;
+        });
+        setErrors(newErrors);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -281,12 +350,26 @@ export default function GenesisLogin() {
             ))}
           </motion.div>
 
+          {/* Interactive Flow Animation */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-8 p-4 rounded-2xl bg-card/30 backdrop-blur-sm border border-border/30"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs text-muted-foreground">Fluxo de automação ativo</span>
+            </div>
+            <FlowAnimation />
+          </motion.div>
+
           {/* Stats */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
-            className="flex gap-8 mt-12 pt-8 border-t border-border/30"
+            className="flex gap-8 mt-8 pt-8 border-t border-border/30"
           >
             <div>
               <div className="text-3xl font-bold text-primary">10k+</div>
@@ -333,231 +416,367 @@ export default function GenesisLogin() {
               <Card className="border-0 shadow-none bg-transparent">
                 <CardHeader className="px-0">
                   <CardTitle className="text-2xl">
-                    {mode === 'login' ? 'Entrar na sua conta' : 'Criar nova conta'}
+                    {mode === 'login' 
+                      ? 'Entrar na sua conta' 
+                      : mode === 'google-complete'
+                      ? 'Complete seu cadastro'
+                      : 'Criar nova conta'
+                    }
                   </CardTitle>
                   <CardDescription>
                     {mode === 'login' 
                       ? 'Bem-vindo de volta! Entre com suas credenciais.'
+                      : mode === 'google-complete'
+                      ? 'Quase lá! Complete as informações para começar.'
                       : 'Comece a automatizar seu WhatsApp hoje mesmo.'
                     }
                   </CardDescription>
                 </CardHeader>
 
                 <CardContent className="px-0 space-y-6">
-                  {/* Google Sign In */}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-11 gap-2"
-                    onClick={handleGoogleSignIn}
-                    disabled={isSubmitting}
-                  >
-                    <Chrome className="w-5 h-5" />
-                    Continuar com Google
-                  </Button>
+                  {/* Google Complete Form */}
+                  {mode === 'google-complete' ? (
+                    <form onSubmit={handleGoogleComplete} className="space-y-4">
+                      {/* Google avatar indicator */}
+                      {googleUserData?.avatarUrl && (
+                        <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                          <img 
+                            src={googleUserData.avatarUrl} 
+                            alt="Avatar" 
+                            className="w-10 h-10 rounded-full"
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{googleUserData.name}</p>
+                            <p className="text-xs text-muted-foreground">{googleUserData.email}</p>
+                          </div>
+                          <Chrome className="w-5 h-5 text-primary" />
+                        </div>
+                      )}
 
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">
-                        ou continue com email
-                      </span>
-                    </div>
-                  </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Nome completo</Label>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            id="name"
+                            placeholder="Seu nome"
+                            value={formData.name}
+                            onChange={e => updateField('name', e.target.value)}
+                            className={`pl-10 ${errors.name ? 'border-destructive' : ''}`}
+                          />
+                        </div>
+                        {errors.name && (
+                          <p className="text-xs text-destructive">{errors.name}</p>
+                        )}
+                      </div>
 
-                  <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-4">
-                    {mode === 'register' && (
-                      <>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            id="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={e => updateField('email', e.target.value)}
+                            className={`pl-10 ${errors.email ? 'border-destructive' : ''}`}
+                            disabled
+                          />
+                        </div>
+                        {errors.email && (
+                          <p className="text-xs text-destructive">{errors.email}</p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="name">Nome completo</Label>
+                          <Label htmlFor="phone">WhatsApp</Label>
                           <div className="relative">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
-                              id="name"
-                              placeholder="Seu nome"
-                              value={formData.name}
-                              onChange={e => updateField('name', e.target.value)}
-                              className={`pl-10 ${errors.name ? 'border-destructive' : ''}`}
+                              id="phone"
+                              placeholder="(00) 00000-0000"
+                              value={formData.phone}
+                              onChange={e => updateField('phone', e.target.value)}
+                              className="pl-10"
                             />
                           </div>
-                          {errors.name && (
-                            <p className="text-xs text-destructive">{errors.name}</p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="companyName">Empresa</Label>
+                          <div className="relative">
+                            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                              id="companyName"
+                              placeholder="Sua empresa"
+                              value={formData.companyName}
+                              onChange={e => updateField('companyName', e.target.value)}
+                              className="pl-10"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          id="acceptTerms"
+                          checked={formData.acceptTerms}
+                          onCheckedChange={(checked) => updateField('acceptTerms', checked)}
+                        />
+                        <label htmlFor="acceptTerms" className="text-sm text-muted-foreground cursor-pointer">
+                          Eu aceito os{' '}
+                          <a href="/termos" className="text-primary hover:underline">
+                            Termos de Uso
+                          </a>{' '}
+                          e a{' '}
+                          <a href="/privacidade" className="text-primary hover:underline">
+                            Política de Privacidade
+                          </a>
+                        </label>
+                      </div>
+                      {errors.acceptTerms && (
+                        <p className="text-xs text-destructive">{errors.acceptTerms}</p>
+                      )}
+
+                      <Button 
+                        type="submit" 
+                        className="w-full h-11 gap-2"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                          >
+                            <Sparkles className="w-4 h-4" />
+                          </motion.div>
+                        ) : (
+                          <>
+                            Começar a usar
+                            <ArrowRight className="w-4 h-4" />
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                  ) : (
+                    <>
+                      {/* Google Sign In */}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full h-11 gap-2"
+                        onClick={handleGoogleSignIn}
+                        disabled={isSubmitting}
+                      >
+                        <Chrome className="w-5 h-5" />
+                        Continuar com Google
+                      </Button>
+
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-background px-2 text-muted-foreground">
+                            ou continue com email
+                          </span>
+                        </div>
+                      </div>
+
+                      <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-4">
+                        {mode === 'register' && (
+                          <>
+                            <div className="space-y-2">
+                              <Label htmlFor="name">Nome completo</Label>
+                              <div className="relative">
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input
+                                  id="name"
+                                  placeholder="Seu nome"
+                                  value={formData.name}
+                                  onChange={e => updateField('name', e.target.value)}
+                                  className={`pl-10 ${errors.name ? 'border-destructive' : ''}`}
+                                />
+                              </div>
+                              {errors.name && (
+                                <p className="text-xs text-destructive">{errors.name}</p>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="phone">WhatsApp</Label>
+                                <div className="relative">
+                                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                  <Input
+                                    id="phone"
+                                    placeholder="(00) 00000-0000"
+                                    value={formData.phone}
+                                    onChange={e => updateField('phone', e.target.value)}
+                                    className="pl-10"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="companyName">Empresa</Label>
+                                <div className="relative">
+                                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                  <Input
+                                    id="companyName"
+                                    placeholder="Sua empresa"
+                                    value={formData.companyName}
+                                    onChange={e => updateField('companyName', e.target.value)}
+                                    className="pl-10"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email</Label>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                              id="email"
+                              type="email"
+                              placeholder="seu@email.com"
+                              value={formData.email}
+                              onChange={e => updateField('email', e.target.value)}
+                              className={`pl-10 ${errors.email ? 'border-destructive' : ''}`}
+                            />
+                          </div>
+                          {errors.email && (
+                            <p className="text-xs text-destructive">{errors.email}</p>
                           )}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="phone">WhatsApp</Label>
-                            <div className="relative">
-                              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                              <Input
-                                id="phone"
-                                placeholder="(00) 00000-0000"
-                                value={formData.phone}
-                                onChange={e => updateField('phone', e.target.value)}
-                                className="pl-10"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="companyName">Empresa</Label>
-                            <div className="relative">
-                              <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                              <Input
-                                id="companyName"
-                                placeholder="Sua empresa"
-                                value={formData.companyName}
-                                onChange={e => updateField('companyName', e.target.value)}
-                                className="pl-10"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    )}
-
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="seu@email.com"
-                          value={formData.email}
-                          onChange={e => updateField('email', e.target.value)}
-                          className={`pl-10 ${errors.email ? 'border-destructive' : ''}`}
-                        />
-                      </div>
-                      {errors.email && (
-                        <p className="text-xs text-destructive">{errors.email}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Senha</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="password"
-                          type={showPassword ? 'text' : 'password'}
-                          placeholder="••••••••"
-                          value={formData.password}
-                          onChange={e => updateField('password', e.target.value)}
-                          className={`pl-10 pr-10 ${errors.password ? 'border-destructive' : ''}`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                      {errors.password && (
-                        <p className="text-xs text-destructive">{errors.password}</p>
-                      )}
-                    </div>
-
-                    {mode === 'register' && (
-                      <>
                         <div className="space-y-2">
-                          <Label htmlFor="confirmPassword">Confirmar senha</Label>
+                          <Label htmlFor="password">Senha</Label>
                           <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
-                              id="confirmPassword"
-                              type={showConfirmPassword ? 'text' : 'password'}
+                              id="password"
+                              type={showPassword ? 'text' : 'password'}
                               placeholder="••••••••"
-                              value={formData.confirmPassword}
-                              onChange={e => updateField('confirmPassword', e.target.value)}
-                              className={`pl-10 pr-10 ${errors.confirmPassword ? 'border-destructive' : ''}`}
+                              value={formData.password}
+                              onChange={e => updateField('password', e.target.value)}
+                              className={`pl-10 pr-10 ${errors.password ? 'border-destructive' : ''}`}
                             />
                             <button
                               type="button"
-                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              onClick={() => setShowPassword(!showPassword)}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                             >
-                              {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
                           </div>
-                          {errors.confirmPassword && (
-                            <p className="text-xs text-destructive">{errors.confirmPassword}</p>
+                          {errors.password && (
+                            <p className="text-xs text-destructive">{errors.password}</p>
                           )}
                         </div>
 
-                        <div className="flex items-start gap-2">
-                          <Checkbox
-                            id="acceptTerms"
-                            checked={formData.acceptTerms}
-                            onCheckedChange={(checked) => updateField('acceptTerms', checked)}
-                          />
-                          <label htmlFor="acceptTerms" className="text-sm text-muted-foreground cursor-pointer">
-                            Eu aceito os{' '}
-                            <a href="/termos" className="text-primary hover:underline">
-                              Termos de Uso
-                            </a>{' '}
-                            e a{' '}
-                            <a href="/privacidade" className="text-primary hover:underline">
-                              Política de Privacidade
-                            </a>
-                          </label>
-                        </div>
-                        {errors.acceptTerms && (
-                          <p className="text-xs text-destructive">{errors.acceptTerms}</p>
+                        {mode === 'register' && (
+                          <>
+                            <div className="space-y-2">
+                              <Label htmlFor="confirmPassword">Confirmar senha</Label>
+                              <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input
+                                  id="confirmPassword"
+                                  type={showConfirmPassword ? 'text' : 'password'}
+                                  placeholder="••••••••"
+                                  value={formData.confirmPassword}
+                                  onChange={e => updateField('confirmPassword', e.target.value)}
+                                  className={`pl-10 pr-10 ${errors.confirmPassword ? 'border-destructive' : ''}`}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                              </div>
+                              {errors.confirmPassword && (
+                                <p className="text-xs text-destructive">{errors.confirmPassword}</p>
+                              )}
+                            </div>
+
+                            <div className="flex items-start gap-2">
+                              <Checkbox
+                                id="acceptTerms"
+                                checked={formData.acceptTerms}
+                                onCheckedChange={(checked) => updateField('acceptTerms', checked)}
+                              />
+                              <label htmlFor="acceptTerms" className="text-sm text-muted-foreground cursor-pointer">
+                                Eu aceito os{' '}
+                                <a href="/termos" className="text-primary hover:underline">
+                                  Termos de Uso
+                                </a>{' '}
+                                e a{' '}
+                                <a href="/privacidade" className="text-primary hover:underline">
+                                  Política de Privacidade
+                                </a>
+                              </label>
+                            </div>
+                            {errors.acceptTerms && (
+                              <p className="text-xs text-destructive">{errors.acceptTerms}</p>
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
 
-                    <Button 
-                      type="submit" 
-                      className="w-full h-11 gap-2"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        <Button 
+                          type="submit" 
+                          className="w-full h-11 gap-2"
+                          disabled={isSubmitting}
                         >
-                          <Sparkles className="w-4 h-4" />
-                        </motion.div>
-                      ) : (
-                        <>
-                          {mode === 'login' ? 'Entrar' : 'Criar conta'}
-                          <ArrowRight className="w-4 h-4" />
-                        </>
-                      )}
-                    </Button>
-                  </form>
+                          {isSubmitting ? (
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                            >
+                              <Sparkles className="w-4 h-4" />
+                            </motion.div>
+                          ) : (
+                            <>
+                              {mode === 'login' ? 'Entrar' : 'Criar conta'}
+                              <ArrowRight className="w-4 h-4" />
+                            </>
+                          )}
+                        </Button>
+                      </form>
 
-                  <div className="text-center text-sm">
-                    {mode === 'login' ? (
-                      <>
-                        Não tem uma conta?{' '}
-                        <button
-                          type="button"
-                          onClick={() => setMode('register')}
-                          className="text-primary font-medium hover:underline"
-                        >
-                          Criar agora
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        Já tem uma conta?{' '}
-                        <button
-                          type="button"
-                          onClick={() => setMode('login')}
-                          className="text-primary font-medium hover:underline"
-                        >
-                          Fazer login
-                        </button>
-                      </>
-                    )}
-                  </div>
+                      <div className="text-center text-sm">
+                        {mode === 'login' ? (
+                          <>
+                            Não tem uma conta?{' '}
+                            <button
+                              type="button"
+                              onClick={() => setMode('register')}
+                              className="text-primary font-medium hover:underline"
+                            >
+                              Criar agora
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            Já tem uma conta?{' '}
+                            <button
+                              type="button"
+                              onClick={() => setMode('login')}
+                              className="text-primary font-medium hover:underline"
+                            >
+                              Fazer login
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
