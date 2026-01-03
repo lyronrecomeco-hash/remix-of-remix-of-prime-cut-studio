@@ -8,7 +8,7 @@ interface EmptyCanvasStateProps {
 
 export const EmptyCanvasState = ({ onAddComponent, onCreateWithLuna }: EmptyCanvasStateProps) => {
   return (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <div className="absolute inset-0 flex items-center justify-center">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}

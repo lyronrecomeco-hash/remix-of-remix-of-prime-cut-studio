@@ -106,7 +106,7 @@ interface WAFlowBuilderProps {
 const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { fitView, zoomIn, zoomOut, setCenter, getNodes } = useReactFlow();
+  const { fitView, zoomIn, zoomOut, setCenter, getNodes, getViewport, setViewport } = useReactFlow();
   
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -256,16 +256,43 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
   const loadRule = (rule: AutomationRule) => {
     setSelectedRule(rule);
     const flowData = rule.flow_data || { nodes: [], edges: [] };
-    const rfNodes = flowData.nodes.map(n => ({ id: n.id, type: 'flowNode', position: n.position, data: n.data }));
-    const rfEdges = flowData.edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle, label: e.label, ...defaultEdgeOptions, style: getEdgeStyle(e.sourceHandle) }));
+
+    const rfNodes = flowData.nodes.map(n => ({
+      id: n.id,
+      type: 'flowNode',
+      position: n.position,
+      data: n.data,
+    }));
+
+    const rfEdges = flowData.edges.map((e: any) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle,
+      targetHandle: e.targetHandle,
+      ...defaultEdgeOptions,
+      data: { label: e.label ?? e?.data?.label },
+      animated: e.animated ?? false,
+      style: e.style,
+    }));
+
     setNodes(rfNodes);
     setEdges(rfEdges);
     setSelectedNode(null);
     setHistory([{ nodes: rfNodes, edges: rfEdges }]);
     setHistoryIndex(0);
+
     const result = validateFlow(rfNodes, rfEdges);
     setValidationResult({ errors: result.errors, warnings: result.warnings });
-    setTimeout(() => fitView({ padding: 0.2 }), 100);
+
+    const vp = rule.canvas_position;
+    setTimeout(() => {
+      if (vp && typeof vp.zoom === 'number') {
+        setViewport({ x: vp.x ?? 0, y: vp.y ?? 0, zoom: vp.zoom ?? 1 }, { duration: 300 });
+      } else {
+        fitView({ padding: 0.2 });
+      }
+    }, 80);
   };
 
   // Create new rule
@@ -289,12 +316,56 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
     if (!selectedRule) return;
     setIsSaving(true);
     try {
-      const flowData = { nodes: nodes.map(n => ({ id: n.id, type: n.type || 'flowNode', position: n.position, data: n.data as any })), edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle, label: e.label as string | undefined })) };
-      const { error } = await supabase.from('whatsapp_automation_rules').update({ flow_data: flowData as any, flow_version: (selectedRule.flow_version || 1) + 1, updated_at: new Date().toISOString() }).eq('id', selectedRule.id);
+      const vp = getViewport?.() ?? { x: 0, y: 0, zoom: 1 };
+      const canvasPosition = { x: vp.x ?? 0, y: vp.y ?? 0, zoom: vp.zoom ?? 1 };
+
+      const flowData = {
+        nodes: nodes.map((n: any) => ({
+          id: n.id,
+          type: 'flowNode',
+          position: n.position,
+          data: n.data as any,
+        })),
+        edges: edges.map((e: any) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          sourceHandle: e.sourceHandle,
+          targetHandle: e.targetHandle,
+          label: (e?.data?.label ?? e.label) as string | undefined,
+          animated: e.animated ?? false,
+          style: e.style,
+        })),
+      };
+
+      const { error } = await supabase
+        .from('whatsapp_automation_rules')
+        .update({
+          flow_data: flowData as any,
+          canvas_position: canvasPosition as any,
+          flow_version: (selectedRule.flow_version || 1) + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selectedRule.id);
       if (error) throw error;
+
       toast.success('Fluxo salvo!');
-      setSelectedRule(prev => prev ? { ...prev, flow_data: flowData, flow_version: (prev.flow_version || 1) + 1 } : null);
-    } catch (error) { console.error('Error saving flow:', error); toast.error('Erro ao salvar fluxo'); } finally { setIsSaving(false); }
+      setSelectedRule((prev) =>
+        prev
+          ? {
+              ...prev,
+              flow_data: flowData,
+              canvas_position: canvasPosition,
+              flow_version: (prev.flow_version || 1) + 1,
+            }
+          : null
+      );
+    } catch (error) {
+      console.error('Error saving flow:', error);
+      toast.error('Erro ao salvar fluxo');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggleRuleActive = async (rule: AutomationRule) => {
@@ -464,7 +535,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
   // List view when no rule selected - COMPACT & PROFESSIONAL
   if (!selectedRule) {
     return (
-      <div className="space-y-4 max-w-6xl mx-auto">
+      <div className="space-y-4 w-full">
         {/* Compact Hero Header */}
         <Card className="border shadow-md bg-card overflow-hidden">
           <CardContent className="p-4">
@@ -536,7 +607,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
             </div>
           </motion.div>
         ) : (
-          <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
             <AnimatePresence>
               {rules.map((rule, index) => (
                 <motion.div
@@ -648,7 +719,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
         animate={{ opacity: 1 }}
         className={cn(
           'flex flex-col overflow-hidden bg-background relative',
-          isFullscreen ? 'fixed inset-0 z-50' : 'h-screen'
+          isFullscreen ? 'fixed inset-0 z-50' : 'h-full'
         )}
       >
         <input type="file" ref={fileInputRef} accept=".json" className="hidden" onChange={handleFileImport} />

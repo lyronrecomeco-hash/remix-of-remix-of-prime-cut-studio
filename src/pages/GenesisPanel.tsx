@@ -424,7 +424,12 @@ export default function GenesisPanel() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-4 md:p-6 pb-24 lg:pb-6">
+        <div
+          className={cn(
+            'flex-1 overflow-auto pb-24 lg:pb-6',
+            activeTab === 'flows' ? 'p-0' : 'p-4 md:p-6'
+          )}
+        >
           {renderContent()}
         </div>
       </main>
