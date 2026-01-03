@@ -50,6 +50,7 @@ import {
   WATestSimulator,
   WAExampleFlow,
   WAStabilityDashboard,
+  WARealTest,
   WAFlowBuilder,
   InteractiveTemplatesDocs
 } from './whatsapp';
@@ -135,7 +136,8 @@ const NAV_SECTIONS = [
       { id: 'interactive-templates', label: 'Templates Interativos', icon: FileText },
       { id: 'button-actions', label: 'Motor de Botões', icon: Zap },
       { id: 'conversation-states', label: 'Estados de Conversa', icon: Users },
-      { id: 'test-simulator', label: 'Modo Teste', icon: TestTube },
+      { id: 'real-test', label: 'Teste Real (Botões)', icon: Send },
+      { id: 'test-simulator', label: 'Simulador', icon: TestTube },
       { id: 'example-flow', label: 'Fluxo de Exemplo', icon: Zap },
       { id: 'interactive-docs', label: 'Documentação', icon: BookOpen },
       { id: 'templates', label: 'Templates Simples', icon: FileText },
@@ -339,6 +341,8 @@ const WhatsAppAutomation = () => {
         return <WAButtonActions />;
       case 'conversation-states':
         return <WAConversationStates />;
+      case 'real-test':
+        return <WARealTest instances={instancesProps} backendMode={backendMode} backendUrl={backendUrl} localEndpoint={localEndpoint} localPort={localPort} localToken={localToken} masterToken={masterToken} isBackendActive={isBackendActive} />;
       case 'test-simulator':
         return <WATestSimulator />;
       case 'example-flow':
