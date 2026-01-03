@@ -74,13 +74,35 @@ const defaultEdgeOptions = {
   type: 'smoothstep',
   animated: true,
   style: { 
-    strokeWidth: 2,
-    stroke: 'hsl(var(--primary))'
+    strokeWidth: 3,
+    stroke: 'url(#edge-gradient)'
   },
   markerEnd: {
     type: MarkerType.ArrowClosed,
-    color: 'hsl(var(--primary))'
+    color: 'hsl(var(--primary))',
+    width: 20,
+    height: 20
   }
+};
+
+// Custom edge styles based on source handle
+const getEdgeStyle = (sourceHandle?: string | null) => {
+  if (sourceHandle === 'yes') {
+    return {
+      stroke: '#22c55e',
+      strokeWidth: 3
+    };
+  }
+  if (sourceHandle === 'no') {
+    return {
+      stroke: '#ef4444',
+      strokeWidth: 3
+    };
+  }
+  return {
+    strokeWidth: 3,
+    stroke: 'hsl(var(--primary))'
+  };
 };
 
 interface WAFlowBuilderProps {
@@ -393,11 +415,38 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     }
   };
 
-  // Handle edge connection
+  // Handle edge connection with custom styling based on handle
   const onConnect = useCallback((connection: Connection) => {
+    const edgeStyle = getEdgeStyle(connection.sourceHandle);
+    const markerColor = connection.sourceHandle === 'yes' ? '#22c55e' 
+      : connection.sourceHandle === 'no' ? '#ef4444' 
+      : 'hsl(var(--primary))';
+    
     setEdges((eds) => addEdge({
       ...connection,
-      ...defaultEdgeOptions
+      type: 'smoothstep',
+      animated: true,
+      style: edgeStyle,
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: markerColor,
+        width: 20,
+        height: 20
+      },
+      label: connection.sourceHandle === 'yes' ? 'Sim' : connection.sourceHandle === 'no' ? 'Não' : undefined,
+      labelStyle: { 
+        fill: markerColor, 
+        fontWeight: 600, 
+        fontSize: 11,
+        textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+      },
+      labelBgStyle: { 
+        fill: 'hsl(var(--background))', 
+        fillOpacity: 0.9,
+        rx: 4,
+        ry: 4
+      },
+      labelBgPadding: [4, 6] as [number, number]
     }, eds));
     addToHistory();
   }, [setEdges, addToHistory]);
@@ -730,6 +779,23 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
 
         {/* Canvas */}
         <div className="flex-1 relative" ref={reactFlowWrapper}>
+          {/* SVG Gradient Definitions */}
+          <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+            <defs>
+              <linearGradient id="edge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="1" />
+              </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+          </svg>
+          
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -743,18 +809,34 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
             nodeTypes={nodeTypes}
             defaultEdgeOptions={defaultEdgeOptions}
             connectionLineType={ConnectionLineType.SmoothStep}
-            connectionLineStyle={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
+            connectionLineStyle={{ 
+              stroke: 'hsl(var(--primary))', 
+              strokeWidth: 3,
+              strokeDasharray: '8 4'
+            }}
             fitView
             snapToGrid
-            snapGrid={[15, 15]}
-            className="bg-[radial-gradient(circle_at_center,hsl(var(--muted))_1px,transparent_1px)] bg-[length:24px_24px]"
+            snapGrid={[20, 20]}
+            minZoom={0.2}
+            maxZoom={2}
+            nodesDraggable
+            nodesConnectable
+            elementsSelectable
+            selectNodesOnDrag={false}
+            panOnDrag={[1, 2]}
+            selectionOnDrag
+            panOnScroll
+            zoomOnScroll
+            zoomOnDoubleClick
+            preventScrolling
+            className="!bg-gradient-to-br from-background via-background to-muted/20"
             proOptions={{ hideAttribution: true }}
           >
             <Background 
               variant={BackgroundVariant.Dots} 
-              gap={24} 
-              size={1.5} 
-              color="hsl(var(--muted-foreground) / 0.2)"
+              gap={20} 
+              size={1} 
+              color="hsl(var(--muted-foreground) / 0.15)"
             />
             
             {/* Custom Controls */}
