@@ -136,7 +136,7 @@ export function CreditsManager() {
   const usagePercentage = totalCredits > 0 ? (usedCredits / totalCredits) * 100 : 0;
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 w-full">
       {/* Header Hero Section */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}

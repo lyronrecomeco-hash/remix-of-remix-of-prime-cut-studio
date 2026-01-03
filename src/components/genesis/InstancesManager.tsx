@@ -286,7 +286,7 @@ export function InstancesManager() {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
       >
         <AnimatePresence mode="popLayout">
           {filteredInstances.map((instance) => {
@@ -412,7 +412,7 @@ export function InstancesManager() {
           >
             <Card 
               className={cn(
-                "border-2 border-dashed h-full min-h-[320px] flex flex-col items-center justify-center transition-all cursor-pointer",
+                "border-2 border-dashed h-full min-h-[280px] flex flex-col items-center justify-center transition-all cursor-pointer",
                 canAddMore 
                   ? "hover:border-primary/50 hover:bg-muted/30" 
                   : "opacity-60 cursor-not-allowed"

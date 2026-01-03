@@ -75,18 +75,22 @@ const getIconForType = (type: NodeType, iconName?: string) => {
     goto: Play,
     variable: CheckCircle2,
     integration: Globe,
-    note: MessageSquare
+    note: MessageSquare,
+    http_request: Globe,
+    webhook_in: Zap,
+    ecommerce: LayoutGrid,
+    crm_sheets: List,
   };
   
   return typeIcons[type] || Zap;
 };
 
 const getNodeCategory = (type: NodeType): string => {
-  if (type === 'trigger') return 'GATILHO';
+  if (type === 'trigger' || type === 'webhook_in') return 'GATILHO';
   if (type === 'condition' || type === 'split') return 'CONDIÇÃO';
   if (type === 'end') return 'FIM';
   if (type === 'delay' || type === 'goto') return 'CONTROLE';
-  if (type === 'variable' || type === 'integration' || type === 'note') return 'AVANÇADO';
+  if (type === 'variable' || type === 'integration' || type === 'note' || type === 'http_request' || type === 'ecommerce' || type === 'crm_sheets') return 'AVANÇADO';
   return 'AÇÃO';
 };
 

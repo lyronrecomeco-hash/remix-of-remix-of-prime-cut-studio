@@ -17,7 +17,11 @@ export type NodeType =
   | 'goto'
   | 'variable'
   | 'integration'
-  | 'note';
+  | 'note'
+  | 'http_request'
+  | 'webhook_in'
+  | 'ecommerce'
+  | 'crm_sheets';
 
 export interface FlowNodeData {
   label: string;
@@ -236,6 +240,39 @@ export const NODE_TEMPLATES: NodeTemplate[] = [
     description: 'Adiciona comentário visual',
     category: 'advanced',
     defaultConfig: { text: '', color: 'yellow' }
+  },
+  // External API / Integrations
+  {
+    type: 'http_request',
+    label: 'HTTP Request',
+    icon: 'Globe',
+    description: 'Faz requisição HTTP (GET/POST/PUT/DELETE)',
+    category: 'advanced',
+    defaultConfig: { url: '', method: 'GET', headers: {}, body: '', saveResponseTo: '' }
+  },
+  {
+    type: 'webhook_in',
+    label: 'Webhook In',
+    icon: 'Webhook',
+    description: 'Recebe eventos de sistemas externos',
+    category: 'triggers',
+    defaultConfig: { webhookPath: '', secret: '', validatePayload: true }
+  },
+  {
+    type: 'ecommerce',
+    label: 'E-commerce',
+    icon: 'ShoppingCart',
+    description: 'Ações para Shopify, Woo, etc.',
+    category: 'advanced',
+    defaultConfig: { platform: 'shopify', action: 'get_order', orderId: '', productId: '' }
+  },
+  {
+    type: 'crm_sheets',
+    label: 'CRM / Planilhas',
+    icon: 'Table',
+    description: 'Cria/atualiza leads, salva em Sheets',
+    category: 'advanced',
+    defaultConfig: { target: 'crm', action: 'create_lead', fields: {} }
   }
 ];
 
@@ -262,17 +299,21 @@ export const NODE_COLORS: Record<NodeType, string> = {
   goto: '#f59e0b',
   variable: '#10b981',
   integration: '#6366f1',
-  note: '#fbbf24'
+  note: '#fbbf24',
+  http_request: '#0ea5e9',
+  webhook_in: '#7c3aed',
+  ecommerce: '#f43f5e',
+  crm_sheets: '#059669',
 };
 
 // Connection validation rules
 export const CONNECTION_RULES = {
   // Nodes that can only have one outgoing connection
-  singleOutput: ['trigger', 'message', 'button', 'list', 'ai', 'webhook', 'delay', 'variable', 'integration'],
+  singleOutput: ['trigger', 'message', 'button', 'list', 'ai', 'webhook', 'delay', 'variable', 'integration', 'http_request', 'webhook_in', 'ecommerce', 'crm_sheets'],
   // Nodes that can have multiple outgoing connections (yes/no)
   conditionalOutput: ['condition', 'split'],
   // Nodes that cannot have outgoing connections
   noOutput: ['end'],
   // Nodes that can be connected from any node
-  universalInput: ['message', 'button', 'list', 'ai', 'webhook', 'delay', 'condition', 'split', 'variable', 'integration', 'end', 'goto', 'note'],
+  universalInput: ['message', 'button', 'list', 'ai', 'webhook', 'delay', 'condition', 'split', 'variable', 'integration', 'end', 'goto', 'note', 'http_request', 'ecommerce', 'crm_sheets'],
 };

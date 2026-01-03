@@ -31,7 +31,8 @@ import { cn } from '@/lib/utils';
 const ICONS: Record<string, any> = {
   MessageSquare, UserPlus, MousePointer, GitBranch, Shuffle, Send, LayoutGrid,
   List, Globe, Brain, Clock, CircleStop, Zap, Timer: Clock, Webhook: Globe,
-  CornerDownRight: ChevronRight, Tag: Sparkles, Plug: ChevronRight, StickyNote: MessageSquare
+  CornerDownRight: ChevronRight, Tag: Sparkles, Plug: ChevronRight, StickyNote: MessageSquare,
+  ShoppingCart: LayoutGrid, Table: LayoutGrid,
 };
 
 interface ComponentsModalProps {
