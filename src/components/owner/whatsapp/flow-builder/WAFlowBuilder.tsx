@@ -67,6 +67,7 @@ import { LunaAIModal } from './LunaAIModal';
 import { FlowTemplates } from './FlowTemplates';
 import { FlowSimulator } from './FlowSimulator';
 import { FlowControls } from './FlowControls';
+import { WhatsAppPreviewPanel } from './WhatsAppPreviewPanel';
 import { NodeSearch } from './NodeSearch';
 import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
 import { ComponentsModal } from './ComponentsModal';
@@ -132,6 +133,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange, onNavigateToInstances }: 
   const [showFloatingTools, setShowFloatingTools] = useState(false);
   const [showComponentsModal, setShowComponentsModal] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [showWhatsAppPreview, setShowWhatsAppPreview] = useState(false);
   
   // Luna AI building state
   const [isLunaBuilding, setIsLunaBuilding] = useState(false);
@@ -876,7 +878,17 @@ const FlowBuilderContent = ({ onBack, onEditingChange, onNavigateToInstances }: 
                   onOpenLuna={() => setIsLunaOpen(true)}
                 />
 
-                
+                {/* Flow Controls - Zoom, Pan, Preview */}
+                <FlowControls
+                  isLocked={isCanvasLocked}
+                  onToggleLock={() => setIsCanvasLocked(!isCanvasLocked)}
+                  snapToGrid={snapToGrid}
+                  onToggleSnap={() => setSnapToGrid(!snapToGrid)}
+                  interactionMode={interactionMode}
+                  onToggleMode={() => setInteractionMode(m => m === 'select' ? 'pan' : 'select')}
+                  showPreview={showWhatsAppPreview}
+                  onTogglePreview={() => setShowWhatsAppPreview(!showWhatsAppPreview)}
+                />
 
               </ReactFlow>
 
@@ -954,6 +966,14 @@ const FlowBuilderContent = ({ onBack, onEditingChange, onNavigateToInstances }: 
       <NodeSearch nodes={nodes as unknown as FlowNodeType[]} onNavigateToNode={navigateToNode} isOpen={showSearch} onClose={() => setShowSearch(false)} />
       <KeyboardShortcutsPanel isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      
+      {/* WhatsApp Preview Panel */}
+      <WhatsAppPreviewPanel
+        isOpen={showWhatsAppPreview}
+        onClose={() => setShowWhatsAppPreview(false)}
+        nodes={nodes as unknown as FlowNodeType[]}
+        selectedNode={selectedNode as unknown as FlowNodeType}
+      />
     </TooltipProvider>
   );
 };

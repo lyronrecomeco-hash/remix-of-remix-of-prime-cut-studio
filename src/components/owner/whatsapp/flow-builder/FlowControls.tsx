@@ -14,7 +14,8 @@ import {
   Unlock,
   Grid3X3,
   MousePointer,
-  Hand
+  Hand,
+  Smartphone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -28,6 +29,8 @@ interface FlowControlsProps {
   onToggleSnap?: () => void;
   interactionMode?: 'select' | 'pan';
   onToggleMode?: () => void;
+  showPreview?: boolean;
+  onTogglePreview?: () => void;
 }
 
 export const FlowControls = memo(({ 
@@ -36,7 +39,9 @@ export const FlowControls = memo(({
   snapToGrid = false,
   onToggleSnap,
   interactionMode = 'select',
-  onToggleMode
+  onToggleMode,
+  showPreview = false,
+  onTogglePreview
 }: FlowControlsProps) => {
   const { zoomIn, zoomOut, fitView, setCenter, getZoom, getViewport, setViewport } = useReactFlow();
   const [showZoomSlider, setShowZoomSlider] = useState(false);
@@ -214,6 +219,24 @@ export const FlowControls = memo(({
             </TooltipTrigger>
             <TooltipContent side="right">
               {isLocked ? 'Canvas Bloqueado' : 'Bloquear Canvas'}
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        {onTogglePreview && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="icon"
+                variant={showPreview ? 'secondary' : 'ghost'}
+                onClick={onTogglePreview}
+                className="h-9 w-9"
+              >
+                <Smartphone className={cn('w-4 h-4', showPreview && 'text-primary')} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              {showPreview ? 'Ocultar Preview' : 'Preview WhatsApp'}
             </TooltipContent>
           </Tooltip>
         )}

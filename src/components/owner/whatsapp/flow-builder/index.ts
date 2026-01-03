@@ -19,5 +19,6 @@ export { FlowBuilderSidebar } from './FlowBuilderSidebar';
 export { ComponentsModal } from './ComponentsModal';
 export { EmptyCanvasState } from './EmptyCanvasState';
 export { InstanceRequiredModal } from './InstanceRequiredModal';
+export { WhatsAppPreviewPanel } from './WhatsAppPreviewPanel';
 export * from './types';
 export * from './hooks';
