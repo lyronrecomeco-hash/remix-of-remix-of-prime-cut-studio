@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -32,6 +33,7 @@ import { useGenesisAuth } from '@/contexts/GenesisAuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { WAFlowBuilder } from '@/components/owner/whatsapp/flow-builder';
+import { WAChatbots } from '@/components/owner/whatsapp/WAChatbots';
 import { AnimatedStatCard, QuickActionCard, AnimatedPlanFeature } from '@/components/genesis/AnimatedStats';
 import { InstancesManager } from '@/components/genesis/InstancesManager';
 import { CreditsManager } from '@/components/genesis/CreditsManager';
@@ -212,6 +214,20 @@ export default function GenesisPanel() {
   const { user, genesisUser, loading, isSuperAdmin, signOut } = useGenesisAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [instances, setInstances] = useState<Array<{ id: string; name: string; status: string }>>([]);
+
+  // Fetch instances for Chatbots
+  useEffect(() => {
+    const fetchInstances = async () => {
+      if (!genesisUser) return;
+      const { data } = await supabase
+        .from('genesis_instances')
+        .select('id, name, status')
+        .eq('user_id', genesisUser.id);
+      if (data) setInstances(data);
+    };
+    fetchInstances();
+  }, [genesisUser]);
 
   useEffect(() => {
     if (!loading && (!user || !genesisUser)) {
@@ -248,7 +264,7 @@ export default function GenesisPanel() {
       case 'flows':
         return <WAFlowBuilder onBack={() => setActiveTab('dashboard')} />;
       case 'chatbots':
-        return <div className="text-center py-20 text-muted-foreground">Em desenvolvimento...</div>;
+        return <WAChatbots instances={instances} />;
       case 'analytics':
         return <AnalyticsDashboard />;
       case 'credits':
