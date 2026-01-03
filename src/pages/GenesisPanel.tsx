@@ -20,244 +20,190 @@ import {
   ChevronRight,
   Bell,
   Search,
-  HelpCircle
+  HelpCircle,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useGenesisAuth } from '@/contexts/GenesisAuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { WAFlowBuilder } from '@/components/owner/whatsapp/flow-builder';
+import { AnimatedStatCard, QuickActionCard, AnimatedPlanFeature } from '@/components/genesis/AnimatedStats';
+import { InstancesManager } from '@/components/genesis/InstancesManager';
+import { CreditsManager } from '@/components/genesis/CreditsManager';
+import { AnalyticsDashboard } from '@/components/genesis/AnalyticsDashboard';
 
-// Dashboard component
-const GenesisDashboard = () => {
+// Dashboard component with enhanced animations
+const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
   const { genesisUser, credits, subscription, isSuperAdmin } = useGenesisAuth();
 
   const stats = [
-    { label: 'Instâncias Ativas', value: '3', max: subscription?.max_instances || 1, icon: Smartphone, color: 'text-green-500' },
-    { label: 'Fluxos Criados', value: '12', max: subscription?.max_flows || 5, icon: GitBranch, color: 'text-blue-500' },
-    { label: 'Mensagens Hoje', value: '1,234', icon: MessageSquare, color: 'text-purple-500' },
-    { label: 'Créditos', value: credits?.available_credits?.toString() || '0', icon: CreditCard, color: 'text-amber-500' },
+    { label: 'Instâncias Ativas', value: 3, max: subscription?.max_instances || 1, icon: Smartphone, color: 'text-green-500' },
+    { label: 'Fluxos Criados', value: 12, max: subscription?.max_flows || 5, icon: GitBranch, color: 'text-blue-500' },
+    { label: 'Mensagens Hoje', value: 1234, icon: MessageSquare, color: 'text-purple-500' },
+    { label: 'Créditos', value: credits?.available_credits || 0, icon: CreditCard, color: 'text-amber-500' },
+  ];
+
+  const quickActions = [
+    { title: 'Nova Instância', description: 'Conecte uma nova conta WhatsApp', icon: Plus, onClick: () => onNavigate('instances') },
+    { title: 'Criar Fluxo', description: 'Monte um novo fluxo de automação', icon: GitBranch, onClick: () => onNavigate('flows') },
+    { title: 'Chatbot IA', description: 'Configure respostas inteligentes', icon: Bot, onClick: () => onNavigate('chatbots') },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Welcome */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-8">
+      {/* Animated Welcome */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
         <div>
-          <h1 className="text-2xl font-bold">
-            Olá, {genesisUser?.name?.split(' ')[0] || 'Usuário'}! 👋
-          </h1>
-          <p className="text-muted-foreground">
+          <motion.h1 
+            className="text-3xl font-bold"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            Olá, {genesisUser?.name?.split(' ')[0] || 'Usuário'}! 
+            <motion.span 
+              className="inline-block ml-2"
+              animate={{ rotate: [0, 20, 0] }}
+              transition={{ duration: 0.5, repeat: 3, repeatDelay: 2 }}
+            >
+              👋
+            </motion.span>
+          </motion.h1>
+          <motion.p 
+            className="text-muted-foreground mt-1"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
             Bem-vindo ao seu painel de automação.
-          </p>
+          </motion.p>
         </div>
         {isSuperAdmin && (
-          <Badge variant="secondary" className="gap-1">
-            <Crown className="w-3 h-3" />
-            Super Admin
-          </Badge>
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', stiffness: 200, delay: 0.3 }}
+          >
+            <Badge variant="secondary" className="gap-1 px-3 py-1.5">
+              <Crown className="w-4 h-4 text-amber-500" />
+              Super Admin
+            </Badge>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
 
-      {/* Stats Grid */}
+      {/* Animated Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => (
-          <motion.div
+          <AnimatedStatCard
             key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-          >
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <stat.icon className={cn("w-8 h-8", stat.color)} />
-                  <span className="text-2xl font-bold">{stat.value}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                {stat.max && (
-                  <Progress value={(parseInt(stat.value) / stat.max) * 100} className="mt-2 h-1" />
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+            label={stat.label}
+            value={stat.value}
+            max={stat.max}
+            icon={stat.icon}
+            color={stat.color}
+            delay={index * 150}
+          />
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="cursor-pointer hover:border-primary/50 transition-colors">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Plus className="w-5 h-5 text-primary" />
-              Nova Instância
-            </CardTitle>
-            <CardDescription>Conecte uma nova conta WhatsApp</CardDescription>
-          </CardHeader>
-        </Card>
-
-        <Card className="cursor-pointer hover:border-primary/50 transition-colors">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <GitBranch className="w-5 h-5 text-primary" />
-              Criar Fluxo
-            </CardTitle>
-            <CardDescription>Monte um novo fluxo de automação</CardDescription>
-          </CardHeader>
-        </Card>
-
-        <Card className="cursor-pointer hover:border-primary/50 transition-colors">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Bot className="w-5 h-5 text-primary" />
-              Chatbot IA
-            </CardTitle>
-            <CardDescription>Configure respostas inteligentes</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-
-      {/* Plan Info */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5" />
-                Seu Plano: <span className="text-primary capitalize">{subscription?.plan || 'Free'}</span>
-              </CardTitle>
-              <CardDescription>
-                {subscription?.plan === 'free' 
-                  ? 'Faça upgrade para desbloquear mais recursos'
-                  : 'Aproveite todos os recursos do seu plano'}
-              </CardDescription>
-            </div>
-            <Button variant="outline" className="gap-2">
-              <Crown className="w-4 h-4" />
-              Fazer Upgrade
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">Instâncias</p>
-              <p className="font-semibold">3 / {subscription?.max_instances || 1}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Fluxos</p>
-              <p className="font-semibold">12 / {subscription?.max_flows || 5}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Créditos</p>
-              <p className="font-semibold">{credits?.available_credits || 0}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Status</p>
-              <Badge variant="secondary" className="text-green-600">Ativo</Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-// Instances component
-const GenesisInstances = () => {
-  const instances = [
-    { id: '1', name: 'Atendimento Principal', phone: '+55 11 99999-9999', status: 'connected', lastActivity: '2 min atrás' },
-    { id: '2', name: 'Vendas', phone: '+55 11 88888-8888', status: 'disconnected', lastActivity: '1 hora atrás' },
-    { id: '3', name: 'Suporte', phone: '+55 11 77777-7777', status: 'paused', lastActivity: '30 min atrás' },
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'connected': return 'bg-green-500';
-      case 'disconnected': return 'bg-red-500';
-      case 'paused': return 'bg-yellow-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'connected': return 'Conectado';
-      case 'disconnected': return 'Desconectado';
-      case 'paused': return 'Pausado';
-      default: return status;
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Instâncias WhatsApp</h1>
-          <p className="text-muted-foreground">Gerencie suas conexões</p>
+      {/* Animated Quick Actions */}
+      <div>
+        <motion.h2 
+          className="text-lg font-semibold mb-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          Ações Rápidas
+        </motion.h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {quickActions.map((action, index) => (
+            <QuickActionCard
+              key={action.title}
+              title={action.title}
+              description={action.description}
+              icon={action.icon}
+              onClick={action.onClick}
+              delay={600 + (index * 100)}
+            />
+          ))}
         </div>
-        <Button className="gap-2">
-          <Plus className="w-4 h-4" />
-          Nova Instância
-        </Button>
       </div>
 
-      <div className="grid gap-4">
-        {instances.map((instance) => (
-          <Card key={instance.id}>
-            <CardContent className="flex items-center justify-between py-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Smartphone className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">{instance.name}</h3>
-                  <p className="text-sm text-muted-foreground">{instance.phone}</p>
+      {/* Animated Plan Info */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8 }}
+      >
+        <Card className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5" />
+          <CardHeader className="relative z-10">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <motion.div
+                    animate={{ rotate: [0, 360] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                  >
+                    <Sparkles className="w-5 h-5 text-primary" />
+                  </motion.div>
+                  Seu Plano: 
+                  <span className="text-primary capitalize">{subscription?.plan || 'Free'}</span>
+                </CardTitle>
+                <CardDescription>
+                  {subscription?.plan === 'free' 
+                    ? 'Faça upgrade para desbloquear mais recursos'
+                    : 'Aproveite todos os recursos do seu plano'}
+                </CardDescription>
+              </div>
+              <Button variant="outline" className="gap-2 group" onClick={() => onNavigate('credits')}>
+                <Crown className="w-4 h-4 group-hover:text-amber-500 transition-colors" />
+                Fazer Upgrade
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="relative z-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <AnimatedPlanFeature 
+                label="Instâncias" 
+                current={3} 
+                max={subscription?.max_instances || 1} 
+                delay={900}
+              />
+              <AnimatedPlanFeature 
+                label="Fluxos" 
+                current={12} 
+                max={subscription?.max_flows || 5} 
+                delay={1000}
+              />
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <p className="text-sm text-muted-foreground">Créditos</p>
+                  <p className="text-sm font-semibold">{credits?.available_credits || 0}</p>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <div className="flex items-center gap-2">
-                    <div className={cn("w-2 h-2 rounded-full", getStatusColor(instance.status))} />
-                    <span className="text-sm">{getStatusLabel(instance.status)}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{instance.lastActivity}</p>
-                </div>
-                
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      Ações
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {instance.status === 'connected' && (
-                      <DropdownMenuItem>Pausar</DropdownMenuItem>
-                    )}
-                    {instance.status === 'paused' && (
-                      <DropdownMenuItem>Retomar</DropdownMenuItem>
-                    )}
-                    {instance.status === 'disconnected' && (
-                      <DropdownMenuItem>Reconectar</DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem>Reiniciar</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive">Desconectar</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Status</p>
+                <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20">
+                  Ativo
+                </Badge>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 };
@@ -287,6 +233,7 @@ export default function GenesisPanel() {
     { id: 'flows', label: 'Flow Builder', icon: GitBranch },
     { id: 'chatbots', label: 'Chatbots', icon: Bot },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'credits', label: 'Créditos', icon: CreditCard },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 
@@ -297,21 +244,23 @@ export default function GenesisPanel() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <GenesisDashboard />;
+        return <GenesisDashboard onNavigate={setActiveTab} />;
       case 'instances':
-        return <GenesisInstances />;
+        return <InstancesManager />;
       case 'flows':
         return <WAFlowBuilder onBack={() => setActiveTab('dashboard')} />;
       case 'chatbots':
         return <div className="text-center py-20 text-muted-foreground">Em desenvolvimento...</div>;
       case 'analytics':
-        return <div className="text-center py-20 text-muted-foreground">Em desenvolvimento...</div>;
+        return <AnalyticsDashboard />;
+      case 'credits':
+        return <CreditsManager />;
       case 'settings':
         return <div className="text-center py-20 text-muted-foreground">Em desenvolvimento...</div>;
       case 'users':
         return <div className="text-center py-20 text-muted-foreground">Em desenvolvimento...</div>;
       default:
-        return <GenesisDashboard />;
+        return <GenesisDashboard onNavigate={setActiveTab} />;
     }
   };
 
