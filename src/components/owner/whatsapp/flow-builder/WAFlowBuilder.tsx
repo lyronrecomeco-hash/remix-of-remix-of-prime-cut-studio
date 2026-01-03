@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -14,7 +14,8 @@ import {
   useReactFlow,
   ReactFlowProvider,
   MarkerType,
-  ConnectionLineType
+  ConnectionLineType,
+  SelectionMode
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,29 +34,21 @@ import {
   GitBranch, 
   Play, 
   Pause,
-  ArrowLeft,
   Trash2,
-  Maximize2,
-  Minimize2,
-  Download,
-  Upload,
-  Undo2,
-  Redo2,
+  Sparkles,
+  Activity,
   ZoomIn,
   ZoomOut,
-  Crosshair,
-  Copy,
-  Settings,
-  Sparkles,
-  Keyboard,
-  PanelLeftClose,
-  PanelLeft,
-  Activity
+  Crosshair
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FlowNode } from './FlowNode';
 import { NodeSidebar } from './NodeSidebar';
 import { NodeConfigPanel } from './NodeConfigPanel';
+import { FlowToolbar } from './FlowToolbar';
+import { FlowStats } from './FlowStats';
+import { FlowValidationPanel } from './FlowValidationPanel';
+import { HelpModal } from './HelpModal';
 import { 
   FlowNode as FlowNodeType, 
   FlowEdge, 
@@ -64,20 +57,15 @@ import {
   NodeTemplate,
   NODE_COLORS 
 } from './types';
+import { useFlowClipboard, useAutoLayout, useFlowValidation } from './hooks';
 import { cn } from '@/lib/utils';
 
-const nodeTypes = {
-  flowNode: FlowNode
-};
+const nodeTypes = { flowNode: FlowNode };
 
 const defaultEdgeOptions = {
   type: 'smoothstep',
   animated: true,
-  style: {
-    strokeWidth: 3,
-    stroke: 'url(#edge-gradient)',
-    filter: 'url(#glow)'
-  },
+  style: { strokeWidth: 3, stroke: 'hsl(var(--primary))' },
   markerEnd: {
     type: MarkerType.ArrowClosed,
     color: 'hsl(var(--primary))',
@@ -86,24 +74,10 @@ const defaultEdgeOptions = {
   }
 };
 
-// Custom edge styles based on source handle
 const getEdgeStyle = (sourceHandle?: string | null) => {
-  if (sourceHandle === 'yes') {
-    return {
-      stroke: '#22c55e',
-      strokeWidth: 3
-    };
-  }
-  if (sourceHandle === 'no') {
-    return {
-      stroke: '#ef4444',
-      strokeWidth: 3
-    };
-  }
-  return {
-    strokeWidth: 3,
-    stroke: 'hsl(var(--primary))'
-  };
+  if (sourceHandle === 'yes') return { stroke: '#22c55e', strokeWidth: 3 };
+  if (sourceHandle === 'no') return { stroke: '#ef4444', strokeWidth: 3 };
+  return { strokeWidth: 3, stroke: 'hsl(var(--primary))' };
 };
 
 interface WAFlowBuilderProps {
@@ -112,7 +86,8 @@ interface WAFlowBuilderProps {
 
 const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { fitView, zoomIn, zoomOut, setCenter } = useReactFlow();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { fitView, zoomIn, zoomOut, setCenter, getNodes } = useReactFlow();
   
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -125,10 +100,25 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
   const [newRuleName, setNewRuleName] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // History
   const [history, setHistory] = useState<{ nodes: any[]; edges: any[] }[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  
+  // Validation
+  const [showValidation, setShowValidation] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const { validateFlow } = useFlowValidation();
+  const [validationResult, setValidationResult] = useState({ errors: [] as any[], warnings: [] as any[] });
+  
+  // Clipboard & Layout
+  const { copyNodes, pasteNodes, hasClipboard } = useFlowClipboard();
+  const { calculateLayout } = useAutoLayout();
 
-  // Fullscreen toggle
+  // Selected nodes count
+  const selectedNodes = useMemo(() => nodes.filter(n => n.selected), [nodes]);
+
+  // Fullscreen
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
       reactFlowWrapper.current?.parentElement?.requestFullscreen();
@@ -139,24 +129,21 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     }
   }, []);
 
-  // Listen for fullscreen changes
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
+    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Add to history
+  // History
   const addToHistory = useCallback(() => {
     const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push({ nodes: [...nodes], edges: [...edges] });
+    newHistory.push({ nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) });
+    if (newHistory.length > 50) newHistory.shift();
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
   }, [nodes, edges, history, historyIndex]);
 
-  // Undo
   const undo = useCallback(() => {
     if (historyIndex > 0) {
       const prevState = history[historyIndex - 1];
@@ -166,7 +153,6 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     }
   }, [history, historyIndex, setNodes, setEdges]);
 
-  // Redo
   const redo = useCallback(() => {
     if (historyIndex < history.length - 1) {
       const nextState = history[historyIndex + 1];
@@ -179,28 +165,56 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+      const isMeta = e.metaKey || e.ctrlKey;
+      
+      if (isMeta && e.key === 'z') {
         e.preventDefault();
-        if (e.shiftKey) {
-          redo();
-        } else {
-          undo();
-        }
+        e.shiftKey ? redo() : undo();
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+      if (isMeta && e.key === 's') {
         e.preventDefault();
         if (selectedRule) saveFlow();
       }
-      if (e.key === 'Delete' && selectedNode) {
-        deleteNode(selectedNode.id);
+      if (isMeta && e.key === 'c' && selectedNodes.length > 0) {
+        e.preventDefault();
+        copyNodes(selectedNodes.map(n => ({ ...n, position: n.position, data: n.data })));
+      }
+      if (isMeta && e.key === 'v') {
+        e.preventDefault();
+        const newNodes = pasteNodes();
+        if (newNodes.length > 0) {
+          setNodes(nds => [...nds.map(n => ({ ...n, selected: false })), ...newNodes]);
+          addToHistory();
+        }
+      }
+      if (isMeta && e.key === 'a') {
+        e.preventDefault();
+        setNodes(nds => nds.map(n => ({ ...n, selected: true })));
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedNodes.length > 0) {
+          const idsToDelete = new Set(selectedNodes.map(n => n.id));
+          setNodes(nds => nds.filter(n => !idsToDelete.has(n.id)));
+          setEdges(eds => eds.filter(e => !idsToDelete.has(e.source) && !idsToDelete.has(e.target)));
+          setSelectedNode(null);
+          addToHistory();
+        } else if (selectedNode) {
+          deleteNode(selectedNode.id);
+        }
       }
       if (e.key === 'Escape') {
         setSelectedNode(null);
+        setNodes(nds => nds.map(n => ({ ...n, selected: false })));
+        setShowValidation(false);
+      }
+      if (e.key === 'F11') {
+        e.preventDefault();
+        toggleFullscreen();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, selectedRule, selectedNode]);
+  }, [undo, redo, selectedRule, selectedNode, selectedNodes, copyNodes, pasteNodes, setNodes, addToHistory, toggleFullscreen]);
 
   // Fetch rules
   const fetchRules = useCallback(async () => {
@@ -230,14 +244,11 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     }
   }, []);
 
-  useEffect(() => {
-    fetchRules();
-  }, [fetchRules]);
+  useEffect(() => { fetchRules(); }, [fetchRules]);
 
   // Load rule into canvas
   const loadRule = (rule: AutomationRule) => {
     setSelectedRule(rule);
-    
     const flowData = rule.flow_data || { nodes: [], edges: [] };
     
     const rfNodes = flowData.nodes.map(n => ({
@@ -254,7 +265,8 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
       sourceHandle: e.sourceHandle,
       targetHandle: e.targetHandle,
       label: e.label,
-      ...defaultEdgeOptions
+      ...defaultEdgeOptions,
+      style: getEdgeStyle(e.sourceHandle)
     }));
     
     setNodes(rfNodes);
@@ -262,6 +274,10 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     setSelectedNode(null);
     setHistory([{ nodes: rfNodes, edges: rfEdges }]);
     setHistoryIndex(0);
+    
+    // Validate on load
+    const result = validateFlow(rfNodes, rfEdges);
+    setValidationResult({ errors: result.errors, warnings: result.warnings });
     
     setTimeout(() => fitView({ padding: 0.2 }), 100);
   };
@@ -416,25 +432,20 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     }
   };
 
-  // Validate connections (prevents duplicates/self and enforces 1 edge per yes/no handle)
+  // Connection validation
   const isValidConnection = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target) return false;
     if (connection.source === connection.target) return false;
 
-    // avoid exact duplicates
     const isDuplicate = edges.some(
-      (e) =>
-        e.source === connection.source &&
-        e.target === connection.target &&
-        e.sourceHandle === connection.sourceHandle &&
-        e.targetHandle === connection.targetHandle,
+      e => e.source === connection.source && e.target === connection.target &&
+           e.sourceHandle === connection.sourceHandle && e.targetHandle === connection.targetHandle
     );
     if (isDuplicate) return false;
 
-    // condition handles: allow only one outgoing for each branch
     if (connection.sourceHandle === 'yes' || connection.sourceHandle === 'no') {
       const alreadyUsed = edges.some(
-        (e) => e.source === connection.source && e.sourceHandle === connection.sourceHandle,
+        e => e.source === connection.source && e.sourceHandle === connection.sourceHandle
       );
       if (alreadyUsed) return false;
     }
@@ -442,14 +453,14 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     return true;
   }, [edges]);
 
-  // Handle edge connection with custom styling based on handle
+  // Handle edge connection
   const onConnect = useCallback((connection: Connection) => {
     if (!isValidConnection(connection)) {
-      toast.error('Conexão inválida (duplicada ou ramo já conectado)');
+      toast.error('Conexão inválida');
       return;
     }
 
-    const edgeStyle = { ...getEdgeStyle(connection.sourceHandle), filter: 'url(#glow)' };
+    const edgeStyle = getEdgeStyle(connection.sourceHandle);
     const markerColor = connection.sourceHandle === 'yes' ? '#22c55e'
       : connection.sourceHandle === 'no' ? '#ef4444'
       : 'hsl(var(--primary))';
@@ -459,55 +470,36 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
       type: 'smoothstep',
       animated: true,
       style: edgeStyle,
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: markerColor,
-        width: 20,
-        height: 20
-      },
+      markerEnd: { type: MarkerType.ArrowClosed, color: markerColor, width: 20, height: 20 },
       label: connection.sourceHandle === 'yes' ? 'Sim' : connection.sourceHandle === 'no' ? 'Não' : undefined,
-      labelStyle: {
-        fill: markerColor,
-        fontWeight: 600,
-        fontSize: 11,
-        textShadow: '0 1px 2px rgba(0,0,0,0.3)'
-      },
-      labelBgStyle: {
-        fill: 'hsl(var(--background))',
-        fillOpacity: 0.9,
-        rx: 4,
-        ry: 4
-      },
+      labelStyle: { fill: markerColor, fontWeight: 600, fontSize: 11 },
+      labelBgStyle: { fill: 'hsl(var(--background))', fillOpacity: 0.9, rx: 4, ry: 4 },
       labelBgPadding: [4, 6] as [number, number]
     }, eds));
     addToHistory();
   }, [setEdges, addToHistory, isValidConnection]);
 
-  // Handle node click
+  // Node handlers
   const onNodeClick = useCallback((_: React.MouseEvent, node: any) => {
     setSelectedNode(node as FlowNodeType);
   }, []);
 
-  // Handle pane click
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
-  }, []);
+    setNodes(nds => nds.map(n => ({ ...n, selected: false })));
+  }, [setNodes]);
 
-  // Handle drag over
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  // Handle drop from sidebar
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
-
     const templateData = event.dataTransfer.getData('application/reactflow');
     if (!templateData) return;
 
     const template: NodeTemplate = JSON.parse(templateData);
-    
     const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
     if (!reactFlowBounds) return;
 
@@ -533,27 +525,17 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     addToHistory();
   }, [setNodes, addToHistory]);
 
-  // Handle drag start from sidebar
   const onDragStart = (event: React.DragEvent, template: NodeTemplate) => {
     event.dataTransfer.setData('application/reactflow', JSON.stringify(template));
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  // Update node data
   const updateNodeData = (nodeId: string, newData: any) => {
-    setNodes((nds) =>
-      nds.map((node) => {
-        if (node.id === nodeId) {
-          return { ...node, data: newData };
-        }
-        return node;
-      })
-    );
+    setNodes(nds => nds.map(node => node.id === nodeId ? { ...node, data: newData } : node));
     setSelectedNode(null);
     addToHistory();
   };
 
-  // Duplicate node
   const duplicateNode = (nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
@@ -561,48 +543,124 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     const newNode = {
       ...node,
       id: `${node.data.type}-${Date.now()}`,
-      position: {
-        x: node.position.x + 50,
-        y: node.position.y + 50
-      }
+      position: { x: node.position.x + 50, y: node.position.y + 50 }
     };
     
-    setNodes((nds) => nds.concat(newNode));
+    setNodes(nds => nds.concat(newNode));
     addToHistory();
     toast.success('Nó duplicado!');
   };
 
-  // Delete node
   const deleteNode = (nodeId: string) => {
-    setNodes((nds) => nds.filter((node) => node.id !== nodeId));
-    setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+    setNodes(nds => nds.filter(node => node.id !== nodeId));
+    setEdges(eds => eds.filter(edge => edge.source !== nodeId && edge.target !== nodeId));
     setSelectedNode(null);
     addToHistory();
   };
 
-  // Export flow
+  // Export/Import
   const exportFlow = () => {
-    const flowData = {
-      name: selectedRule?.name,
-      nodes: nodes,
-      edges: edges
-    };
+    const flowData = { name: selectedRule?.name, version: selectedRule?.flow_version, nodes, edges };
     const blob = new Blob([JSON.stringify(flowData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `flow-${selectedRule?.name || 'export'}.json`;
+    a.download = `flow-${selectedRule?.name || 'export'}-v${selectedRule?.flow_version || 1}.json`;
     a.click();
     toast.success('Fluxo exportado!');
   };
 
+  const importFlow = () => fileInputRef.current?.click();
+
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (data.nodes && Array.isArray(data.nodes)) {
+          setNodes(data.nodes);
+          setEdges(data.edges || []);
+          addToHistory();
+          toast.success('Fluxo importado!');
+          setTimeout(() => fitView({ padding: 0.2 }), 100);
+        } else {
+          toast.error('Arquivo inválido');
+        }
+      } catch {
+        toast.error('Erro ao ler arquivo');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
+  // Auto Layout
+  const handleAutoLayout = useCallback(() => {
+    const layoutedNodes = calculateLayout(nodes, edges, 'TB');
+    setNodes(layoutedNodes);
+    addToHistory();
+    setTimeout(() => fitView({ padding: 0.2 }), 100);
+    toast.success('Layout reorganizado!');
+  }, [nodes, edges, calculateLayout, setNodes, addToHistory, fitView]);
+
+  // Validation
+  const handleValidate = useCallback(() => {
+    const result = validateFlow(nodes, edges);
+    setValidationResult({ errors: result.errors, warnings: result.warnings });
+    setShowValidation(true);
+    
+    if (result.isValid && result.warnings.length === 0) {
+      toast.success('Fluxo válido!');
+    } else if (result.errors.length > 0) {
+      toast.error(`${result.errors.length} erro(s) encontrado(s)`);
+    } else {
+      toast.warning(`${result.warnings.length} aviso(s) encontrado(s)`);
+    }
+  }, [nodes, edges, validateFlow]);
+
+  // Navigate to node
+  const navigateToNode = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (node) {
+      setCenter(node.position.x + 140, node.position.y + 60, { zoom: 1.5, duration: 500 });
+      setNodes(nds => nds.map(n => ({ ...n, selected: n.id === nodeId })));
+      setSelectedNode(node as any);
+    }
+  }, [nodes, setCenter, setNodes]);
+
+  // Copy/Paste handlers for toolbar
+  const handleCopy = useCallback(() => {
+    if (selectedNodes.length > 0) {
+      copyNodes(selectedNodes.map(n => ({ ...n, position: n.position, data: n.data })));
+    }
+  }, [selectedNodes, copyNodes]);
+
+  const handlePaste = useCallback(() => {
+    const newNodes = pasteNodes();
+    if (newNodes.length > 0) {
+      setNodes(nds => [...nds.map(n => ({ ...n, selected: false })), ...newNodes]);
+      addToHistory();
+    }
+  }, [pasteNodes, setNodes, addToHistory]);
+
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedNodes.length > 0) {
+      const idsToDelete = new Set(selectedNodes.map(n => n.id));
+      setNodes(nds => nds.filter(n => !idsToDelete.has(n.id)));
+      setEdges(eds => eds.filter(e => !idsToDelete.has(e.source) && !idsToDelete.has(e.target)));
+      addToHistory();
+      toast.success(`${selectedNodes.length} nó(s) excluído(s)`);
+    }
+  }, [selectedNodes, setNodes, setEdges, addToHistory]);
+
+  // Loading
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        >
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
           <Loader2 className="w-10 h-10 text-primary" />
         </motion.div>
       </div>
@@ -643,11 +701,7 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
           </CardHeader>
           <CardContent>
             {rules.length === 0 ? (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center py-16"
-              >
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16">
                 <motion.div
                   animate={{ y: [0, -10, 0] }}
                   transition={{ duration: 2, repeat: Infinity }}
@@ -688,14 +742,9 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
                               <motion.div 
                                 animate={rule.is_active ? { scale: [1, 1.2, 1] } : {}}
                                 transition={{ duration: 2, repeat: Infinity }}
-                                className={cn(
-                                  'w-4 h-4 rounded-full shadow-lg',
-                                  rule.is_active ? 'bg-green-500' : 'bg-muted-foreground/30'
-                                )}
+                                className={cn('w-4 h-4 rounded-full shadow-lg', rule.is_active ? 'bg-green-500' : 'bg-muted-foreground/30')}
                               />
-                              <h3 className="font-semibold group-hover:text-primary transition-colors">
-                                {rule.name}
-                              </h3>
+                              <h3 className="font-semibold group-hover:text-primary transition-colors">{rule.name}</h3>
                             </div>
                             <Badge variant={rule.is_active ? 'default' : 'secondary'}>
                               {rule.is_active ? 'Ativo' : 'Pausado'}
@@ -715,24 +764,10 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
                             </div>
                           </div>
                           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => toggleRuleActive(rule)}
-                            >
-                              {rule.is_active ? (
-                                <><Pause className="w-4 h-4 mr-1.5" /> Pausar</>
-                              ) : (
-                                <><Play className="w-4 h-4 mr-1.5" /> Ativar</>
-                              )}
+                            <Button variant="ghost" size="sm" className="flex-1" onClick={() => toggleRuleActive(rule)}>
+                              {rule.is_active ? <><Pause className="w-4 h-4 mr-1.5" /> Pausar</> : <><Play className="w-4 h-4 mr-1.5" /> Ativar</>}
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => deleteRule(rule.id)}
-                            >
+                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteRule(rule.id)}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
@@ -746,7 +781,6 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
           </CardContent>
         </Card>
 
-        {/* Create Dialog */}
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -767,19 +801,14 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
                   placeholder="Ex: Atendimento Inicial, FAQ, Vendas..."
                   className="bg-muted/50"
                   autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && createRule()}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                Cancelar
-              </Button>
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancelar</Button>
               <Button onClick={createRule} disabled={isSaving} className="gap-2">
-                {isSaving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Plus className="w-4 h-4" />
-                )}
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 Criar Fluxo
               </Button>
             </DialogFooter>
@@ -789,29 +818,30 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     );
   }
 
-  // Flow Editor view
+  // Flow Editor
   return (
     <TooltipProvider>
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className={cn(
-          'flex rounded-2xl border overflow-hidden bg-background shadow-2xl',
+          'flex rounded-2xl border overflow-hidden bg-background shadow-2xl relative',
           isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'h-[calc(100vh-180px)] min-h-[700px]'
         )}
       >
+        {/* Hidden file input */}
+        <input type="file" ref={fileInputRef} accept=".json" className="hidden" onChange={handleFileImport} />
+
         {/* Sidebar */}
-        <AnimatePresence>
-          <NodeSidebar 
-            onDragStart={onDragStart} 
-            isCollapsed={isSidebarCollapsed}
-            onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          />
-        </AnimatePresence>
+        <NodeSidebar 
+          onDragStart={onDragStart} 
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        />
 
         {/* Canvas */}
         <div className="flex-1 relative" ref={reactFlowWrapper}>
-          {/* SVG Gradient Definitions */}
+          {/* SVG Definitions */}
           <svg style={{ position: 'absolute', width: 0, height: 0 }}>
             <defs>
               <linearGradient id="edge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -842,20 +872,17 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
             nodeTypes={nodeTypes}
             defaultEdgeOptions={defaultEdgeOptions}
             connectionLineType={ConnectionLineType.SmoothStep}
-            connectionLineStyle={{ 
-              stroke: 'hsl(var(--primary))', 
-              strokeWidth: 3,
-              strokeDasharray: '8 4'
-            }}
+            connectionLineStyle={{ stroke: 'hsl(var(--primary))', strokeWidth: 3, strokeDasharray: '8 4' }}
             fitView
             snapToGrid
             snapGrid={[20, 20]}
-            minZoom={0.2}
+            minZoom={0.1}
             maxZoom={2}
             nodesDraggable
             nodesConnectable
             elementsSelectable
             selectNodesOnDrag={false}
+            selectionMode={SelectionMode.Partial}
             panOnDrag={[1, 2]}
             selectionOnDrag
             panOnScroll
@@ -865,14 +892,41 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
             className="!bg-gradient-to-br from-background via-background to-muted/20"
             proOptions={{ hideAttribution: true }}
           >
-            <Background 
-              variant={BackgroundVariant.Dots}
-              gap={18}
-              size={1.5}
-              color="hsl(var(--muted-foreground) / 0.25)"
+            <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--muted-foreground) / 0.2)" />
+            
+            {/* Toolbar */}
+            <FlowToolbar
+              ruleName={selectedRule.name}
+              ruleVersion={selectedRule.flow_version || 1}
+              isActive={selectedRule.is_active}
+              isSaving={isSaving}
+              canUndo={historyIndex > 0}
+              canRedo={historyIndex < history.length - 1}
+              hasClipboard={hasClipboard}
+              selectedCount={selectedNodes.length}
+              validationErrors={validationResult.errors.length}
+              validationWarnings={validationResult.warnings.length}
+              isFullscreen={isFullscreen}
+              onBack={() => setSelectedRule(null)}
+              onSave={saveFlow}
+              onUndo={undo}
+              onRedo={redo}
+              onExport={exportFlow}
+              onImport={importFlow}
+              onToggleActive={() => toggleRuleActive(selectedRule)}
+              onAutoLayout={handleAutoLayout}
+              onValidate={handleValidate}
+              onCopy={handleCopy}
+              onPaste={handlePaste}
+              onDeleteSelected={handleDeleteSelected}
+              onToggleFullscreen={toggleFullscreen}
+              onShowHelp={() => setShowHelp(true)}
             />
 
-            {/* Custom Controls */}
+            {/* Stats & Shortcuts */}
+            <FlowStats nodes={nodes} edges={edges} />
+
+            {/* Zoom Controls */}
             <Panel position="bottom-right" className="flex flex-col gap-1 bg-card/90 backdrop-blur-xl rounded-xl border shadow-lg p-1">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -901,141 +955,22 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
             </Panel>
             
             <MiniMap 
-              nodeColor={(node) => {
-                const type = (node.data as any)?.type;
-                return NODE_COLORS[type as keyof typeof NODE_COLORS] || '#6b7280';
-              }}
+              nodeColor={(node) => NODE_COLORS[(node.data as any)?.type as keyof typeof NODE_COLORS] || '#6b7280'}
               className="!bg-card/90 !backdrop-blur-xl !border !rounded-xl !shadow-lg"
               maskColor="hsl(var(--background) / 0.8)"
               pannable
               zoomable
             />
-            
-            {/* Top Left Panel */}
-            <Panel position="top-left" className="flex items-center gap-2">
-              <motion.div
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                className="flex items-center gap-2 bg-card/90 backdrop-blur-xl rounded-xl border shadow-lg p-1.5"
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedRule(null)} className="gap-2">
-                      <ArrowLeft className="w-4 h-4" />
-                      <span className="hidden sm:inline">Voltar</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Voltar para lista</TooltipContent>
-                </Tooltip>
-                
-                <div className="h-6 w-px bg-border" />
-                
-                <div className="px-2">
-                  <span className="font-semibold text-sm">{selectedRule.name}</span>
-                  <Badge variant={selectedRule.is_active ? 'default' : 'secondary'} className="ml-2 text-[10px]">
-                    v{selectedRule.flow_version || 1}
-                  </Badge>
-                </div>
-              </motion.div>
-            </Panel>
-
-            {/* Top Right Panel */}
-            <Panel position="top-right" className="flex items-center gap-2">
-              <motion.div
-                initial={{ x: 20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                className="flex items-center gap-1 bg-card/90 backdrop-blur-xl rounded-xl border shadow-lg p-1.5"
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={undo} disabled={historyIndex <= 0}>
-                      <Undo2 className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Desfazer (⌘Z)</TooltipContent>
-                </Tooltip>
-                
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={redo} disabled={historyIndex >= history.length - 1}>
-                      <Redo2 className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Refazer (⌘⇧Z)</TooltipContent>
-                </Tooltip>
-                
-                <div className="h-6 w-px bg-border" />
-                
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={exportFlow}>
-                      <Download className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Exportar</TooltipContent>
-                </Tooltip>
-                
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleFullscreen}>
-                      {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{isFullscreen ? 'Sair da Tela Cheia' : 'Tela Cheia'}</TooltipContent>
-                </Tooltip>
-                
-                <div className="h-6 w-px bg-border" />
-                
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className={cn('gap-1.5', selectedRule.is_active && 'text-green-500')}
-                      onClick={() => toggleRuleActive(selectedRule)}
-                    >
-                      {selectedRule.is_active ? (
-                        <>
-                          <Pause className="w-4 h-4" />
-                          <span className="hidden sm:inline">Pausar</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-4 h-4" />
-                          <span className="hidden sm:inline">Ativar</span>
-                        </>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{selectedRule.is_active ? 'Pausar fluxo' : 'Ativar fluxo'}</TooltipContent>
-                </Tooltip>
-                
-                <Button size="sm" onClick={saveFlow} disabled={isSaving} className="gap-1.5 shadow-md">
-                  {isSaving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  <span className="hidden sm:inline">Salvar</span>
-                </Button>
-              </motion.div>
-            </Panel>
-
-            {/* Keyboard shortcuts hint */}
-            <Panel position="bottom-left" className="hidden lg:block">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1 }}
-                className="flex items-center gap-2 text-xs text-muted-foreground bg-card/50 backdrop-blur-sm rounded-lg px-3 py-1.5 border"
-              >
-                <Keyboard className="w-3.5 h-3.5" />
-                <span><kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">⌘S</kbd> Salvar</span>
-                <span><kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">⌘Z</kbd> Desfazer</span>
-                <span><kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Del</kbd> Excluir</span>
-              </motion.div>
-            </Panel>
           </ReactFlow>
+
+          {/* Validation Panel */}
+          <FlowValidationPanel
+            isOpen={showValidation}
+            onClose={() => setShowValidation(false)}
+            errors={validationResult.errors}
+            warnings={validationResult.warnings}
+            onNavigateToNode={navigateToNode}
+          />
         </div>
 
         {/* Config Panel */}
@@ -1050,12 +985,14 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
             />
           )}
         </AnimatePresence>
+
+        {/* Help Modal */}
+        <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
       </motion.div>
     </TooltipProvider>
   );
 };
 
-// Wrap with ReactFlowProvider
 export const WAFlowBuilder = (props: WAFlowBuilderProps) => (
   <ReactFlowProvider>
     <FlowBuilderContent {...props} />
