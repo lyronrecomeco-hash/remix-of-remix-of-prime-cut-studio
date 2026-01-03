@@ -43,7 +43,9 @@ import {
   WATemplates,
   WAInteractiveTemplates,
   WAButtonActions,
-  WAConversationStates
+  WAConversationStates,
+  WATestSimulator,
+  WAExampleFlow
 } from './whatsapp';
 
 interface BackendConfig {
@@ -125,6 +127,8 @@ const NAV_SECTIONS = [
       { id: 'interactive-templates', label: 'Templates Interativos', icon: FileText },
       { id: 'button-actions', label: 'Motor de Botões', icon: Zap },
       { id: 'conversation-states', label: 'Estados de Conversa', icon: Users },
+      { id: 'test-simulator', label: 'Modo Teste', icon: TestTube },
+      { id: 'example-flow', label: 'Fluxo de Exemplo', icon: Zap },
       { id: 'templates', label: 'Templates Simples', icon: FileText },
       { id: 'quick-replies', label: 'Respostas Rápidas', icon: Zap },
     ]
@@ -322,6 +326,10 @@ const WhatsAppAutomation = () => {
         return <WAButtonActions />;
       case 'conversation-states':
         return <WAConversationStates />;
+      case 'test-simulator':
+        return <WATestSimulator />;
+      case 'example-flow':
+        return <WAExampleFlow />;
       case 'templates':
         return <WATemplates />;
       case 'quick-replies':

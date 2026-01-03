@@ -16,5 +16,7 @@ export { WAInteractiveTemplates } from './WAInteractiveTemplates';
 export { WhatsAppPreview } from './preview/WhatsAppPreview';
 export { WAButtonActions } from './WAButtonActions';
 export { WAConversationStates } from './WAConversationStates';
+export { WATestSimulator } from './WATestSimulator';
+export { WAExampleFlow } from './WAExampleFlow';
 export * from './types';
 export * from './hooks';
