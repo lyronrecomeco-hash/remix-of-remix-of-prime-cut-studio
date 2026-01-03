@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Zap, 
   LayoutDashboard, 
-  MessageSquare, 
   GitBranch, 
   Settings, 
   Users,
@@ -15,13 +14,13 @@ import {
   X,
   Bot,
   Smartphone,
-  Plus,
   Crown,
   ChevronRight,
   Bell,
   Search,
   HelpCircle,
-  Sparkles
+  Sparkles,
+  Activity
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,14 +44,14 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
   const stats = [
     { label: 'Instâncias Ativas', value: 3, max: subscription?.max_instances || 1, icon: Smartphone, color: 'text-green-500' },
     { label: 'Fluxos Criados', value: 12, max: subscription?.max_flows || 5, icon: GitBranch, color: 'text-blue-500' },
-    { label: 'Mensagens Hoje', value: 1234, icon: MessageSquare, color: 'text-purple-500' },
-    { label: 'Créditos', value: credits?.available_credits || 0, icon: CreditCard, color: 'text-amber-500' },
+    { label: 'Créditos Disponíveis', value: credits?.available_credits || 0, icon: CreditCard, color: 'text-amber-500' },
+    { label: 'Taxa de Sucesso', value: 98, icon: Activity, color: 'text-purple-500', suffix: '%' },
   ];
 
   const quickActions = [
-    { title: 'Nova Instância', description: 'Conecte uma nova conta WhatsApp', icon: Plus, onClick: () => onNavigate('instances') },
-    { title: 'Criar Fluxo', description: 'Monte um novo fluxo de automação', icon: GitBranch, onClick: () => onNavigate('flows') },
-    { title: 'Chatbot IA', description: 'Configure respostas inteligentes', icon: Bot, onClick: () => onNavigate('chatbots') },
+    { title: 'Nova Instância', description: 'Conecte um WhatsApp', icon: Smartphone, onClick: () => onNavigate('instances') },
+    { title: 'Criar Fluxo', description: 'Monte automações visuais', icon: GitBranch, onClick: () => onNavigate('flows') },
+    { title: 'Chatbot IA', description: 'Respostas inteligentes', icon: Bot, onClick: () => onNavigate('chatbots') },
   ];
 
   return (
@@ -102,8 +101,8 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
         )}
       </motion.div>
 
-      {/* Animated Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Animated Stats Grid - 4 cards aligned */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => (
           <AnimatedStatCard
             key={stat.label}
@@ -112,7 +111,8 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
             max={stat.max}
             icon={stat.icon}
             color={stat.color}
-            delay={index * 150}
+            suffix={stat.suffix}
+            delay={index * 100}
           />
         ))}
       </div>
@@ -123,11 +123,11 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
           className="text-lg font-semibold mb-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.4 }}
         >
           Ações Rápidas
         </motion.h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {quickActions.map((action, index) => (
             <QuickActionCard
               key={action.title}
@@ -135,7 +135,7 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
               description={action.description}
               icon={action.icon}
               onClick={action.onClick}
-              delay={600 + (index * 100)}
+              delay={500 + (index * 100)}
             />
           ))}
         </div>
@@ -145,7 +145,7 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
+        transition={{ delay: 0.7 }}
       >
         <Card className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5" />
@@ -175,24 +175,22 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
             </div>
           </CardHeader>
           <CardContent className="relative z-10">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               <AnimatedPlanFeature 
                 label="Instâncias" 
                 current={3} 
                 max={subscription?.max_instances || 1} 
-                delay={900}
+                delay={800}
               />
               <AnimatedPlanFeature 
                 label="Fluxos" 
                 current={12} 
                 max={subscription?.max_flows || 5} 
-                delay={1000}
+                delay={900}
               />
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <p className="text-sm text-muted-foreground">Créditos</p>
-                  <p className="text-sm font-semibold">{credits?.available_credits || 0}</p>
-                </div>
+                <p className="text-sm text-muted-foreground">Créditos</p>
+                <p className="text-lg font-semibold">{credits?.available_credits || 0}</p>
               </div>
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Status</p>
@@ -329,7 +327,7 @@ export default function GenesisPanel() {
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-56 bg-popover">
               <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
