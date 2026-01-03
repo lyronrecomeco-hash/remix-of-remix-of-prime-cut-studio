@@ -3,7 +3,6 @@ import {
   ReactFlow,
   Controls,
   Background,
-  MiniMap,
   addEdge,
   useNodesState,
   useEdgesState,
@@ -827,14 +826,6 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
 
                 
 
-                {/* Minimal MiniMap only */}
-                <MiniMap 
-                  nodeColor={(node) => NODE_COLORS[(node.data as any)?.type as keyof typeof NODE_COLORS] || '#6b7280'} 
-                  className="!bg-card/90 !backdrop-blur-xl !border !rounded-xl !shadow-lg !w-36 !h-24" 
-                  maskColor="hsl(var(--background) / 0.8)" 
-                  pannable 
-                  zoomable 
-                />
               </ReactFlow>
 
               {/* Empty Canvas State (overlay above canvas) */}
