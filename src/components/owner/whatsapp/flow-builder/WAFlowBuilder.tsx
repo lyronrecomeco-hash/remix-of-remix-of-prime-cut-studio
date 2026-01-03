@@ -648,8 +648,8 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className={cn(
-          'flex flex-col rounded-2xl border overflow-hidden bg-background shadow-2xl relative',
-          isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'h-[calc(100vh-180px)] min-h-[600px]'
+          'flex flex-col overflow-hidden bg-background relative',
+          isFullscreen ? 'fixed inset-0 z-50' : 'h-[calc(100vh-120px)] min-h-[500px]'
         )}
       >
         <input type="file" ref={fileInputRef} accept=".json" className="hidden" onChange={handleFileImport} />
