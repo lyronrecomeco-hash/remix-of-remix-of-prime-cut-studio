@@ -23,5 +23,6 @@ export { WAStabilityDashboard } from './WAStabilityDashboard';
 export { WARealTest } from './WARealTest';
 export { default as InteractiveTemplatesDocs } from './docs/InteractiveTemplatesDocs';
 export { WAFlowBuilder } from './flow-builder';
+export { WAVPSSetup } from './WAVPSSetup';
 export * from './types';
 export * from './hooks';

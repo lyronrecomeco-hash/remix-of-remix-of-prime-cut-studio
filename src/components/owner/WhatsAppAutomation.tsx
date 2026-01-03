@@ -27,7 +27,8 @@ import {
   Plug,
   BookOpen,
   Activity,
-  GitBranch
+  GitBranch,
+  Server
 } from 'lucide-react';
 import { 
   WADashboard, 
@@ -53,7 +54,8 @@ import {
   WAStabilityDashboard,
   WARealTest,
   WAFlowBuilder,
-  InteractiveTemplatesDocs
+  InteractiveTemplatesDocs,
+  WAVPSSetup
 } from './whatsapp';
 
 interface BackendConfig {
@@ -156,6 +158,7 @@ const NAV_SECTIONS = [
   {
     title: 'Sistema',
     items: [
+      { id: 'vps-setup', label: 'VPS/Servidor', icon: Server },
       { id: 'security', label: 'Segurança', icon: Shield },
       { id: 'integrations', label: 'Integrações', icon: Plug },
       { id: 'backend', label: 'Configurações', icon: Settings },
@@ -360,6 +363,8 @@ const WhatsAppAutomation = () => {
         return <WAContacts instances={instancesProps} />;
       case 'webhooks':
         return <WAWebhooks instances={instancesProps} />;
+      case 'vps-setup':
+        return <WAVPSSetup backendUrl={backendUrl} setBackendUrl={setBackendUrl} masterToken={masterToken} setMasterToken={setMasterToken} backendConfig={backendConfig} onRefresh={fetchData} />;
       case 'security':
         return <WASecurity instances={instancesProps} />;
       case 'integrations':
