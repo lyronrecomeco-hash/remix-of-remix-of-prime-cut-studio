@@ -433,32 +433,32 @@ export const NodeConfigPanel = ({ node, onClose, onSave, onDelete, onDuplicate }
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       className="w-[340px] bg-card/95 backdrop-blur-xl border-l flex flex-col h-full shadow-2xl"
     >
-      {/* Header */}
-      <div className="p-4 border-b">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div 
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: `${nodeColor}20` }}
-            >
-              <div 
-                className="w-5 h-5 rounded-lg"
-                style={{ backgroundColor: nodeColor }}
-              />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0">
+        {/* Header */}
+        <div className="p-4 border-b">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: `${nodeColor}20` }}
+              >
+                <div
+                  className="w-5 h-5 rounded-lg"
+                  style={{ backgroundColor: nodeColor }}
+                />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">{formData.label || 'Configurar Nó'}</h3>
+                <Badge variant="secondary" className="text-[10px]">
+                  {node.data.type}
+                </Badge>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-sm">{formData.label || 'Configurar Nó'}</h3>
-              <Badge variant="secondary" className="text-[10px]">
-                {node.data.type}
-              </Badge>
-            </div>
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+              <X className="w-4 h-4" />
+            </Button>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full bg-muted/50 p-1 h-9">
             <TabsTrigger value="config" className="flex-1 text-xs gap-1.5 h-7">
               <Sparkles className="w-3 h-3" /> Configurar
@@ -470,55 +470,55 @@ export const NodeConfigPanel = ({ node, onClose, onSave, onDelete, onDuplicate }
               <Code className="w-3 h-3" /> JSON
             </TabsTrigger>
           </TabsList>
-        </Tabs>
-      </div>
-
-      {/* Content */}
-      <ScrollArea className="flex-1">
-        <div className="p-4">
-          <TabsContent value="config" className="m-0 space-y-4">
-            {/* Basic Info */}
-            <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Nome do Nó</Label>
-              <Input
-                value={formData.label || ''}
-                onChange={(e) => updateField('label', e.target.value)}
-                placeholder="Nome do nó"
-                className="bg-muted/50"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Descrição</Label>
-              <Input
-                value={formData.description || ''}
-                onChange={(e) => updateField('description', e.target.value)}
-                placeholder="Breve descrição (opcional)"
-                className="bg-muted/50"
-              />
-            </div>
-
-            <div className="my-4 border-t" />
-
-            {/* Type-specific config */}
-            {renderConfigFields()}
-          </TabsContent>
-
-          <TabsContent value="preview" className="m-0">
-            <div className="rounded-xl border bg-muted/30 p-4 min-h-[200px]">
-              <p className="text-xs text-muted-foreground text-center">
-                Preview da mensagem aparecerá aqui
-              </p>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="code" className="m-0">
-            <pre className="rounded-xl bg-muted/50 p-4 text-xs overflow-auto">
-              {JSON.stringify(node.data, null, 2)}
-            </pre>
-          </TabsContent>
         </div>
-      </ScrollArea>
+
+        {/* Content */}
+        <ScrollArea className="flex-1">
+          <div className="p-4">
+            <TabsContent value="config" className="m-0 space-y-4">
+              {/* Basic Info */}
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Nome do Nó</Label>
+                <Input
+                  value={formData.label || ''}
+                  onChange={(e) => updateField('label', e.target.value)}
+                  placeholder="Nome do nó"
+                  className="bg-muted/50"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide text-muted-foreground">Descrição</Label>
+                <Input
+                  value={formData.description || ''}
+                  onChange={(e) => updateField('description', e.target.value)}
+                  placeholder="Breve descrição (opcional)"
+                  className="bg-muted/50"
+                />
+              </div>
+
+              <div className="my-4 border-t" />
+
+              {/* Type-specific config */}
+              {renderConfigFields()}
+            </TabsContent>
+
+            <TabsContent value="preview" className="m-0">
+              <div className="rounded-xl border bg-muted/30 p-4 min-h-[200px]">
+                <p className="text-xs text-muted-foreground text-center">
+                  Preview da mensagem aparecerá aqui
+                </p>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="code" className="m-0">
+              <pre className="rounded-xl bg-muted/50 p-4 text-xs overflow-auto">
+                {JSON.stringify(node.data, null, 2)}
+              </pre>
+            </TabsContent>
+          </div>
+        </ScrollArea>
+      </Tabs>
 
       {/* Footer Actions */}
       <div className="p-4 border-t bg-muted/20 space-y-2">
