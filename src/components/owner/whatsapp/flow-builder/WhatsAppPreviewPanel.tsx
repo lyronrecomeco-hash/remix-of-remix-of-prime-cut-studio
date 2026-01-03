@@ -189,7 +189,7 @@ export const WhatsAppPreviewPanel = memo(({
         initial={{ opacity: 0, x: 50 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 50 }}
-        className="fixed right-4 top-1/2 -translate-y-1/2 z-50"
+        className="fixed z-50 right-4 top-1/2 -translate-y-1/2 max-md:inset-0 max-md:right-0 max-md:top-0 max-md:translate-y-0 max-md:flex max-md:items-end max-md:justify-center max-md:p-3"
       >
         {/* iPhone Frame */}
         <div className="relative">
@@ -198,13 +198,13 @@ export const WhatsAppPreviewPanel = memo(({
             size="icon"
             variant="ghost"
             onClick={onClose}
-            className="absolute -top-3 -right-3 z-10 rounded-full bg-background shadow-lg h-8 w-8"
+            className="absolute top-3 right-3 z-10 rounded-full bg-background shadow-lg h-8 w-8"
           >
             <X className="w-4 h-4" />
           </Button>
 
           {/* Phone Frame */}
-          <div className="w-[320px] h-[640px] bg-black rounded-[40px] p-2 shadow-2xl">
+          <div className="w-[320px] h-[640px] max-md:w-full max-md:max-w-[420px] max-md:h-[min(720px,100dvh-24px)] bg-black rounded-[40px] p-2 shadow-2xl">
             <div className="w-full h-full bg-[#0b141a] rounded-[32px] overflow-hidden flex flex-col">
               
               {/* WhatsApp Header */}

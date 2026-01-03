@@ -82,8 +82,10 @@ import {
 } from './types';
 import { useFlowClipboard, useAutoLayout, useFlowValidation } from './hooks';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 import { CustomEdge } from './CustomEdge';
+import { InstanceRequiredModal } from './InstanceRequiredModal';
 
 const nodeTypes = { flowNode: FlowNode };
 const edgeTypes = { custom: CustomEdge };
@@ -108,6 +110,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange, onNavigateToInstances }: 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { fitView, zoomIn, zoomOut, setCenter, getNodes, getViewport, setViewport } = useReactFlow();
+  const isMobile = useIsMobile();
   
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -128,12 +131,16 @@ const FlowBuilderContent = ({ onBack, onEditingChange, onNavigateToInstances }: 
   const [showSearch, setShowSearch] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [snapToGrid, setSnapToGrid] = useState(true);
-  const [interactionMode, setInteractionMode] = useState<'select' | 'pan'>('select');
+  const [interactionMode, setInteractionMode] = useState<'select' | 'pan'>('pan');
   const [isCanvasLocked, setIsCanvasLocked] = useState(false);
   const [showFloatingTools, setShowFloatingTools] = useState(false);
   const [showComponentsModal, setShowComponentsModal] = useState(false);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showWhatsAppPreview, setShowWhatsAppPreview] = useState(false);
+
+  // Phase 5 - Require connected WhatsApp instance for activation
+  const [showInstanceRequiredModal, setShowInstanceRequiredModal] = useState(false);
+  const [instanceRequiredComponentName, setInstanceRequiredComponentName] = useState('');
   
   // Luna AI building state
   const [isLunaBuilding, setIsLunaBuilding] = useState(false);
@@ -172,6 +179,11 @@ const FlowBuilderContent = ({ onBack, onEditingChange, onNavigateToInstances }: 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+
+  // Mobile-first: default to Pan mode to allow dragging the background naturally
+  useEffect(() => {
+    if (isMobile) setInteractionMode('pan');
+  }, [isMobile]);
 
   // History
   const addToHistory = useCallback(() => {
@@ -392,12 +404,38 @@ const FlowBuilderContent = ({ onBack, onEditingChange, onNavigateToInstances }: 
 
   const toggleRuleActive = async (rule: AutomationRule) => {
     try {
-      const { error } = await supabase.from('whatsapp_automation_rules').update({ is_active: !rule.is_active }).eq('id', rule.id);
+      // Phase 5: só ativa se existir uma instância conectada
+      if (!rule.is_active) {
+        const { data: instances, error: instError } = await supabase
+          .from('genesis_instances')
+          .select('id')
+          .eq('status', 'connected')
+          .limit(1);
+
+        if (instError) throw instError;
+
+        if (!instances || instances.length === 0) {
+          setInstanceRequiredComponentName('Ativar Fluxo');
+          setShowInstanceRequiredModal(true);
+          toast.error('Conecte uma instância do WhatsApp para ativar este fluxo.');
+          return;
+        }
+      }
+
+      const { error } = await supabase
+        .from('whatsapp_automation_rules')
+        .update({ is_active: !rule.is_active })
+        .eq('id', rule.id);
+
       if (error) throw error;
       toast.success(rule.is_active ? 'Fluxo pausado' : 'Fluxo ativado!');
       fetchRules();
-      if (selectedRule?.id === rule.id) { setSelectedRule(prev => prev ? { ...prev, is_active: !prev.is_active } : null); }
-    } catch (error) { toast.error('Erro ao alterar status'); }
+      if (selectedRule?.id === rule.id) {
+        setSelectedRule((prev) => (prev ? { ...prev, is_active: !prev.is_active } : null));
+      }
+    } catch (error) {
+      toast.error('Erro ao alterar status');
+    }
   };
 
   const deleteRule = async (ruleId: string) => {
@@ -759,7 +797,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange, onNavigateToInstances }: 
         animate={{ opacity: 1 }}
         className={cn(
           'flex flex-col overflow-hidden bg-background relative w-full',
-          isFullscreen ? 'fixed inset-0 z-50' : 'h-[calc(100vh-120px)] min-h-[600px]'
+          isFullscreen ? 'fixed inset-0 z-50' : 'h-[calc(100dvh-120px)] min-h-[520px] sm:min-h-[600px]'
         )}
       >
         <input type="file" ref={fileInputRef} accept=".json" className="hidden" onChange={handleFileImport} />
@@ -830,19 +868,22 @@ const FlowBuilderContent = ({ onBack, onEditingChange, onNavigateToInstances }: 
                 snapGrid={[20, 20]}
                 minZoom={0.1}
                 maxZoom={2}
+                // Mobile: permitir pan arrastando o fundo (touch)
+                panOnDrag={isMobile || interactionMode === 'pan' ? true : [1, 2]}
+                panOnScroll
+                zoomOnScroll
+                zoomOnDoubleClick
+                // "infinite" pan (limite bem alto)
+                translateExtent={[[-100000, -100000], [100000, 100000]]}
                 nodesDraggable={!isCanvasLocked}
                 nodesConnectable={!isCanvasLocked}
                 elementsSelectable
                 selectNodesOnDrag={false}
                 selectionMode={SelectionMode.Partial}
-                panOnDrag={[1, 2]}
-                selectionOnDrag
-                panOnScroll
-                zoomOnScroll
-                zoomOnDoubleClick
+                selectionOnDrag={!isMobile && interactionMode === 'select'}
                 preventScrolling
                 className={cn(
-                  "!bg-gradient-to-br from-background via-background to-muted/20",
+                  "!bg-gradient-to-br from-background via-background to-muted/20 touch-none",
                   isDraggingOver && "!cursor-copy"
                 )}
                 proOptions={{ hideAttribution: true }}
@@ -953,6 +994,16 @@ const FlowBuilderContent = ({ onBack, onEditingChange, onNavigateToInstances }: 
       </motion.div>
 
       {/* Modals - outside fullscreen container for proper z-index */}
+      <InstanceRequiredModal
+        open={showInstanceRequiredModal}
+        onClose={() => setShowInstanceRequiredModal(false)}
+        onNavigateToInstances={() => {
+          setShowInstanceRequiredModal(false);
+          onNavigateToInstances?.();
+        }}
+        componentName={instanceRequiredComponentName}
+      />
+
       <ComponentsModal 
         open={showComponentsModal} 
         onClose={() => setShowComponentsModal(false)} 
