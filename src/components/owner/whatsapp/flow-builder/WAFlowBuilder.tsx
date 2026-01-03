@@ -100,9 +100,10 @@ const getEdgeStyle = (sourceHandle?: string | null) => {
 
 interface WAFlowBuilderProps {
   onBack?: () => void;
+  onEditingChange?: (isEditing: boolean) => void;
 }
 
-const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
+const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { fitView, zoomIn, zoomOut, setCenter, getNodes } = useReactFlow();
@@ -245,6 +246,11 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
   }, []);
 
   useEffect(() => { fetchRules(); }, [fetchRules]);
+
+  // Notify parent about editing state
+  useEffect(() => {
+    onEditingChange?.(!!selectedRule);
+  }, [selectedRule, onEditingChange]);
 
   // Load rule into canvas
   const loadRule = (rule: AutomationRule) => {
@@ -649,7 +655,7 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
         animate={{ opacity: 1 }}
         className={cn(
           'flex flex-col overflow-hidden bg-background relative',
-          isFullscreen ? 'fixed inset-0 z-50' : 'h-[calc(100vh-120px)] min-h-[500px]'
+          isFullscreen ? 'fixed inset-0 z-50' : 'h-screen'
         )}
       >
         <input type="file" ref={fileInputRef} accept=".json" className="hidden" onChange={handleFileImport} />
@@ -744,15 +750,16 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
                   onOpenLuna={() => setIsLunaOpen(true)}
                 />
 
-                <FlowStats nodes={nodes} edges={edges} />
-
-                <Panel position="bottom-right" className="flex flex-col gap-1 bg-card/90 backdrop-blur-xl rounded-xl border shadow-lg p-1">
-                  <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => zoomIn()}><ZoomIn className="w-4 h-4" /></Button></TooltipTrigger><TooltipContent side="left">Zoom In</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => zoomOut()}><ZoomOut className="w-4 h-4" /></Button></TooltipTrigger><TooltipContent side="left">Zoom Out</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => fitView({ padding: 0.2 })}><Crosshair className="w-4 h-4" /></Button></TooltipTrigger><TooltipContent side="left">Centralizar</TooltipContent></Tooltip>
-                </Panel>
                 
-                <MiniMap nodeColor={(node) => NODE_COLORS[(node.data as any)?.type as keyof typeof NODE_COLORS] || '#6b7280'} className="!bg-card/90 !backdrop-blur-xl !border !rounded-xl !shadow-lg" maskColor="hsl(var(--background) / 0.8)" pannable zoomable />
+
+                {/* Minimal MiniMap only */}
+                <MiniMap 
+                  nodeColor={(node) => NODE_COLORS[(node.data as any)?.type as keyof typeof NODE_COLORS] || '#6b7280'} 
+                  className="!bg-card/90 !backdrop-blur-xl !border !rounded-xl !shadow-lg !w-36 !h-24" 
+                  maskColor="hsl(var(--background) / 0.8)" 
+                  pannable 
+                  zoomable 
+                />
               </ReactFlow>
 
               {/* Luna Building Overlay */}
@@ -794,87 +801,6 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
                 )}
               </AnimatePresence>
 
-              {/* Floating Tools Button - Always visible in fullscreen or when sidebar collapsed */}
-              <AnimatePresence>
-                {(isFullscreen || isSidebarCollapsed) && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="absolute top-20 left-4 z-[9999]"
-                  >
-                    <div className="relative">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={() => setShowFloatingTools(!showFloatingTools)}
-                            className="h-12 w-12 rounded-xl bg-card/95 backdrop-blur-xl border shadow-lg hover:shadow-xl transition-all hover:scale-105"
-                            variant="ghost"
-                          >
-                            {showFloatingTools ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">Componentes & Ferramentas</TooltipContent>
-                      </Tooltip>
-
-                      <AnimatePresence>
-                        {showFloatingTools && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: -10 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                            className="absolute top-14 left-0 w-72 bg-card/98 backdrop-blur-xl rounded-xl border shadow-2xl p-4 space-y-3 z-[9999]"
-                            style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}
-                          >
-                            <div className="flex items-center justify-between pb-2 border-b">
-                              <div className="flex items-center gap-2">
-                                <Zap className="w-4 h-4 text-primary" />
-                                <span className="font-semibold text-sm">Ferramentas</span>
-                              </div>
-                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowFloatingTools(false)}>
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-2">
-                              <Button variant="outline" size="sm" className="gap-2 justify-start h-9" onClick={() => { setShowTemplates(true); setShowFloatingTools(false); }}>
-                                <LayoutTemplate className="w-4 h-4 text-blue-500" />
-                                Templates
-                              </Button>
-                              <Button variant="outline" size="sm" className="gap-2 justify-start h-9" onClick={() => { setShowSimulator(true); setShowFloatingTools(false); }}>
-                                <PlayCircle className="w-4 h-4 text-green-500" />
-                                Simular
-                              </Button>
-                              <Button variant="outline" size="sm" className="gap-2 justify-start h-9" onClick={() => { setShowSearch(true); setShowFloatingTools(false); }}>
-                                <Search className="w-4 h-4 text-orange-500" />
-                                Buscar
-                              </Button>
-                              <Button variant="outline" size="sm" className="gap-2 justify-start h-9 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/30" onClick={() => { setIsLunaOpen(true); setShowFloatingTools(false); }}>
-                                <Sparkles className="w-4 h-4 text-purple-500" />
-                                Luna IA
-                              </Button>
-                            </div>
-
-                            <div className="pt-3 border-t">
-                              <p className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-2">
-                                <span className="w-5 h-5 rounded bg-primary/10 flex items-center justify-center">
-                                  <Plus className="w-3 h-3 text-primary" />
-                                </span>
-                                Arraste componentes para o canvas
-                              </p>
-                              <div className="space-y-2">
-                                <NodeSidebar onDragStart={onDragStart} compact />
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <FlowControls isLocked={isCanvasLocked} onToggleLock={() => setIsCanvasLocked(!isCanvasLocked)} snapToGrid={snapToGrid} onToggleSnap={() => setSnapToGrid(!snapToGrid)} interactionMode={interactionMode} onToggleMode={() => setInteractionMode(m => m === 'select' ? 'pan' : 'select')} />
               <FlowValidationPanel isOpen={showValidation} onClose={() => setShowValidation(false)} errors={validationResult.errors} warnings={validationResult.warnings} onNavigateToNode={navigateToNode} />
             </div>
 
