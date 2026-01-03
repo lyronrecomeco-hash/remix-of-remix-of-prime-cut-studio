@@ -130,6 +130,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
   const [isCanvasLocked, setIsCanvasLocked] = useState(false);
   const [showFloatingTools, setShowFloatingTools] = useState(false);
   const [showComponentsModal, setShowComponentsModal] = useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   
   // Luna AI building state
   const [isLunaBuilding, setIsLunaBuilding] = useState(false);
@@ -432,10 +433,26 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: any) => { setSelectedNode(node as FlowNodeType); }, []);
   const onPaneClick = useCallback(() => { setSelectedNode(null); setNodes(nds => nds.map(n => ({ ...n, selected: false }))); }, [setNodes]);
-  const onDragOver = useCallback((event: React.DragEvent) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; }, []);
+  const onDragOver = useCallback((event: React.DragEvent) => { 
+    event.preventDefault(); 
+    event.dataTransfer.dropEffect = 'move'; 
+    setIsDraggingOver(true);
+  }, []);
+  
+  const onDragLeave = useCallback((event: React.DragEvent) => {
+    // Only set false if leaving the canvas entirely
+    const rect = reactFlowWrapper.current?.getBoundingClientRect();
+    if (rect) {
+      const { clientX, clientY } = event;
+      if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+        setIsDraggingOver(false);
+      }
+    }
+  }, []);
 
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
+    setIsDraggingOver(false);
     const templateData = event.dataTransfer.getData('application/reactflow');
     if (!templateData) return;
     const template: NodeTemplate = JSON.parse(templateData);
@@ -445,6 +462,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
     const newNode = { id: `${template.type}-${Date.now()}`, type: 'flowNode', position, data: { label: template.label, type: template.type, config: template.defaultConfig, description: template.description, icon: template.icon } };
     setNodes((nds) => nds.concat(newNode));
     addToHistory();
+    toast.success(`${template.label} adicionado!`);
   }, [setNodes, addToHistory]);
 
   const onDragStart = (event: React.DragEvent, template: NodeTemplate) => { event.dataTransfer.setData('application/reactflow', JSON.stringify(template)); event.dataTransfer.effectAllowed = 'move'; };
@@ -744,7 +762,37 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
         <input type="file" ref={fileInputRef} accept=".json" className="hidden" onChange={handleFileImport} />
 
         {/* Full Canvas - No sidebar */}
-        <div className="flex-1 h-full relative" ref={reactFlowWrapper}>
+        <div 
+          className="flex-1 h-full relative" 
+          ref={reactFlowWrapper}
+          onDragLeave={onDragLeave}
+          data-allow-drag="true"
+        >
+              {/* Drop Zone Overlay */}
+              <AnimatePresence>
+                {isDraggingOver && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 z-30 pointer-events-none"
+                  >
+                    <div className="absolute inset-4 border-2 border-dashed border-primary/50 rounded-2xl bg-primary/5 flex items-center justify-center">
+                      <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="bg-background/90 backdrop-blur-sm px-6 py-3 rounded-xl shadow-xl border border-primary/30"
+                      >
+                        <p className="text-primary font-medium flex items-center gap-2">
+                          <Zap className="w-5 h-5" />
+                          Solte aqui para adicionar
+                        </p>
+                      </motion.div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <svg style={{ position: 'absolute', width: 0, height: 0 }}>
                 <defs>
                   <linearGradient id="edge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -790,7 +838,10 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
                 zoomOnScroll
                 zoomOnDoubleClick
                 preventScrolling
-                className="!bg-gradient-to-br from-background via-background to-muted/20"
+                className={cn(
+                  "!bg-gradient-to-br from-background via-background to-muted/20",
+                  isDraggingOver && "!cursor-copy"
+                )}
                 proOptions={{ hideAttribution: true }}
               >
                 <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--muted-foreground) / 0.2)" />
