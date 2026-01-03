@@ -4,18 +4,19 @@ import {
   Sparkles, 
   Send, 
   Loader2, 
-  Bot, 
   User, 
   Lightbulb, 
   Wand2,
   MessageSquare,
-  Trash2,
   AlertCircle,
-  X,
   Zap,
   CheckCircle2,
   GitBranch,
-  ArrowRight
+  ArrowRight,
+  ThumbsUp,
+  ThumbsDown,
+  Clock,
+  Target
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,10 +34,21 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   flow?: { nodes: FlowNode[]; edges: FlowEdge[] };
+  plan?: FlowPlan;
   summary?: string;
   tips?: string[];
   timestamp: Date;
   isError?: boolean;
+  isPlanApproved?: boolean;
+  isBuilding?: boolean;
+}
+
+interface FlowPlan {
+  objective: string;
+  approach: string;
+  steps: { icon: string; title: string; description: string }[];
+  estimatedNodes: number;
+  estimatedTime: string;
 }
 
 interface BuildStep {
@@ -63,7 +75,13 @@ const QUICK_PROMPTS = [
 
 const NODE_ICONS: Record<string, string> = {
   trigger: '⚡',
+  wa_start: '▶️',
   message: '💬',
+  wa_send_text: '💬',
+  wa_send_buttons: '🔘',
+  wa_send_list: '📋',
+  wa_wait_response: '⏳',
+  wa_receive: '📥',
   button: '🔘',
   list: '📋',
   condition: '🔀',
@@ -87,7 +105,10 @@ export const LunaAIModal = ({
   const [buildSteps, setBuildSteps] = useState<BuildStep[]>([]);
   const [showQuickPrompts, setShowQuickPrompts] = useState(true);
   const [generatedFlow, setGeneratedFlow] = useState<{ nodes: FlowNode[]; edges: FlowEdge[] } | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<FlowPlan | null>(null);
+  const [pendingPrompt, setPendingPrompt] = useState<string>('');
   const [animatingNodes, setAnimatingNodes] = useState<string[]>([]);
+  const [isApplyingToCanvas, setIsApplyingToCanvas] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -97,7 +118,7 @@ export const LunaAIModal = ({
       setMessages([{
         id: 'welcome',
         role: 'assistant',
-        content: 'Olá! 🤖✨ Sou a **Luna**, sua assistente de IA para criar fluxos de WhatsApp.\n\nMe diga o que você precisa e eu vou construir o fluxo completo para você, ao vivo!',
+        content: 'Olá! 👋 Sou a **Luna**, sua assistente especialista em automação WhatsApp.\n\nMe descreva o fluxo que você precisa e eu vou:\n1. 📋 **Analisar** sua necessidade\n2. 📐 **Propor** uma estrutura\n3. ⏳ **Aguardar** sua aprovação\n4. 🔧 **Construir** o fluxo ao vivo no canvas!',
         timestamp: new Date()
       }]);
     }
@@ -110,34 +131,188 @@ export const LunaAIModal = ({
     }
   }, [messages, buildSteps]);
 
-  // Animate nodes being created
-  const animateNodeCreation = useCallback(async (nodes: FlowNode[]) => {
-    setAnimatingNodes([]);
-    for (let i = 0; i < nodes.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      setAnimatingNodes(prev => [...prev, nodes[i].id]);
+  // Generate a plan from the AI
+  const generatePlan = useCallback(async (prompt: string): Promise<FlowPlan> => {
+    // Simulated plan generation based on prompt keywords
+    const isVendas = prompt.toLowerCase().includes('venda') || prompt.toLowerCase().includes('produto');
+    const isAtendimento = prompt.toLowerCase().includes('atendimento') || prompt.toLowerCase().includes('cliente');
+    const isSuporte = prompt.toLowerCase().includes('suporte') || prompt.toLowerCase().includes('problema');
+    const isAgendamento = prompt.toLowerCase().includes('agenda') || prompt.toLowerCase().includes('horário');
+
+    const steps = [];
+    let objective = '';
+    let approach = '';
+    let estimatedNodes = 6;
+
+    if (isVendas) {
+      objective = 'Criar um funil de vendas automatizado via WhatsApp';
+      approach = 'Fluxo conversacional com qualificação de leads, apresentação de produtos e direcionamento para fechamento';
+      steps.push(
+        { icon: '⚡', title: 'Gatilho Inicial', description: 'Detecta interesse do cliente ao iniciar conversa' },
+        { icon: '👋', title: 'Boas-vindas', description: 'Saudação personalizada e apresentação' },
+        { icon: '📋', title: 'Menu de Produtos', description: 'Lista interativa com categorias ou produtos' },
+        { icon: '💬', title: 'Detalhes do Produto', description: 'Informações, preços e benefícios' },
+        { icon: '🔀', title: 'Qualificação', description: 'Perguntas para entender necessidade' },
+        { icon: '🎯', title: 'Fechamento', description: 'CTA para compra ou falar com vendedor' }
+      );
+      estimatedNodes = 8;
+    } else if (isSuporte) {
+      objective = 'Criar um sistema de suporte técnico inteligente';
+      approach = 'Triagem automática de problemas com soluções pré-definidas e escalação quando necessário';
+      steps.push(
+        { icon: '⚡', title: 'Gatilho', description: 'Identifica solicitação de suporte' },
+        { icon: '📋', title: 'Triagem', description: 'Lista de categorias de problemas' },
+        { icon: '🔀', title: 'Diagnóstico', description: 'Perguntas específicas por categoria' },
+        { icon: '💡', title: 'Solução Automática', description: 'Instruções passo a passo' },
+        { icon: '❓', title: 'Verificação', description: 'Confirma se resolveu o problema' },
+        { icon: '👤', title: 'Escalação', description: 'Transfere para atendente humano' }
+      );
+      estimatedNodes = 10;
+    } else if (isAgendamento) {
+      objective = 'Criar um sistema de agendamento automatizado';
+      approach = 'Fluxo guiado para seleção de serviço, data, horário e confirmação';
+      steps.push(
+        { icon: '⚡', title: 'Gatilho', description: 'Detecta intenção de agendar' },
+        { icon: '📋', title: 'Seleção de Serviço', description: 'Lista de serviços disponíveis' },
+        { icon: '📅', title: 'Escolha de Data', description: 'Datas disponíveis na semana' },
+        { icon: '⏰', title: 'Escolha de Horário', description: 'Horários livres no dia' },
+        { icon: '✅', title: 'Confirmação', description: 'Resumo e confirmação do agendamento' },
+        { icon: '📲', title: 'Lembrete', description: 'Mensagem de confirmação via WhatsApp' }
+      );
+      estimatedNodes = 8;
+    } else {
+      objective = 'Criar um fluxo de atendimento automatizado';
+      approach = 'Menu interativo com opções principais e respostas personalizadas';
+      steps.push(
+        { icon: '⚡', title: 'Gatilho Inicial', description: 'Ativa ao receber mensagem' },
+        { icon: '👋', title: 'Boas-vindas', description: 'Saudação cordial e apresentação' },
+        { icon: '📋', title: 'Menu Principal', description: 'Opções de atendimento' },
+        { icon: '💬', title: 'Respostas', description: 'Informações para cada opção' },
+        { icon: '🔀', title: 'Decisão', description: 'Verifica se precisa de mais ajuda' },
+        { icon: '🏁', title: 'Finalização', description: 'Agradecimento e encerramento' }
+      );
+      estimatedNodes = 7;
     }
+
+    return {
+      objective,
+      approach,
+      steps,
+      estimatedNodes,
+      estimatedTime: `${Math.ceil(estimatedNodes * 0.5)}-${estimatedNodes} minutos`
+    };
   }, []);
 
-  const simulateBuildSteps = useCallback(async () => {
+  // Animate nodes being created on canvas
+  const buildFlowOnCanvas = useCallback(async (nodes: FlowNode[], edges: FlowEdge[]) => {
+    setIsApplyingToCanvas(true);
+    setAnimatingNodes([]);
+    
+    // Close modal and start building
+    onOpenChange(false);
+    
+    // Small delay before starting
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Apply flow with animation
+    onApplyFlow(nodes, edges);
+    
+    toast.success('🎉 Fluxo construído com sucesso!', {
+      description: `${nodes.length} nós criados e conectados`
+    });
+    
+    setIsApplyingToCanvas(false);
+  }, [onApplyFlow, onOpenChange]);
+
+  // Handle plan approval
+  const approvePlan = useCallback(async () => {
+    if (!currentPlan || !pendingPrompt) return;
+    
+    // Update message to show approved
+    setMessages(prev => prev.map(msg => 
+      msg.plan && !msg.isPlanApproved 
+        ? { ...msg, isPlanApproved: true }
+        : msg
+    ));
+    
+    // Add building message
+    const buildingMessage: Message = {
+      id: `building-${Date.now()}`,
+      role: 'assistant',
+      content: '🔧 Perfeito! Vou construir o fluxo agora. Fechando o modal para você acompanhar a construção no canvas...',
+      isBuilding: true,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, buildingMessage]);
+    
+    setIsLoading(true);
+    
+    // Animate build steps
     const steps: BuildStep[] = [
-      { id: 'analyze', label: 'Analisando solicitação', status: 'pending' },
-      { id: 'design', label: 'Projetando estrutura', status: 'pending' },
+      { id: 'analyze', label: 'Processando plano', status: 'active' },
+      { id: 'design', label: 'Gerando estrutura', status: 'pending' },
       { id: 'nodes', label: 'Criando nós', status: 'pending' },
       { id: 'connect', label: 'Conectando fluxo', status: 'pending' },
-      { id: 'validate', label: 'Validando lógica', status: 'pending' },
     ];
-    
     setBuildSteps(steps);
+    
+    try {
+      // Actually generate the flow
+      const { data, error } = await supabase.functions.invoke('flow-ai-builder', {
+        body: { prompt: pendingPrompt, context: null }
+      });
 
-    // Animate through steps
-    for (let i = 0; i < steps.length - 1; i++) {
-      await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400));
-      setBuildSteps(prev => prev.map((s, idx) => ({
-        ...s,
-        status: idx === i ? 'done' : idx === i + 1 ? 'active' : s.status
-      })));
+      if (error) throw new Error(error.message || 'Erro ao gerar fluxo');
+      if (data.error) throw new Error(data.error);
+
+      // Animate through steps
+      for (let i = 0; i < steps.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, 400));
+        setBuildSteps(prev => prev.map((s, idx) => ({
+          ...s,
+          status: idx <= i ? 'done' : idx === i + 1 ? 'active' : s.status
+        })));
+      }
+
+      if (data.flow?.nodes) {
+        setGeneratedFlow(data.flow);
+        
+        // Build on canvas
+        await buildFlowOnCanvas(data.flow.nodes, data.flow.edges);
+      }
+
+    } catch (error) {
+      console.error('Erro ao gerar fluxo:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao gerar fluxo');
+      
+      const errorMessage: Message = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: error instanceof Error ? error.message : 'Ocorreu um erro ao processar sua solicitação.',
+        timestamp: new Date(),
+        isError: true
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+      setBuildSteps([]);
+      setCurrentPlan(null);
+      setPendingPrompt('');
     }
+  }, [currentPlan, pendingPrompt, buildFlowOnCanvas]);
+
+  // Reject plan and ask for modifications
+  const rejectPlan = useCallback(() => {
+    setCurrentPlan(null);
+    
+    const rejectMessage: Message = {
+      id: `reject-${Date.now()}`,
+      role: 'assistant',
+      content: 'Entendi! 💡 Me diga o que gostaria de modificar no plano, ou descreva novamente sua necessidade com mais detalhes.',
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, rejectMessage]);
+    setShowQuickPrompts(false);
   }, []);
 
   const sendMessage = async (prompt?: string) => {
@@ -158,54 +333,26 @@ export const LunaAIModal = ({
     setGeneratedFlow(null);
     setAnimatingNodes([]);
 
-    // Start build animation
-    simulateBuildSteps();
-
     try {
-      const context = currentNodes.length > 0 ? {
-        nodes: currentNodes.map(n => ({ id: n.id, type: n.data.type, label: n.data.label })),
-        edges: currentEdges.map(e => ({ source: e.source, target: e.target }))
-      } : null;
-
-      const { data, error } = await supabase.functions.invoke('flow-ai-builder', {
-        body: { prompt: messageContent, context }
-      });
-
-      if (error) {
-        // Check if the error response has a specific message
-        const errorBody = error.message;
-        throw new Error(errorBody || 'Erro ao conectar com a IA');
-      }
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      // Complete all steps
-      setBuildSteps(prev => prev.map(s => ({ ...s, status: 'done' as const })));
+      // First, generate a plan
+      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate thinking
       
-      // Animate node creation
-      if (data.flow?.nodes) {
-        setGeneratedFlow(data.flow);
-        await animateNodeCreation(data.flow.nodes);
-      }
+      const plan = await generatePlan(messageContent);
+      setCurrentPlan(plan);
+      setPendingPrompt(messageContent);
 
-      const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
+      const planMessage: Message = {
+        id: `plan-${Date.now()}`,
         role: 'assistant',
-        content: data.summary || '✅ Fluxo criado com sucesso!',
-        flow: data.flow,
-        summary: data.summary,
-        tips: data.tips,
+        content: `📋 Analisei sua solicitação! Aqui está meu plano:\n\n**🎯 Objetivo:**\n${plan.objective}\n\n**📐 Abordagem:**\n${plan.approach}`,
+        plan,
         timestamp: new Date()
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages(prev => [...prev, planMessage]);
 
     } catch (error) {
-      console.error('Erro ao gerar fluxo:', error);
-      
-      setBuildSteps([]);
+      console.error('Erro ao gerar plano:', error);
       
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
@@ -216,40 +363,10 @@ export const LunaAIModal = ({
       };
 
       setMessages(prev => [...prev, errorMessage]);
-      
-      if (error instanceof Error && error.message.includes('Créditos')) {
-        toast.error('Créditos de IA insuficientes', {
-          description: 'Adicione fundos em Settings → Workspace → Usage'
-        });
-      } else {
-        toast.error('Erro ao gerar fluxo');
-      }
+      toast.error('Erro ao gerar plano');
     } finally {
       setIsLoading(false);
-      setTimeout(() => setBuildSteps([]), 1000);
     }
-  };
-
-  const applyFlow = () => {
-    if (generatedFlow) {
-      onApplyFlow(generatedFlow.nodes, generatedFlow.edges);
-      toast.success('Fluxo aplicado ao canvas!', {
-        description: `${generatedFlow.nodes.length} nós adicionados`
-      });
-      onOpenChange(false);
-    }
-  };
-
-  const clearChat = () => {
-    setMessages([{
-      id: 'welcome-new',
-      role: 'assistant',
-      content: '🔄 Chat reiniciado! Me diga o que você precisa criar.',
-      timestamp: new Date()
-    }]);
-    setShowQuickPrompts(true);
-    setGeneratedFlow(null);
-    setAnimatingNodes([]);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -288,14 +405,14 @@ export const LunaAIModal = ({
                   </Badge>
                 </DialogTitle>
                 <p className="text-xs text-muted-foreground">
-                  {isLoading ? '🔧 Construindo fluxo...' : '✨ Criadora de Fluxos Inteligente'}
+                  {isLoading ? '🔧 Processando...' : currentPlan ? '📋 Aguardando aprovação' : '✨ Arquiteta de Fluxos'}
                 </p>
               </div>
             </div>
           </div>
         </DialogHeader>
 
-        {/* Build Progress Animation - Genesis Theme */}
+        {/* Build Progress Animation */}
         <AnimatePresence>
           {buildSteps.length > 0 && (
             <motion.div
@@ -312,7 +429,7 @@ export const LunaAIModal = ({
                   >
                     <Zap className="h-4 w-4 text-primary" />
                   </motion.div>
-                  <span className="text-sm font-medium">Luna está trabalhando...</span>
+                  <span className="text-sm font-medium">Construindo fluxo...</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {buildSteps.map((step, i) => (
@@ -330,10 +447,7 @@ export const LunaAIModal = ({
                     >
                       {step.status === 'done' && <CheckCircle2 className="h-3 w-3" />}
                       {step.status === 'active' && (
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                        >
+                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
                           <Loader2 className="h-3 w-3" />
                         </motion.div>
                       )}
@@ -342,62 +456,6 @@ export const LunaAIModal = ({
                     </motion.div>
                   ))}
                 </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Live Node Creation Preview */}
-        <AnimatePresence>
-          {generatedFlow && animatingNodes.length > 0 && isLoading && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="border-b border-border"
-            >
-              <div className="p-4 bg-gradient-to-r from-green-500/5 to-emerald-500/5">
-                <div className="flex items-center gap-2 mb-3">
-                  <GitBranch className="h-4 w-4 text-green-500" />
-                  <span className="text-sm font-medium">Criando nós ao vivo</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {generatedFlow.nodes.map((node, i) => {
-                    const isAnimated = animatingNodes.includes(node.id);
-                    return (
-                      <motion.div
-                        key={node.id}
-                        initial={{ opacity: 0, scale: 0, y: 20 }}
-                        animate={isAnimated ? { opacity: 1, scale: 1, y: 0 } : {}}
-                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                        className={cn(
-                          "flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs bg-card border",
-                          isAnimated ? 'border-green-500/50' : 'border-transparent opacity-30'
-                        )}
-                      >
-                        <span>{NODE_ICONS[node.data.type] || '📦'}</span>
-                        <span className="font-medium truncate max-w-[100px]">{node.data.label}</span>
-                        {isAnimated && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="w-1.5 h-1.5 rounded-full bg-green-500"
-                          />
-                        )}
-                      </motion.div>
-                    );
-                  })}
-                </div>
-                {generatedFlow.edges.length > 0 && animatingNodes.length === generatedFlow.nodes.length && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="mt-2 text-xs text-green-400 flex items-center gap-1"
-                  >
-                    <ArrowRight className="h-3 w-3" />
-                    {generatedFlow.edges.length} conexões criadas
-                  </motion.div>
-                )}
               </div>
             </motion.div>
           )}
@@ -423,18 +481,18 @@ export const LunaAIModal = ({
                     "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
                     message.role === 'user' 
                       ? 'bg-primary' 
-                      : 'bg-gradient-to-r from-primary to-primary/60'
+                      : 'bg-gradient-to-r from-primary to-primary/60 overflow-hidden'
                   )}>
                     {message.role === 'user' ? (
                       <User className="h-4 w-4 text-primary-foreground" />
                     ) : (
-                      <img src={lunaAvatar} alt="Luna" className="w-full h-full object-cover rounded-full" />
+                      <img src={lunaAvatar} alt="Luna" className="w-full h-full object-cover" />
                     )}
                   </div>
 
                   {/* Content */}
                   <div className={cn(
-                    "flex-1 max-w-[400px]",
+                    "flex-1 max-w-[450px]",
                     message.role === 'user' ? 'text-right' : 'text-left'
                   )}>
                     <div className={cn(
@@ -458,8 +516,8 @@ export const LunaAIModal = ({
                       </div>
                     </div>
 
-                    {/* Flow Preview & Apply */}
-                    {message.flow && (
+                    {/* Plan Preview & Approval */}
+                    {message.plan && !message.isPlanApproved && (
                       <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -467,52 +525,75 @@ export const LunaAIModal = ({
                       >
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-primary" />
-                            <span className="text-sm font-medium">Fluxo Pronto!</span>
+                            <GitBranch className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium">Estrutura do Fluxo</span>
                           </div>
-                          <Badge variant="secondary" className="text-[10px]">
-                            {message.flow.nodes.length} nós • {message.flow.edges.length} conexões
-                          </Badge>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Target className="h-3 w-3" />
+                            <span>~{message.plan.estimatedNodes} nós</span>
+                            <Clock className="h-3 w-3 ml-2" />
+                            <span>{message.plan.estimatedTime}</span>
+                          </div>
                         </div>
                         
-                        {/* Node preview */}
-                        <div className="flex flex-wrap gap-1.5 mb-3">
-                          {message.flow.nodes.slice(0, 8).map((node) => (
+                        {/* Steps preview */}
+                        <div className="space-y-2 mb-4">
+                          {message.plan.steps.map((step, i) => (
                             <motion.div
-                              key={node.id}
-                              whileHover={{ scale: 1.05 }}
-                              className="flex items-center gap-1 px-2 py-1 rounded bg-background/50 text-[10px]"
+                              key={i}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.1 }}
+                              className="flex items-start gap-2 p-2 bg-background/50 rounded-lg"
                             >
-                              <span>{NODE_ICONS[node.data.type] || '📦'}</span>
-                              <span className="truncate max-w-[60px]">{node.data.label}</span>
+                              <span className="text-base">{step.icon}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium">{step.title}</p>
+                                <p className="text-[10px] text-muted-foreground truncate">{step.description}</p>
+                              </div>
+                              <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0 mt-1" />
                             </motion.div>
                           ))}
-                          {message.flow.nodes.length > 8 && (
-                            <div className="px-2 py-1 rounded bg-background/50 text-[10px] text-muted-foreground">
-                              +{message.flow.nodes.length - 8} mais
-                            </div>
-                          )}
                         </div>
-                        
-                        {message.tips && message.tips.length > 0 && (
-                          <div className="mb-3 space-y-1">
-                            {message.tips.slice(0, 2).map((tip, i) => (
-                              <div key={i} className="flex items-start gap-2 text-[11px] text-muted-foreground">
-                                <Lightbulb className="h-3 w-3 mt-0.5 text-yellow-500 shrink-0" />
-                                <span>{tip}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
 
-                        <Button
-                          onClick={applyFlow}
-                          className="w-full bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 group"
-                          size="sm"
-                        >
-                          <Wand2 className="h-4 w-4 mr-2 group-hover:rotate-12 transition-transform" />
-                          Aplicar ao Canvas
-                        </Button>
+                        <div className="border-t border-border/50 pt-3">
+                          <p className="text-xs text-muted-foreground mb-3 text-center">
+                            Posso implementar esse fluxo?
+                          </p>
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={approvePlan}
+                              className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:opacity-90 gap-2"
+                              size="sm"
+                              disabled={isLoading}
+                            >
+                              <ThumbsUp className="h-4 w-4" />
+                              Sim, implementar!
+                            </Button>
+                            <Button
+                              onClick={rejectPlan}
+                              variant="outline"
+                              className="flex-1 gap-2"
+                              size="sm"
+                              disabled={isLoading}
+                            >
+                              <ThumbsDown className="h-4 w-4" />
+                              Modificar
+                            </Button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Approved badge */}
+                    {message.plan && message.isPlanApproved && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="mt-3 p-3 bg-green-500/10 rounded-xl border border-green-500/30 flex items-center gap-2"
+                      >
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        <span className="text-sm text-green-500 font-medium">Plano aprovado!</span>
                       </motion.div>
                     )}
 
@@ -531,13 +612,13 @@ export const LunaAIModal = ({
                 animate={{ opacity: 1 }}
                 className="flex gap-3"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-primary/60 flex items-center justify-center">
-                  <img src={lunaAvatar} alt="Luna" className="w-full h-full object-cover rounded-full" />
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-primary/60 flex items-center justify-center overflow-hidden">
+                  <img src={lunaAvatar} alt="Luna" className="w-full h-full object-cover" />
                 </div>
                 <div className="bg-muted rounded-2xl rounded-tl-sm p-3">
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    <span className="text-sm text-muted-foreground">Iniciando...</span>
+                    <span className="text-sm text-muted-foreground">Analisando sua solicitação...</span>
                   </div>
                 </div>
               </motion.div>
@@ -547,7 +628,7 @@ export const LunaAIModal = ({
 
         {/* Quick Prompts */}
         <AnimatePresence>
-          {showQuickPrompts && !isLoading && (
+          {showQuickPrompts && !isLoading && !currentPlan && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
@@ -586,7 +667,7 @@ export const LunaAIModal = ({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Descreva o fluxo que você deseja criar..."
+              placeholder={currentPlan ? "Descreva as modificações desejadas..." : "Descreva o fluxo que você deseja criar..."}
               className="min-h-[50px] max-h-[120px] resize-none text-sm"
               disabled={isLoading}
             />
