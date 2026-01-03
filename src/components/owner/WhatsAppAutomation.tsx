@@ -25,7 +25,9 @@ import {
   Users,
   Contact,
   Plug,
-  BookOpen
+  BookOpen,
+  Activity,
+  GitBranch
 } from 'lucide-react';
 import { 
   WADashboard, 
@@ -47,6 +49,8 @@ import {
   WAConversationStates,
   WATestSimulator,
   WAExampleFlow,
+  WAStabilityDashboard,
+  WAFlowBuilder,
   InteractiveTemplatesDocs
 } from './whatsapp';
 
@@ -111,6 +115,7 @@ const NAV_SECTIONS = [
     title: 'Monitoramento',
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'stability', label: 'Estabilidade', icon: Activity },
       { id: 'inbox', label: 'Inbox', icon: MessageSquare },
     ]
   },
@@ -125,6 +130,7 @@ const NAV_SECTIONS = [
   {
     title: 'Automação',
     items: [
+      { id: 'flow-builder', label: 'Flow Builder', icon: GitBranch },
       { id: 'automations', label: 'Chatbots', icon: Bot },
       { id: 'interactive-templates', label: 'Templates Interativos', icon: FileText },
       { id: 'button-actions', label: 'Motor de Botões', icon: Zap },
@@ -313,6 +319,8 @@ const WhatsAppAutomation = () => {
     switch (activeSection) {
       case 'dashboard':
         return <WADashboard instances={mergedInstances.map(i => ({ id: i.id, name: i.name, status: i.status, last_heartbeat_at: i.last_heartbeat_at, uptime_seconds: i.uptime_seconds }))} isBackendActive={isBackendActive} />;
+      case 'stability':
+        return <WAStabilityDashboard instances={instancesProps} />;
       case 'inbox':
         return <WAInbox instances={instancesProps} />;
       case 'instances':
@@ -321,6 +329,8 @@ const WhatsAppAutomation = () => {
         return <WAAdvancedSend instances={instancesProps} />;
       case 'test':
         return <WATestMessage instances={instancesProps} backendMode={backendMode} backendUrl={backendUrl} localEndpoint={localEndpoint} localPort={localPort} localToken={localToken} masterToken={masterToken} isBackendActive={isBackendActive} />;
+      case 'flow-builder':
+        return <WAFlowBuilder />;
       case 'automations':
         return <WAAutomations instances={instancesProps} />;
       case 'interactive-templates':

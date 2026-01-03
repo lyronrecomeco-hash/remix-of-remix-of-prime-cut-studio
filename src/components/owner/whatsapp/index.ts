@@ -18,6 +18,8 @@ export { WAButtonActions } from './WAButtonActions';
 export { WAConversationStates } from './WAConversationStates';
 export { WATestSimulator } from './WATestSimulator';
 export { WAExampleFlow } from './WAExampleFlow';
+export { WAStabilityDashboard } from './WAStabilityDashboard';
 export { default as InteractiveTemplatesDocs } from './docs/InteractiveTemplatesDocs';
+export { WAFlowBuilder } from './flow-builder';
 export * from './types';
 export * from './hooks';
