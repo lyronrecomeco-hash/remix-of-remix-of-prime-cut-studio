@@ -55,9 +55,10 @@ interface NodeSidebarProps {
   onDragStart: (event: React.DragEvent, template: NodeTemplate) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  compact?: boolean;
 }
 
-export const NodeSidebar = ({ onDragStart, isCollapsed = false, onToggleCollapse }: NodeSidebarProps) => {
+export const NodeSidebar = ({ onDragStart, isCollapsed = false, onToggleCollapse, compact = false }: NodeSidebarProps) => {
   const [search, setSearch] = useState('');
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     triggers: true,
@@ -126,6 +127,36 @@ export const NodeSidebar = ({ onDragStart, isCollapsed = false, onToggleCollapse
           })}
         </ScrollArea>
       </motion.div>
+    );
+  }
+
+  // Compact mode for floating panel
+  if (compact) {
+    return (
+      <div className="space-y-2">
+        {NODE_TEMPLATES.slice(0, 8).map((template) => {
+          const Icon = ICONS[template.icon] || Zap;
+          const categoryColor = NODE_CATEGORIES[template.category as keyof typeof NODE_CATEGORIES]?.color || '#6b7280';
+          
+          return (
+            <div
+              key={`${template.type}-${template.label}`}
+              draggable
+              onDragStart={(e) => handleDragStart(e, template)}
+              onDragEnd={handleDragEnd}
+              className="flex items-center gap-2 p-2 rounded-lg border bg-background/50 cursor-grab active:cursor-grabbing hover:bg-muted/50 transition-all text-xs"
+            >
+              <div
+                className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${categoryColor}15` }}
+              >
+                <Icon className="w-3.5 h-3.5" style={{ color: categoryColor }} />
+              </div>
+              <span className="truncate font-medium">{template.label}</span>
+            </div>
+          );
+        })}
+      </div>
     );
   }
 
