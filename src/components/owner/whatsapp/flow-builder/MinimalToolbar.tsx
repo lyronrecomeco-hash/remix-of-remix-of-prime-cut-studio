@@ -152,16 +152,35 @@ export const MinimalToolbar = memo(({
         )}
       </Panel>
 
-      {/* Top Center - Genesis Flow Title */}
+      {/* Top Center - Genesis Flow Title + Components Button */}
       <Panel position="top-center">
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="flex items-center gap-2 px-4 py-2 bg-card/80 backdrop-blur-xl rounded-xl border shadow-sm"
+          className="flex items-center gap-1 bg-card/95 backdrop-blur-xl rounded-xl border shadow-lg p-1"
         >
-          <span className="font-bold text-lg bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent">
+          <span className="font-bold text-sm px-3 bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent">
             Genesis Flow
           </span>
+          <Separator orientation="vertical" className="h-5" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" onClick={onAddComponent} className="gap-2 h-8">
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Componentes</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Adicionar componente</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" onClick={onOpenLuna} className="gap-2 h-8 text-purple-500 hover:text-purple-600">
+                <Sparkles className="w-4 h-4" />
+                <span className="hidden sm:inline">Luna IA</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Criar com inteligência artificial</TooltipContent>
+          </Tooltip>
         </motion.div>
       </Panel>
 

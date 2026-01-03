@@ -295,19 +295,29 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
     }, 80);
   };
 
-  // Create new rule
+  // Create new rule - flow starts empty, user clicks to enter
   const createRule = async () => {
     if (!newRuleName.trim()) { toast.error('Digite um nome para o fluxo'); return; }
     setIsSaving(true);
     try {
-      const initialFlow = { nodes: [{ id: 'trigger-1', type: 'flowNode', position: { x: 400, y: 100 }, data: { label: 'Início do Fluxo', type: 'trigger', config: { triggerType: 'keyword', keywords: [] }, description: 'Gatilho inicial do fluxo' } }], edges: [] };
-      const { data, error } = await supabase.from('whatsapp_automation_rules').insert({ name: newRuleName, description: '', trigger_type: 'keyword', trigger_config: {}, conditions: [], actions: [], flow_data: initialFlow as any, priority: rules.length + 1 }).select().single();
+      // Empty flow - no initial node, user will add via EmptyCanvasState
+      const initialFlow = { nodes: [], edges: [] };
+      const { error } = await supabase.from('whatsapp_automation_rules').insert({ 
+        name: newRuleName, 
+        description: '', 
+        trigger_type: 'keyword', 
+        trigger_config: {}, 
+        conditions: [], 
+        actions: [], 
+        flow_data: initialFlow as any, 
+        priority: rules.length + 1 
+      }).select().single();
       if (error) throw error;
-      toast.success('Fluxo criado com sucesso!');
+      toast.success('Fluxo criado! Clique para editar.');
       setIsCreateDialogOpen(false);
       setNewRuleName('');
       fetchRules();
-      if (data) { loadRule({ ...data, flow_data: initialFlow, canvas_position: { x: 0, y: 0, zoom: 1 } } as AutomationRule); }
+      // Don't auto-enter, let user click to enter
     } catch (error) { console.error('Error creating rule:', error); toast.error('Erro ao criar fluxo'); } finally { setIsSaving(false); }
   };
 
@@ -607,7 +617,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
             </div>
           </motion.div>
         ) : (
-          <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <AnimatePresence>
               {rules.map((rule, index) => (
                 <motion.div
@@ -718,8 +728,8 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className={cn(
-          'flex flex-col overflow-hidden bg-background relative',
-          isFullscreen ? 'fixed inset-0 z-50' : 'h-full'
+          'flex flex-col overflow-hidden bg-background relative w-full',
+          isFullscreen ? 'fixed inset-0 z-50' : 'h-[calc(100vh-120px)] min-h-[600px]'
         )}
       >
         <input type="file" ref={fileInputRef} accept=".json" className="hidden" onChange={handleFileImport} />
