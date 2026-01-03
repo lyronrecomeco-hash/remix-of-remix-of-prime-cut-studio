@@ -152,31 +152,16 @@ export const MinimalToolbar = memo(({
         )}
       </Panel>
 
-      {/* Top Center - Add Component */}
+      {/* Top Center - Genesis Flow Title */}
       <Panel position="top-center">
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 px-4 py-2 bg-card/80 backdrop-blur-xl rounded-xl border shadow-sm"
         >
-          <Button
-            onClick={onAddComponent}
-            size="sm"
-            className="gap-2 h-9 shadow-lg bg-card/95 backdrop-blur-xl border text-foreground hover:bg-muted"
-            variant="ghost"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Adicionar</span>
-          </Button>
-          
-          <Button
-            onClick={onOpenLuna}
-            size="sm"
-            className="gap-2 h-9 shadow-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span className="hidden sm:inline">Luna IA</span>
-          </Button>
+          <span className="font-bold text-lg bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent">
+            Genesis Flow
+          </span>
         </motion.div>
       </Panel>
 

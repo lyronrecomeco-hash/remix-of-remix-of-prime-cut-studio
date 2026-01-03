@@ -474,8 +474,8 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
                   <GitBranch className="w-7 h-7 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-2xl flex items-center gap-3">
-                    Flow Builder
+                <CardTitle className="text-2xl flex items-center gap-3">
+                    Genesis Flow
                     <Badge variant="secondary" className="text-xs">Pro</Badge>
                   </CardTitle>
                   <CardDescription className="text-sm mt-1">

@@ -29,22 +29,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 const creditPackages = [
-  { id: 1, credits: 100, price: 19.90, popular: false, bonus: 0, perCredit: 0.199 },
-  { id: 2, credits: 500, price: 79.90, popular: true, bonus: 50, perCredit: 0.145 },
-  { id: 3, credits: 1000, price: 149.90, popular: false, bonus: 150, perCredit: 0.130 },
-  { id: 4, credits: 5000, price: 599.90, popular: false, bonus: 1000, perCredit: 0.100 },
+  { id: 1, credits: 100, price: 9.90, popular: false, bonus: 0, perCredit: 0.099 },
+  { id: 2, credits: 500, price: 39.90, popular: true, bonus: 50, perCredit: 0.073 },
+  { id: 3, credits: 1500, price: 99.90, popular: false, bonus: 200, perCredit: 0.059 },
+  { id: 4, credits: 5000, price: 249.90, popular: false, bonus: 1000, perCredit: 0.042 },
 ];
 
 const plans = [
   {
     id: 'starter',
     name: 'Starter',
-    price: 97,
+    price: 47,
     description: 'Para quem está começando',
     features: [
-      { text: '3 instâncias WhatsApp', included: true },
-      { text: '10 fluxos de automação', included: true },
-      { text: '500 créditos/mês', included: true },
+      { text: '2 instâncias WhatsApp', included: true },
+      { text: '5 fluxos de automação', included: true },
+      { text: '300 créditos/mês', included: true },
       { text: 'Suporte por email', included: true },
       { text: 'API Access', included: false },
       { text: 'White-label', included: false },
@@ -57,12 +57,12 @@ const plans = [
   {
     id: 'professional',
     name: 'Professional',
-    price: 197,
+    price: 97,
     description: 'Para negócios em crescimento',
     features: [
-      { text: '10 instâncias WhatsApp', included: true },
-      { text: '50 fluxos de automação', included: true },
-      { text: '2.000 créditos/mês', included: true },
+      { text: '5 instâncias WhatsApp', included: true },
+      { text: '25 fluxos de automação', included: true },
+      { text: '1.000 créditos/mês', included: true },
       { text: 'Suporte prioritário', included: true },
       { text: 'API Access', included: true },
       { text: 'White-label', included: false },
@@ -76,12 +76,12 @@ const plans = [
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 497,
+    price: 247,
     description: 'Solução completa para empresas',
     features: [
       { text: 'Instâncias ilimitadas', included: true },
       { text: 'Fluxos ilimitados', included: true },
-      { text: '10.000 créditos/mês', included: true },
+      { text: '5.000 créditos/mês', included: true },
       { text: 'Suporte 24/7 dedicado', included: true },
       { text: 'API Access completo', included: true },
       { text: 'White-label + Gerente', included: true },

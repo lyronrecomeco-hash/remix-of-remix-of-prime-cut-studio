@@ -110,46 +110,46 @@ export function InstancePanel({ instance, onBack }: InstancePanelProps) {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-                    <Smartphone className="w-6 h-6 text-green-500" />
+                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+                    <Smartphone className="w-6 h-6 text-muted-foreground" />
                   </div>
-                  <CheckCircle2 className="w-4 h-4 text-green-500 absolute -bottom-1 -right-1" />
                 </div>
                 <div>
-                  <p className="text-green-500 font-semibold text-sm">conectado</p>
+                  <p className="text-muted-foreground font-semibold text-sm">Aguardando conexão</p>
                   <p className="text-sm text-muted-foreground">Pushname: <span className="text-foreground">{instance.name}</span></p>
                   <p className="text-sm text-muted-foreground">
-                    Número conectado: <span className="text-foreground">{instance.phone_number || 'Não disponível'}</span>
+                    Número: <span className="text-foreground">{instance.phone_number || 'Não conectado'}</span>
                   </p>
                 </div>
               </div>
+            </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => handleAction('Pausar')}>
-                  <Pause className="w-4 h-4" />
-                  Pausar a Instância
-                </Button>
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => handleAction('Reiniciar')}>
-                  <RefreshCw className="w-4 h-4" />
-                  Reiniciar e Atualizar
-                </Button>
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => handleAction('Exportar contatos')}>
-                  <Download className="w-4 h-4" />
-                  Exportar contatos
-                </Button>
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => handleAction('Exportar chats')}>
-                  <Download className="w-4 h-4" />
-                  Exportar chats
-                </Button>
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => handleAction('Histórico')}>
-                  <FileText className="w-4 h-4" />
-                  Histórico de ativação
-                </Button>
-                <Button variant="outline" size="sm" className="gap-2 opacity-50 cursor-not-allowed" disabled>
-                  <FileText className="w-4 h-4" />
-                  Documentação
-                </Button>
-              </div>
+            {/* Action Buttons - Better organized */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-4">
+              <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Pausar')}>
+                <Pause className="w-4 h-4" />
+                Pausar
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Reiniciar')}>
+                <RefreshCw className="w-4 h-4" />
+                Reiniciar
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Exportar contatos')}>
+                <Download className="w-4 h-4" />
+                Contatos
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Exportar chats')}>
+                <Download className="w-4 h-4" />
+                Chats
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Histórico')}>
+                <FileText className="w-4 h-4" />
+                Histórico
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2 justify-start opacity-50" disabled>
+                <FileText className="w-4 h-4" />
+                Docs
+              </Button>
             </div>
 
             <p className="text-xs text-muted-foreground mt-4">
@@ -307,11 +307,11 @@ export function InstancePanel({ instance, onBack }: InstancePanelProps) {
                     <Lock className="w-4 h-4 text-muted-foreground" />
                   </div>
                   <CardContent className="pt-6">
-                    <div className="h-10 mb-3 flex items-center">
+                    <div className="h-14 mb-3 flex items-center">
                       <img 
                         src={integration.logo} 
                         alt={integration.name} 
-                        className="h-8 w-auto object-contain max-w-[120px]"
+                        className="h-12 w-auto object-contain max-w-[140px]"
                       />
                     </div>
                     <h4 className="font-semibold">{integration.name}</h4>

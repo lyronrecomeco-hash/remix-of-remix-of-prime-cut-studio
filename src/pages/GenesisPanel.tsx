@@ -345,77 +345,89 @@ export default function GenesisPanel() {
   const shouldHideSidebar = activeTab === 'flows' && isEditingFlow;
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar Desktop */}
-      <aside className={cn("hidden lg:flex lg:flex-col w-72 border-r bg-card/50 backdrop-blur-sm transition-all duration-300", shouldHideSidebar && "lg:hidden")}>
-        {/* Logo */}
-        <div className="flex items-center gap-3 p-5 border-b">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-            <Zap className="w-6 h-6 text-primary-foreground" />
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <header className="h-14 border-b bg-card/50 backdrop-blur-sm flex items-center justify-between px-4">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
+            
+            {/* Logo for desktop */}
+            <div className="hidden lg:flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+                <Zap className="w-4 h-4 text-primary-foreground" />
+              </div>
+              <span className="font-bold">Genesis Hub</span>
+            </div>
+            
+            <h2 className="font-semibold capitalize lg:ml-4">
+              {navItems.find(i => i.id === activeTab)?.label || 'Dashboard'}
+            </h2>
           </div>
-          <div>
-            <h1 className="font-bold text-lg">Genesis Hub</h1>
-            <p className="text-xs text-muted-foreground">v1.0.0</p>
+
+          <div className="flex items-center gap-2">
+            {/* Bonus Badge */}
+            <Badge variant="secondary" className="gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-600 border-amber-500/20 hidden sm:flex">
+              <Gift className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">300 créditos para conta nova!</span>
+            </Badge>
+
+            <Button variant="ghost" size="icon">
+              <Search className="w-5 h-5" />
+            </Button>
+            
+            {/* Notifications Panel */}
+            <NotificationsPanel />
+            
+            {/* User Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={genesisUser?.avatar_url} />
+                    <AvatarFallback className="text-xs">{genesisUser?.name?.charAt(0) || 'U'}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 bg-popover">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">{genesisUser?.name}</p>
+                    <p className="text-xs text-muted-foreground">{genesisUser?.email}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Configurações
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  Ajuda
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </div>
+        </header>
 
-        {/* Nav */}
-        <ScrollArea className="flex-1 p-4">
-          <nav className="space-y-1.5">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-                  activeTab === item.id 
-                    ? "bg-primary text-primary-foreground" 
-                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <item.icon className="w-5 h-5" />
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        </ScrollArea>
-
-        {/* User */}
-        <div className="p-4 border-t">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={genesisUser?.avatar_url} />
-                  <AvatarFallback>{genesisUser?.name?.charAt(0) || 'U'}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 text-left">
-                  <p className="text-sm font-medium truncate">{genesisUser?.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{genesisUser?.email}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-popover">
-              <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Settings className="w-4 h-4 mr-2" />
-                Configurações
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <HelpCircle className="w-4 h-4 mr-2" />
-                Ajuda
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-                <LogOut className="w-4 h-4 mr-2" />
-                Sair
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-4 md:p-6 pb-24 lg:pb-6">
+          {renderContent()}
         </div>
-      </aside>
+      </main>
 
       {/* Mobile Sidebar */}
       <AnimatePresence>
@@ -470,45 +482,61 @@ export default function GenesisPanel() {
         )}
       </AnimatePresence>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="h-16 border-b bg-card/50 backdrop-blur-sm flex items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="w-5 h-5" />
-            </Button>
-            <h2 className="font-semibold capitalize">
-              {navItems.find(i => i.id === activeTab)?.label || 'Dashboard'}
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Bonus Badge */}
-            <Badge variant="secondary" className="gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
-              <Gift className="w-3.5 h-3.5" />
-              <span className="text-xs font-medium">300 créditos para conta nova!</span>
-            </Badge>
-
-            <Button variant="ghost" size="icon">
-              <Search className="w-5 h-5" />
-            </Button>
-            
-            {/* Notifications Panel */}
-            <NotificationsPanel />
-          </div>
-        </header>
-
-        {/* Content */}
-        <div className="flex-1 overflow-auto p-4 md:p-6">
-          {renderContent()}
+      {/* MacOS Style Dock - Desktop */}
+      <motion.div 
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+        className={cn(
+          "hidden lg:flex fixed bottom-4 left-1/2 -translate-x-1/2 z-50",
+          shouldHideSidebar && "lg:hidden"
+        )}
+      >
+        <div className="flex items-end gap-1.5 px-3 py-2 bg-card/80 backdrop-blur-xl border rounded-2xl shadow-2xl">
+          {navItems.map((item, index) => {
+            const isActive = activeTab === item.id;
+            return (
+              <motion.button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={cn(
+                  "relative flex flex-col items-center justify-center rounded-xl transition-all duration-200 group",
+                  isActive ? "bg-primary/10" : "hover:bg-muted"
+                )}
+                whileHover={{ scale: 1.15, y: -8 }}
+                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 + index * 0.05 }}
+              >
+                <div className={cn(
+                  "w-12 h-12 flex items-center justify-center rounded-xl transition-colors",
+                  isActive 
+                    ? "bg-gradient-to-br from-primary to-primary/60 text-primary-foreground shadow-lg shadow-primary/30" 
+                    : "text-muted-foreground group-hover:text-foreground"
+                )}>
+                  <item.icon className="w-5 h-5" />
+                </div>
+                
+                {/* Active indicator dot */}
+                {isActive && (
+                  <motion.div 
+                    layoutId="dock-indicator"
+                    className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary"
+                  />
+                )}
+                
+                {/* Tooltip on hover */}
+                <div className="absolute -top-9 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  <div className="px-2 py-1 bg-popover border rounded-lg shadow-lg text-xs font-medium whitespace-nowrap">
+                    {item.label}
+                  </div>
+                </div>
+              </motion.button>
+            );
+          })}
         </div>
-      </main>
+      </motion.div>
 
       {/* Welcome Modal for first-time users */}
       <WelcomeModal 

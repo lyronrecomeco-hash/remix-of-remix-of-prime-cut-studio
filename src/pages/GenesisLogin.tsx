@@ -185,14 +185,10 @@ export default function GenesisLogin() {
     }
   };
 
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+
   const handleGoogleSignIn = async () => {
-    setIsSubmitting(true);
-    const { error } = await signInWithGoogle();
-    if (error) {
-      toast.error('Erro ao fazer login com Google');
-      setIsSubmitting(false);
-    }
-    // Don't set isSubmitting to false here - OAuth redirects
+    setShowGoogleModal(true);
   };
 
   const handleGoogleComplete = async (e: React.FormEvent) => {
@@ -774,6 +770,43 @@ export default function GenesisLogin() {
           </div>
         </div>
       </div>
+
+      {/* Google Implementation Modal */}
+      <AnimatePresence>
+        {showGoogleModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowGoogleModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card border rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Chrome className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg">Em Implementação</h3>
+                  <p className="text-sm text-muted-foreground">Login com Google</p>
+                </div>
+              </div>
+              <p className="text-muted-foreground mb-6">
+                O login com Google está em desenvolvimento e estará disponível em breve. Por enquanto, use o cadastro com email e senha.
+              </p>
+              <Button className="w-full" onClick={() => setShowGoogleModal(false)}>
+                Entendido
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
