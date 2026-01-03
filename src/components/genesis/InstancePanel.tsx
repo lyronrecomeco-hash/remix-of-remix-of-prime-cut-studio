@@ -307,11 +307,11 @@ export function InstancePanel({ instance, onBack }: InstancePanelProps) {
                     <Lock className="w-4 h-4 text-muted-foreground" />
                   </div>
                   <CardContent className="pt-6">
-                    <div className="h-14 mb-3 flex items-center">
+                    <div className="h-16 mb-3 flex items-center">
                       <img 
                         src={integration.logo} 
                         alt={integration.name} 
-                        className="h-12 w-auto object-contain max-w-[140px]"
+                        className="h-14 w-auto object-contain max-w-[160px]"
                       />
                     </div>
                     <h4 className="font-semibold">{integration.name}</h4>

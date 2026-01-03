@@ -461,66 +461,57 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
     );
   }
 
-  // List view when no rule selected - IMPROVED CARDS
+  // List view when no rule selected - IMPROVED COMPACT CARDS
   if (!selectedRule) {
     return (
-      <div className="space-y-6">
-        {/* Hero Header */}
-        <Card className="border shadow-xl bg-card overflow-hidden relative">
-          <CardHeader className="pb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <GitBranch className="w-7 h-7 text-primary" />
+      <div className="space-y-5">
+        {/* Compact Hero Header */}
+        <Card className="border shadow-lg bg-card overflow-hidden">
+          <CardContent className="p-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <GitBranch className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                <CardTitle className="text-2xl flex items-center gap-3">
+                  <h2 className="text-xl font-bold flex items-center gap-2">
                     Genesis Flow
-                    <Badge variant="secondary" className="text-xs">Pro</Badge>
-                  </CardTitle>
-                  <CardDescription className="text-sm mt-1">
-                    Crie automações visuais poderosas para WhatsApp
-                  </CardDescription>
+                    <Badge variant="secondary" className="text-[10px]">Pro</Badge>
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Automações visuais para WhatsApp
+                  </p>
                 </div>
               </div>
-              <div className="flex gap-3">
-                <Button variant="outline" size="default" className="gap-2" onClick={() => setIsLunaOpen(true)}>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsLunaOpen(true)}>
                   <Sparkles className="w-4 h-4" />
                   Luna IA
                 </Button>
-                <Button onClick={() => setIsCreateDialogOpen(true)} size="default" className="gap-2">
+                <Button onClick={() => setIsCreateDialogOpen(true)} size="sm" className="gap-2">
                   <Plus className="w-4 h-4" />
                   Novo Fluxo
                 </Button>
               </div>
             </div>
-          </CardHeader>
 
-          {/* Stats Row */}
-          <CardContent className="pb-6">
-            <div className="grid grid-cols-4 gap-4">
+            {/* Compact Stats Row */}
+            <div className="grid grid-cols-4 gap-3 mt-4">
               {[
-                { icon: GitBranch, label: 'Total de Fluxos', value: rules.length },
+                { icon: GitBranch, label: 'Fluxos', value: rules.length },
                 { icon: CheckCircle2, label: 'Ativos', value: rules.filter(r => r.is_active).length },
-                { icon: Activity, label: 'Execuções Hoje', value: rules.reduce((acc, r) => acc + (r.execution_count || 0), 0) },
-                { icon: TrendingUp, label: 'Taxa de Sucesso', value: '98%' }
+                { icon: Activity, label: 'Execuções', value: rules.reduce((acc, r) => acc + (r.execution_count || 0), 0) },
+                { icon: TrendingUp, label: 'Sucesso', value: '98%' }
               ].map((stat, idx) => (
                 <motion.div
                   key={idx}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="p-4 rounded-xl bg-muted/50 border"
+                  transition={{ delay: idx * 0.05 }}
+                  className="p-3 rounded-lg bg-muted/40 border text-center"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <stat.icon className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-xl font-bold">{stat.value}</p>
-                      <p className="text-xs text-muted-foreground">{stat.label}</p>
-                    </div>
-                  </div>
+                  <p className="text-lg font-bold">{stat.value}</p>
+                  <p className="text-[10px] text-muted-foreground">{stat.label}</p>
                 </motion.div>
               ))}
             </div>
@@ -529,14 +520,14 @@ const FlowBuilderContent = ({ onBack, onEditingChange }: WAFlowBuilderProps) => 
 
         {/* Flows Grid */}
         {rules.length === 0 ? (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-muted/50 flex items-center justify-center">
-              <Sparkles className="w-10 h-10 text-primary" />
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-12">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted/50 flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="font-semibold text-xl mb-2">Comece a automatizar</h3>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">Crie seu primeiro fluxo de automação visual para responder mensagens automaticamente</p>
-            <Button onClick={() => setIsCreateDialogOpen(true)} size="lg" className="gap-2">
-              <Plus className="w-5 h-5" />
+            <h3 className="font-semibold text-lg mb-2">Comece a automatizar</h3>
+            <p className="text-muted-foreground mb-4 max-w-sm mx-auto text-sm">Crie seu primeiro fluxo de automação visual</p>
+            <Button onClick={() => setIsCreateDialogOpen(true)} size="default" className="gap-2">
+              <Plus className="w-4 h-4" />
               Criar Primeiro Fluxo
             </Button>
           </motion.div>

@@ -462,8 +462,8 @@ export function GenesisChatbots({ instances }: GenesisChatbotsProps) {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-xl max-h-[90vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Bot className="w-5 h-5 text-primary" />
               {editingChatbot ? 'Editar Chatbot' : 'Novo Chatbot'}
@@ -473,7 +473,7 @@ export function GenesisChatbots({ instances }: GenesisChatbotsProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="max-h-[60vh] pr-4 [&>[data-radix-scroll-area-viewport]]:!overflow-visible [&_[data-radix-scroll-area-scrollbar]]:opacity-0">
+          <div className="flex-1 overflow-y-auto pr-2 -mr-2">
             <div className="space-y-6 py-2">
               {/* Name */}
               <div className="space-y-2">
@@ -635,9 +635,9 @@ export function GenesisChatbots({ instances }: GenesisChatbotsProps) {
                 />
               </div>
             </div>
-          </ScrollArea>
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 pt-4 border-t mt-4">
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancelar
             </Button>
@@ -649,9 +649,9 @@ export function GenesisChatbots({ instances }: GenesisChatbotsProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Luna AI Builder Dialog - Genesis Theme */}
-      <Dialog open={isLunaOpen} onOpenChange={setIsLunaOpen}>
-        <DialogContent className="max-w-lg bg-gradient-to-b from-background to-background/95">
+      {/* Luna AI Builder Dialog - Genesis Theme - Professional Real-time Build */}
+      <Dialog open={isLunaOpen} onOpenChange={(open) => !isLunaBuilding && setIsLunaOpen(open)}>
+        <DialogContent className="max-w-2xl bg-gradient-to-b from-background to-background/95">
           <DialogHeader className="border-b border-border pb-4 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 -mx-6 -mt-6 px-6 pt-6 rounded-t-lg">
             <DialogTitle className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center ring-2 ring-primary/30 overflow-hidden">
@@ -665,53 +665,127 @@ export function GenesisChatbots({ instances }: GenesisChatbotsProps) {
                   </Badge>
                 </span>
                 <p className="text-sm font-normal text-muted-foreground">
-                  Assistente de criação de chatbots
+                  Assistente inteligente de chatbots
                 </p>
               </div>
             </DialogTitle>
           </DialogHeader>
 
-          <div className="py-4">
+          <div className="py-6">
             {isLunaBuilding ? (
-              <div className="text-center py-8">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                  className="w-16 h-16 mx-auto mb-4"
-                >
-                  <img src={lunaAvatar} alt="Luna" className="w-full h-full rounded-full" />
-                </motion.div>
-                <motion.div
-                  key={lunaBuildStep}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-2"
-                >
-                  <p className="text-sm font-medium">{lunaBuildStep}</p>
+              <div className="space-y-6">
+                {/* Luna Avatar Animation */}
+                <div className="flex items-center justify-center gap-4">
                   <motion.div
-                    className="w-48 h-1 mx-auto bg-muted rounded-full overflow-hidden"
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="w-20 h-20 rounded-full overflow-hidden ring-4 ring-primary/30"
                   >
+                    <img src={lunaAvatar} alt="Luna" className="w-full h-full object-cover" />
+                  </motion.div>
+                </div>
+                
+                {/* Building Status */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center space-y-3"
+                >
+                  <p className="text-lg font-semibold text-primary">Luna está construindo seu chatbot...</p>
+                  <p className="text-sm text-muted-foreground">Isso pode levar até 5 minutos para um resultado perfeito</p>
+                </motion.div>
+
+                {/* Real-time building steps with typewriter */}
+                <div className="bg-muted/30 rounded-xl p-4 border min-h-[200px] max-h-[300px] overflow-y-auto">
+                  <div className="space-y-3">
+                    {[
+                      { step: 'Analisando sua descrição...', icon: '🔍' },
+                      { step: 'Identificando gatilhos ideais...', icon: '🎯' },
+                      { step: 'Definindo personalidade do bot...', icon: '🤖' },
+                      { step: 'Criando respostas inteligentes...', icon: '💬' },
+                      { step: 'Configurando inteligência artificial...', icon: '🧠' },
+                    ].map((item, idx) => {
+                      const stepIndex = [
+                        'Analisando sua descrição...',
+                        'Identificando gatilhos ideais...',
+                        'Gerando respostas inteligentes...',
+                        'Configurando personalidade do bot...',
+                        'Finalizando chatbot...',
+                      ].indexOf(lunaBuildStep);
+                      const isComplete = idx < stepIndex;
+                      const isActive = idx === stepIndex;
+                      
+                      return (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: isComplete || isActive ? 1 : 0.3, x: 0 }}
+                          transition={{ delay: idx * 0.2 }}
+                          className={`flex items-center gap-3 p-2 rounded-lg ${isActive ? 'bg-primary/10' : ''}`}
+                        >
+                          <span className="text-lg">{item.icon}</span>
+                          <span className={`text-sm ${isComplete ? 'text-green-500 line-through' : isActive ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                            {item.step}
+                          </span>
+                          {isComplete && <span className="text-green-500 ml-auto">✓</span>}
+                          {isActive && (
+                            <motion.div
+                              animate={{ opacity: [1, 0.5, 1] }}
+                              transition={{ duration: 0.8, repeat: Infinity }}
+                              className="ml-auto w-2 h-2 rounded-full bg-primary"
+                            />
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Progresso</span>
+                    <span>{Math.round(([
+                      'Analisando sua descrição...',
+                      'Identificando gatilhos ideais...',
+                      'Gerando respostas inteligentes...',
+                      'Configurando personalidade do bot...',
+                      'Finalizando chatbot...',
+                    ].indexOf(lunaBuildStep) + 1) / 5 * 100)}%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <motion.div
                       className="h-full bg-gradient-to-r from-primary to-primary/60"
                       initial={{ width: 0 }}
-                      animate={{ width: '100%' }}
-                      transition={{ duration: 4, repeat: Infinity }}
+                      animate={{ 
+                        width: `${([
+                          'Analisando sua descrição...',
+                          'Identificando gatilhos ideais...',
+                          'Gerando respostas inteligentes...',
+                          'Configurando personalidade do bot...',
+                          'Finalizando chatbot...',
+                        ].indexOf(lunaBuildStep) + 1) / 5 * 100}%` 
+                      }}
+                      transition={{ duration: 0.5 }}
                     />
-                  </motion.div>
-                </motion.div>
+                  </div>
+                </div>
               </div>
             ) : (
               <>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Descreva o que você precisa e a Luna vai configurar automaticamente seu chatbot com IA.
+                  Descreva o que você precisa. A Luna vai analisar, configurar gatilhos, criar respostas inteligentes e finalizar seu chatbot com precisão profissional.
                 </p>
                 <Textarea
                   value={lunaPrompt}
                   onChange={(e) => setLunaPrompt(e.target.value)}
-                  placeholder="Ex: Quero um chatbot para atender clientes de uma pizzaria, respondendo sobre cardápio, preços e horários de funcionamento..."
-                  rows={5}
+                  placeholder="Ex: Quero um chatbot para atender clientes de uma pizzaria. Ele deve responder sobre cardápio, preços, horários de funcionamento, promoções e formas de pagamento. Precisa ser amigável e profissional..."
+                  rows={6}
                   className="resize-none"
                 />
+                <p className="text-xs text-muted-foreground mt-2">
+                  💡 Quanto mais detalhes você fornecer, melhor será o resultado!
+                </p>
               </>
             )}
           </div>
@@ -721,7 +795,7 @@ export function GenesisChatbots({ instances }: GenesisChatbotsProps) {
               <Button variant="outline" onClick={() => setIsLunaOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={buildWithLuna} className="gap-2 bg-gradient-to-r from-primary to-primary/80">
+              <Button onClick={buildWithLuna} className="gap-2 bg-gradient-to-r from-primary to-primary/80" disabled={!lunaPrompt.trim()}>
                 <Sparkles className="w-4 h-4" />
                 Criar com Luna
               </Button>

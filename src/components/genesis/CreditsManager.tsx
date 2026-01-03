@@ -104,8 +104,10 @@ interface Transaction {
 export function CreditsManager() {
   const { credits, subscription, genesisUser } = useGenesisAuth();
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
+  const [showPlanModal, setShowPlanModal] = useState(false);
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -134,47 +136,47 @@ export function CreditsManager() {
   const usagePercentage = totalCredits > 0 ? (usedCredits / totalCredits) * 100 : 0;
 
   return (
-    <div className="space-y-8">
-      {/* Header with Current Balance */}
+    <div className="space-y-6">
+      {/* Header Cards - Compact */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+        className="grid grid-cols-1 md:grid-cols-3 gap-4"
       >
         {/* Balance Card */}
-        <Card className="lg:col-span-2 relative overflow-hidden">
+        <Card className="md:col-span-2 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
-          <CardContent className="pt-6 relative z-10">
-            <div className="flex items-start justify-between">
+          <CardContent className="pt-5 pb-5 relative z-10">
+            <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Saldo Disponível</p>
                 <motion.div
                   initial={{ scale: 0.5, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
-                  className="flex items-baseline gap-3 mt-2"
+                  className="flex items-baseline gap-2 mt-1"
                 >
-                  <span className="text-5xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                  <span className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                     {availableCredits.toLocaleString()}
                   </span>
-                  <span className="text-lg text-muted-foreground">créditos</span>
+                  <span className="text-muted-foreground">créditos</span>
                 </motion.div>
                 
-                <div className="mt-6 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
+                <div className="mt-4 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Utilizados este mês</span>
                     <span className="font-medium">{usedCredits.toLocaleString()}</span>
                   </div>
-                  <Progress value={usagePercentage} className="h-2" />
+                  <Progress value={usagePercentage} className="h-1.5" />
                 </div>
               </div>
               
               <motion.div
                 animate={{ rotate: [0, 10, -10, 0] }}
                 transition={{ duration: 4, repeat: Infinity }}
-                className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center"
+                className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center"
               >
-                <Sparkles className="w-8 h-8 text-primary-foreground" />
+                <Sparkles className="w-7 h-7 text-primary-foreground" />
               </motion.div>
             </div>
           </CardContent>
@@ -183,18 +185,18 @@ export function CreditsManager() {
         {/* Current Plan Card */}
         <Card className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-amber-500/10" />
-          <CardContent className="pt-6 relative z-10 flex flex-col h-full">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-                <Crown className="w-6 h-6 text-white" />
+          <CardContent className="pt-5 pb-5 relative z-10 h-full flex flex-col">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                <Crown className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Plano Atual</p>
-                <p className="font-bold text-lg capitalize">{currentPlan}</p>
+                <p className="text-xs text-muted-foreground">Plano Atual</p>
+                <p className="font-bold capitalize">{currentPlan}</p>
               </div>
             </div>
             <div className="flex-1" />
-            <Button variant="outline" className="w-full gap-2 mt-4">
+            <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setShowPlanModal(true)}>
               <TrendingUp className="w-4 h-4" />
               Fazer Upgrade
             </Button>
@@ -203,94 +205,86 @@ export function CreditsManager() {
       </motion.div>
 
       {/* Tabs */}
-      <Tabs defaultValue="credits" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[500px] h-12">
-          <TabsTrigger value="credits" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <Package className="w-4 h-4" />
-            Comprar Créditos
+      <Tabs defaultValue="credits" className="space-y-5">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[400px] h-10">
+          <TabsTrigger value="credits" className="gap-1.5 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Package className="w-3.5 h-3.5" />
+            Créditos
           </TabsTrigger>
-          <TabsTrigger value="plans" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <Crown className="w-4 h-4" />
+          <TabsTrigger value="plans" className="gap-1.5 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Crown className="w-3.5 h-3.5" />
             Planos
           </TabsTrigger>
-          <TabsTrigger value="history" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-            <History className="w-4 h-4" />
+          <TabsTrigger value="history" className="gap-1.5 text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <History className="w-3.5 h-3.5" />
             Histórico
           </TabsTrigger>
         </TabsList>
 
         {/* Credits Tab */}
-        <TabsContent value="credits" className="space-y-6">
+        <TabsContent value="credits" className="space-y-5">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+            className="grid grid-cols-2 lg:grid-cols-4 gap-3"
           >
             {creditPackages.map((pkg, index) => (
               <motion.div
                 key={pkg.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -4 }}
+                transition={{ delay: index * 0.05 }}
+                whileHover={{ y: -2 }}
               >
                 <Card 
                   className={cn(
-                    "cursor-pointer transition-all duration-300 relative h-full",
+                    "cursor-pointer transition-all duration-300 relative",
                     selectedPackage === pkg.id 
-                      ? "border-primary ring-2 ring-primary/20 shadow-lg shadow-primary/10" 
-                      : "hover:border-primary/50 hover:shadow-md",
+                      ? "border-primary ring-2 ring-primary/20" 
+                      : "hover:border-primary/50",
                     pkg.popular && "border-primary/50"
                   )}
                   onClick={() => setSelectedPackage(pkg.id)}
                 >
                   {pkg.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-primary text-primary-foreground shadow-lg">
-                        Mais vendido
+                    <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
+                      <Badge className="bg-primary text-primary-foreground text-[10px] px-2">
+                        Popular
                       </Badge>
                     </div>
                   )}
                   
-                  <CardContent className="pt-8 pb-6 flex flex-col items-center">
-                    <motion.div
-                      className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4"
-                      animate={selectedPackage === pkg.id ? { scale: [1, 1.1, 1] } : {}}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <CreditCard className="w-7 h-7 text-primary" />
-                    </motion.div>
-                    
-                    <div className="text-3xl font-bold text-center">
+                  <CardContent className="pt-6 pb-4 px-3 flex flex-col items-center">
+                    <div className="text-2xl font-bold">
                       {pkg.credits.toLocaleString()}
                     </div>
-                    <p className="text-sm text-muted-foreground">créditos</p>
+                    <p className="text-[10px] text-muted-foreground">créditos</p>
                     
                     {pkg.bonus > 0 && (
-                      <Badge variant="secondary" className="mt-3 gap-1 bg-green-500/10 text-green-600 border-green-500/20">
-                        <Sparkles className="w-3 h-3" />
-                        +{pkg.bonus} bônus
+                      <Badge variant="secondary" className="mt-2 text-[10px] gap-1 bg-green-500/10 text-green-600">
+                        <Sparkles className="w-2.5 h-2.5" />
+                        +{pkg.bonus}
                       </Badge>
                     )}
                     
-                    <div className="mt-4 text-center">
-                      <div className="text-2xl font-bold">
+                    <div className="mt-3 text-center">
+                      <div className="text-lg font-bold">
                         R$ {pkg.price.toFixed(2).replace('.', ',')}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        R$ {pkg.perCredit.toFixed(3).replace('.', ',')} por crédito
+                      <p className="text-[9px] text-muted-foreground">
+                        R$ {pkg.perCredit.toFixed(3).replace('.', ',')}/cred
                       </p>
                     </div>
                     
                     <div className={cn(
-                      "w-full mt-4 py-2 rounded-lg text-center text-sm font-medium transition-colors",
+                      "w-full mt-3 py-1.5 rounded-lg text-center text-[10px] font-medium transition-colors",
                       selectedPackage === pkg.id 
                         ? "bg-primary text-primary-foreground" 
                         : "bg-muted text-muted-foreground"
                     )}>
                       {selectedPackage === pkg.id ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <Check className="w-4 h-4" />
+                        <span className="flex items-center justify-center gap-1">
+                          <Check className="w-3 h-3" />
                           Selecionado
                         </span>
                       ) : 'Selecionar'}
@@ -307,18 +301,18 @@ export function CreditsManager() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-muted/50 rounded-xl border"
+                className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-muted/50 rounded-xl border"
               >
                 <div className="text-center sm:text-left">
-                  <p className="font-semibold">
+                  <p className="font-semibold text-sm">
                     Total: {(creditPackages.find(p => p.id === selectedPackage)?.credits || 0) + (creditPackages.find(p => p.id === selectedPackage)?.bonus || 0)} créditos
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Pagamento seguro via Pix, cartão ou boleto
                   </p>
                 </div>
-                <Button size="lg" className="gap-2 min-w-[200px]">
-                  <Zap className="w-5 h-5" />
+                <Button size="sm" className="gap-2">
+                  <Zap className="w-4 h-4" />
                   Finalizar Compra
                 </Button>
               </motion.div>
@@ -326,12 +320,12 @@ export function CreditsManager() {
           </AnimatePresence>
         </TabsContent>
 
-        {/* Plans Tab */}
+        {/* Plans Tab - Compact */}
         <TabsContent value="plans">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+            className="grid grid-cols-1 md:grid-cols-3 gap-3"
           >
             {plans.map((plan, index) => {
               const PlanIcon = plan.icon;
@@ -342,8 +336,8 @@ export function CreditsManager() {
                   key={plan.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ y: -4 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ y: -2 }}
                 >
                   <Card className={cn(
                     "relative h-full transition-all duration-300",
@@ -351,41 +345,45 @@ export function CreditsManager() {
                     isCurrentPlan && "ring-2 ring-primary"
                   )}>
                     {plan.popular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                        <Badge className="bg-primary text-primary-foreground shadow-lg px-4">
-                          <Star className="w-3 h-3 mr-1" />
+                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
+                        <Badge className="bg-primary text-primary-foreground text-[10px] px-2">
+                          <Star className="w-2.5 h-2.5 mr-1" />
                           Recomendado
                         </Badge>
                       </div>
                     )}
                     
-                    <CardHeader className={cn("pb-4", plan.popular && "pt-8")}>
-                      <motion.div
-                        className={cn(
-                          "w-14 h-14 rounded-2xl flex items-center justify-center mb-4 bg-gradient-to-br",
-                          plan.color
-                        )}
-                        whileHover={{ rotate: 10, scale: 1.05 }}
-                      >
-                        <PlanIcon className="w-7 h-7 text-white" />
-                      </motion.div>
-                      <CardTitle className="text-xl">{plan.name}</CardTitle>
-                      <CardDescription>{plan.description}</CardDescription>
+                    <CardHeader className={cn("pb-2 px-4", plan.popular && "pt-6")}>
+                      <div className="flex items-center gap-3">
+                        <motion.div
+                          className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br",
+                            plan.color
+                          )}
+                          whileHover={{ rotate: 10, scale: 1.05 }}
+                        >
+                          <PlanIcon className="w-5 h-5 text-white" />
+                        </motion.div>
+                        <div>
+                          <CardTitle className="text-base">{plan.name}</CardTitle>
+                          <CardDescription className="text-xs">{plan.description}</CardDescription>
+                        </div>
+                      </div>
                     </CardHeader>
                     
-                    <CardContent className="space-y-6">
+                    <CardContent className="space-y-3 px-4 pb-4">
                       <div>
-                        <span className="text-4xl font-bold">R$ {plan.price}</span>
-                        <span className="text-muted-foreground">/mês</span>
+                        <span className="text-2xl font-bold">R$ {plan.price}</span>
+                        <span className="text-xs text-muted-foreground">/mês</span>
                       </div>
                       
-                      <ul className="space-y-3">
+                      <ul className="space-y-1.5">
                         {plan.features.map((feature, featureIndex) => (
-                          <li key={featureIndex} className="flex items-center gap-3 text-sm">
+                          <li key={featureIndex} className="flex items-center gap-2 text-xs">
                             {feature.included ? (
-                              <Check className="w-5 h-5 text-green-500 shrink-0" />
+                              <Check className="w-3.5 h-3.5 text-green-500 shrink-0" />
                             ) : (
-                              <div className="w-5 h-5 rounded-full bg-muted shrink-0" />
+                              <div className="w-3.5 h-3.5 rounded-full bg-muted shrink-0" />
                             )}
                             <span className={cn(!feature.included && "text-muted-foreground")}>
                               {feature.text}
@@ -401,16 +399,17 @@ export function CreditsManager() {
                         )}
                         variant={isCurrentPlan ? "outline" : "default"}
                         disabled={isCurrentPlan}
+                        size="sm"
                       >
                         {isCurrentPlan ? (
-                          <span className="flex items-center gap-2">
-                            <Check className="w-4 h-4" />
+                          <span className="flex items-center gap-1 text-xs">
+                            <Check className="w-3 h-3" />
                             Plano Atual
                           </span>
                         ) : (
-                          <span className="flex items-center gap-2">
+                          <span className="flex items-center gap-1 text-xs">
                             Assinar Agora
-                            <ChevronRight className="w-4 h-4" />
+                            <ChevronRight className="w-3 h-3" />
                           </span>
                         )}
                       </Button>
@@ -421,32 +420,32 @@ export function CreditsManager() {
             })}
           </motion.div>
 
-          {/* Features Comparison */}
+          {/* Features Comparison - Compact */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-8 p-6 bg-muted/30 rounded-xl border"
+            transition={{ delay: 0.2 }}
+            className="mt-4 p-4 bg-muted/30 rounded-xl border"
           >
-            <div className="flex items-center gap-3 mb-4">
-              <Shield className="w-5 h-5 text-primary" />
-              <span className="font-semibold">Todos os planos incluem</span>
+            <div className="flex items-center gap-2 mb-3">
+              <Shield className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-sm">Todos os planos incluem</span>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-green-500" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+              <div className="flex items-center gap-1.5">
+                <Check className="w-3 h-3 text-green-500" />
                 <span>SSL Gratuito</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-green-500" />
+              <div className="flex items-center gap-1.5">
+                <Check className="w-3 h-3 text-green-500" />
                 <span>Backup Diário</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-green-500" />
+              <div className="flex items-center gap-1.5">
+                <Check className="w-3 h-3 text-green-500" />
                 <span>Uptime 99.9%</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-green-500" />
+              <div className="flex items-center gap-1.5">
+                <Check className="w-3 h-3 text-green-500" />
                 <span>Atualizações Grátis</span>
               </div>
             </div>

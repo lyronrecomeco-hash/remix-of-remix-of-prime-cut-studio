@@ -129,8 +129,8 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
         )}
       </motion.div>
 
-      {/* Animated Stats Grid - 4 cards aligned */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Animated Stats Grid - 4 equal cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map((stat, index) => (
           <AnimatedStatCard
             key={stat.label}
@@ -147,14 +147,14 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
       {/* Animated Quick Actions */}
       <div>
         <motion.h2 
-          className="text-lg font-semibold mb-4"
+          className="text-base font-semibold mb-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
           Ações Rápidas
         </motion.h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {quickActions.map((action, index) => (
             <QuickActionCard
               key={action.title}
@@ -168,7 +168,7 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
         </div>
       </div>
 
-      {/* Animated Plan Info */}
+      {/* Animated Plan Info - Compact */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -176,55 +176,55 @@ const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void })
       >
         <Card className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5" />
-          <CardHeader className="relative z-10">
+          <CardContent className="relative z-10 py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <motion.div
-                    animate={{ rotate: [0, 360] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                  >
-                    <Sparkles className="w-5 h-5 text-primary" />
-                  </motion.div>
-                  Seu Plano: 
-                  <span className="text-primary capitalize">{subscription?.plan || 'Free'}</span>
-                </CardTitle>
-                <CardDescription>
-                  {subscription?.plan === 'free' 
-                    ? 'Faça upgrade para desbloquear mais recursos'
-                    : 'Aproveite todos os recursos do seu plano'}
-                </CardDescription>
+              <div className="flex items-center gap-3">
+                <motion.div
+                  animate={{ rotate: [0, 360] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                  className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"
+                >
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </motion.div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">Seu Plano:</span>
+                    <span className="text-primary font-bold capitalize">{subscription?.plan || 'Free'}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {subscription?.plan === 'free' 
+                      ? 'Faça upgrade para mais recursos'
+                      : 'Aproveite todos os recursos'}
+                  </p>
+                </div>
               </div>
-              <Button variant="outline" className="gap-2 group" onClick={() => onNavigate('credits')}>
-                <Crown className="w-4 h-4 group-hover:text-amber-500 transition-colors" />
-                Fazer Upgrade
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="relative z-10">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              <AnimatedPlanFeature 
-                label="Instâncias" 
-                current={realStats.instances} 
-                max={subscription?.max_instances || 1} 
-                delay={800}
-              />
-              <AnimatedPlanFeature 
-                label="Fluxos" 
-                current={realStats.flows} 
-                max={subscription?.max_flows || 5} 
-                delay={900}
-              />
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Créditos</p>
-                <p className="text-lg font-semibold">{realStats.creditsAvailable}</p>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Status</p>
-                <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20">
+              
+              {/* Compact stats row */}
+              <div className="flex items-center gap-4 text-sm">
+                <div className="text-center">
+                  <p className="font-semibold">{realStats.instances}/{subscription?.max_instances || 1}</p>
+                  <p className="text-[10px] text-muted-foreground">Instâncias</p>
+                </div>
+                <div className="w-px h-8 bg-border" />
+                <div className="text-center">
+                  <p className="font-semibold">{realStats.flows}/{subscription?.max_flows || 5}</p>
+                  <p className="text-[10px] text-muted-foreground">Fluxos</p>
+                </div>
+                <div className="w-px h-8 bg-border" />
+                <div className="text-center">
+                  <p className="font-semibold">{realStats.creditsAvailable}</p>
+                  <p className="text-[10px] text-muted-foreground">Créditos</p>
+                </div>
+                <div className="w-px h-8 bg-border hidden sm:block" />
+                <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20 hidden sm:flex">
                   Ativo
                 </Badge>
               </div>
+              
+              <Button variant="outline" size="sm" className="gap-2 group" onClick={() => onNavigate('credits')}>
+                <Crown className="w-4 h-4 group-hover:text-amber-500 transition-colors" />
+                Upgrade
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -482,61 +482,63 @@ export default function GenesisPanel() {
         )}
       </AnimatePresence>
 
-      {/* MacOS Style Dock - Desktop */}
-      <motion.div 
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-        className={cn(
-          "hidden lg:flex fixed bottom-4 left-1/2 -translate-x-1/2 z-50",
-          shouldHideSidebar && "lg:hidden"
+      {/* MacOS Style Dock - Desktop - Centered */}
+      <AnimatePresence>
+        {!shouldHideSidebar && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+            className="hidden lg:flex fixed bottom-4 z-50 w-full justify-center pointer-events-none"
+          >
+            <div className="flex items-end gap-1.5 px-3 py-2 bg-card/80 backdrop-blur-xl border rounded-2xl shadow-2xl pointer-events-auto">
+              {navItems.map((item, index) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <motion.button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={cn(
+                      "relative flex flex-col items-center justify-center rounded-xl transition-all duration-200 group",
+                      isActive ? "bg-primary/10" : "hover:bg-muted"
+                    )}
+                    whileHover={{ scale: 1.15, y: -8 }}
+                    whileTap={{ scale: 0.95 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 + index * 0.05 }}
+                  >
+                    <div className={cn(
+                      "w-12 h-12 flex items-center justify-center rounded-xl transition-colors",
+                      isActive 
+                        ? "bg-gradient-to-br from-primary to-primary/60 text-primary-foreground shadow-lg shadow-primary/30" 
+                        : "text-muted-foreground group-hover:text-foreground"
+                    )}>
+                      <item.icon className="w-5 h-5" />
+                    </div>
+                    
+                    {/* Active indicator dot */}
+                    {isActive && (
+                      <motion.div 
+                        layoutId="dock-indicator"
+                        className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary"
+                      />
+                    )}
+                    
+                    {/* Tooltip on hover */}
+                    <div className="absolute -top-9 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      <div className="px-2 py-1 bg-popover border rounded-lg shadow-lg text-xs font-medium whitespace-nowrap">
+                        {item.label}
+                      </div>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </motion.div>
         )}
-      >
-        <div className="flex items-end gap-1.5 px-3 py-2 bg-card/80 backdrop-blur-xl border rounded-2xl shadow-2xl">
-          {navItems.map((item, index) => {
-            const isActive = activeTab === item.id;
-            return (
-              <motion.button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={cn(
-                  "relative flex flex-col items-center justify-center rounded-xl transition-all duration-200 group",
-                  isActive ? "bg-primary/10" : "hover:bg-muted"
-                )}
-                whileHover={{ scale: 1.15, y: -8 }}
-                whileTap={{ scale: 0.95 }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 + index * 0.05 }}
-              >
-                <div className={cn(
-                  "w-12 h-12 flex items-center justify-center rounded-xl transition-colors",
-                  isActive 
-                    ? "bg-gradient-to-br from-primary to-primary/60 text-primary-foreground shadow-lg shadow-primary/30" 
-                    : "text-muted-foreground group-hover:text-foreground"
-                )}>
-                  <item.icon className="w-5 h-5" />
-                </div>
-                
-                {/* Active indicator dot */}
-                {isActive && (
-                  <motion.div 
-                    layoutId="dock-indicator"
-                    className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-primary"
-                  />
-                )}
-                
-                {/* Tooltip on hover */}
-                <div className="absolute -top-9 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                  <div className="px-2 py-1 bg-popover border rounded-lg shadow-lg text-xs font-medium whitespace-nowrap">
-                    {item.label}
-                  </div>
-                </div>
-              </motion.button>
-            );
-          })}
-        </div>
-      </motion.div>
+      </AnimatePresence>
 
       {/* Welcome Modal for first-time users */}
       <WelcomeModal 
