@@ -73,9 +73,10 @@ const nodeTypes = {
 const defaultEdgeOptions = {
   type: 'smoothstep',
   animated: true,
-  style: { 
+  style: {
     strokeWidth: 3,
-    stroke: 'url(#edge-gradient)'
+    stroke: 'url(#edge-gradient)',
+    filter: 'url(#glow)'
   },
   markerEnd: {
     type: MarkerType.ArrowClosed,
@@ -415,13 +416,44 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     }
   };
 
+  // Validate connections (prevents duplicates/self and enforces 1 edge per yes/no handle)
+  const isValidConnection = useCallback((connection: Connection) => {
+    if (!connection.source || !connection.target) return false;
+    if (connection.source === connection.target) return false;
+
+    // avoid exact duplicates
+    const isDuplicate = edges.some(
+      (e) =>
+        e.source === connection.source &&
+        e.target === connection.target &&
+        e.sourceHandle === connection.sourceHandle &&
+        e.targetHandle === connection.targetHandle,
+    );
+    if (isDuplicate) return false;
+
+    // condition handles: allow only one outgoing for each branch
+    if (connection.sourceHandle === 'yes' || connection.sourceHandle === 'no') {
+      const alreadyUsed = edges.some(
+        (e) => e.source === connection.source && e.sourceHandle === connection.sourceHandle,
+      );
+      if (alreadyUsed) return false;
+    }
+
+    return true;
+  }, [edges]);
+
   // Handle edge connection with custom styling based on handle
   const onConnect = useCallback((connection: Connection) => {
-    const edgeStyle = getEdgeStyle(connection.sourceHandle);
-    const markerColor = connection.sourceHandle === 'yes' ? '#22c55e' 
-      : connection.sourceHandle === 'no' ? '#ef4444' 
+    if (!isValidConnection(connection)) {
+      toast.error('Conexão inválida (duplicada ou ramo já conectado)');
+      return;
+    }
+
+    const edgeStyle = { ...getEdgeStyle(connection.sourceHandle), filter: 'url(#glow)' };
+    const markerColor = connection.sourceHandle === 'yes' ? '#22c55e'
+      : connection.sourceHandle === 'no' ? '#ef4444'
       : 'hsl(var(--primary))';
-    
+
     setEdges((eds) => addEdge({
       ...connection,
       type: 'smoothstep',
@@ -434,14 +466,14 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
         height: 20
       },
       label: connection.sourceHandle === 'yes' ? 'Sim' : connection.sourceHandle === 'no' ? 'Não' : undefined,
-      labelStyle: { 
-        fill: markerColor, 
-        fontWeight: 600, 
+      labelStyle: {
+        fill: markerColor,
+        fontWeight: 600,
         fontSize: 11,
         textShadow: '0 1px 2px rgba(0,0,0,0.3)'
       },
-      labelBgStyle: { 
-        fill: 'hsl(var(--background))', 
+      labelBgStyle: {
+        fill: 'hsl(var(--background))',
         fillOpacity: 0.9,
         rx: 4,
         ry: 4
@@ -449,7 +481,7 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
       labelBgPadding: [4, 6] as [number, number]
     }, eds));
     addToHistory();
-  }, [setEdges, addToHistory]);
+  }, [setEdges, addToHistory, isValidConnection]);
 
   // Handle node click
   const onNodeClick = useCallback((_: React.MouseEvent, node: any) => {
@@ -802,6 +834,7 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            isValidConnection={isValidConnection}
             onNodeClick={onNodeClick}
             onPaneClick={onPaneClick}
             onDragOver={onDragOver}
@@ -833,12 +866,12 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
             proOptions={{ hideAttribution: true }}
           >
             <Background 
-              variant={BackgroundVariant.Dots} 
-              gap={20} 
-              size={1} 
-              color="hsl(var(--muted-foreground) / 0.15)"
+              variant={BackgroundVariant.Dots}
+              gap={18}
+              size={1.5}
+              color="hsl(var(--muted-foreground) / 0.25)"
             />
-            
+
             {/* Custom Controls */}
             <Panel position="bottom-right" className="flex flex-col gap-1 bg-card/90 backdrop-blur-xl rounded-xl border shadow-lg p-1">
               <Tooltip>
