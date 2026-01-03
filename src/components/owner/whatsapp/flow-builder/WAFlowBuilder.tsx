@@ -52,7 +52,10 @@ import {
   BarChart3,
   ArrowRight,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Menu,
+  X,
+  Bot
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FlowNode } from './FlowNode';
@@ -124,6 +127,11 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [interactionMode, setInteractionMode] = useState<'select' | 'pan'>('select');
   const [isCanvasLocked, setIsCanvasLocked] = useState(false);
+  const [showFloatingTools, setShowFloatingTools] = useState(false);
+  
+  // Luna AI building state
+  const [isLunaBuilding, setIsLunaBuilding] = useState(false);
+  const [lunaBuildProgress, setLunaBuildProgress] = useState<{ current: number; total: number; currentNode?: string }>({ current: 0, total: 0 });
   
   // History
   const [history, setHistory] = useState<{ nodes: any[]; edges: any[] }[]>([]);
@@ -357,13 +365,55 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
   const handlePaste = useCallback(() => { const newNodes = pasteNodes(); if (newNodes.length > 0) { setNodes(nds => [...nds.map(n => ({ ...n, selected: false })), ...newNodes]); addToHistory(); } }, [pasteNodes, setNodes, addToHistory]);
   const handleDeleteSelected = useCallback(() => { if (selectedNodes.length > 0) { const idsToDelete = new Set(selectedNodes.map(n => n.id)); setNodes(nds => nds.filter(n => !idsToDelete.has(n.id))); setEdges(eds => eds.filter(e => !idsToDelete.has(e.source) && !idsToDelete.has(e.target))); addToHistory(); toast.success(`${selectedNodes.length} nó(s) excluído(s)`); } }, [selectedNodes, setNodes, setEdges, addToHistory]);
 
-  const handleApplyLunaFlow = useCallback((newNodes: FlowNodeType[], newEdges: FlowEdge[]) => {
-    const rfNodes = newNodes.map(n => ({ id: n.id, type: 'flowNode', position: n.position, data: n.data }));
-    const rfEdges = newEdges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle, label: e.label, ...defaultEdgeOptions, style: getEdgeStyle(e.sourceHandle) }));
-    setNodes(rfNodes);
-    setEdges(rfEdges);
-    addToHistory();
-    setTimeout(() => fitView({ padding: 0.2 }), 100);
+  const handleApplyLunaFlow = useCallback(async (newNodes: FlowNodeType[], newEdges: FlowEdge[]) => {
+    // Start Luna building animation on canvas
+    setIsLunaBuilding(true);
+    setLunaBuildProgress({ current: 0, total: newNodes.length });
+    setNodes([]);
+    setEdges([]);
+    
+    // Animate nodes being added one by one
+    for (let i = 0; i < newNodes.length; i++) {
+      const node = newNodes[i];
+      const rfNode = { id: node.id, type: 'flowNode', position: node.position, data: { ...node.data, isNew: true } };
+      
+      setLunaBuildProgress({ current: i + 1, total: newNodes.length, currentNode: node.data.label });
+      setNodes(nds => [...nds, rfNode]);
+      
+      // Add edges connected to this node
+      const nodeEdges = newEdges.filter(e => e.source === node.id || e.target === node.id);
+      const rfEdges = nodeEdges.map(e => ({ 
+        id: e.id, source: e.source, target: e.target, 
+        sourceHandle: e.sourceHandle, targetHandle: e.targetHandle, 
+        label: e.label, ...defaultEdgeOptions, style: getEdgeStyle(e.sourceHandle) 
+      }));
+      
+      // Only add edges when both nodes exist
+      setEdges(eds => {
+        const newEdgesToAdd = rfEdges.filter(newEdge => {
+          const sourceExists = [...newNodes.slice(0, i + 1)].some(n => n.id === newEdge.source);
+          const targetExists = [...newNodes.slice(0, i + 1)].some(n => n.id === newEdge.target);
+          const alreadyExists = eds.some(e => e.id === newEdge.id);
+          return sourceExists && targetExists && !alreadyExists;
+        });
+        return [...eds, ...newEdgesToAdd];
+      });
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    
+    // Finish animation
+    setTimeout(() => {
+      setIsLunaBuilding(false);
+      setLunaBuildProgress({ current: 0, total: 0 });
+      // Remove isNew flag
+      setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, isNew: false } })));
+      addToHistory();
+      fitView({ padding: 0.2 });
+      toast.success('🎉 Fluxo construído pela Luna!', {
+        description: `${newNodes.length} nós criados automaticamente`
+      });
+    }, 500);
   }, [setNodes, setEdges, addToHistory, fitView]);
 
   const handleApplyTemplate = useCallback((templateNodes: FlowNodeType[], templateEdges: FlowEdge[]) => {
@@ -736,6 +786,114 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
                 
                 <MiniMap nodeColor={(node) => NODE_COLORS[(node.data as any)?.type as keyof typeof NODE_COLORS] || '#6b7280'} className="!bg-card/90 !backdrop-blur-xl !border !rounded-xl !shadow-lg" maskColor="hsl(var(--background) / 0.8)" pannable zoomable />
               </ReactFlow>
+
+              {/* Luna Building Overlay */}
+              <AnimatePresence>
+                {isLunaBuilding && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute top-4 left-1/2 -translate-x-1/2 z-50"
+                  >
+                    <motion.div
+                      initial={{ y: -20, scale: 0.9 }}
+                      animate={{ y: 0, scale: 1 }}
+                      className="flex items-center gap-4 bg-gradient-to-r from-purple-500/90 to-pink-500/90 backdrop-blur-xl px-6 py-3 rounded-2xl shadow-2xl border border-white/20"
+                    >
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                      >
+                        <Bot className="w-6 h-6 text-white" />
+                      </motion.div>
+                      <div className="text-white">
+                        <p className="font-semibold text-sm">Luna está construindo...</p>
+                        <p className="text-xs opacity-90">
+                          {lunaBuildProgress.currentNode || 'Preparando'} ({lunaBuildProgress.current}/{lunaBuildProgress.total})
+                        </p>
+                      </div>
+                      <div className="h-2 w-32 bg-white/20 rounded-full overflow-hidden">
+                        <motion.div 
+                          className="h-full bg-white rounded-full"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(lunaBuildProgress.current / lunaBuildProgress.total) * 100}%` }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Floating Tools Button for Fullscreen */}
+              <AnimatePresence>
+                {isFullscreen && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="absolute top-20 left-4 z-50"
+                  >
+                    <div className="relative">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => setShowFloatingTools(!showFloatingTools)}
+                            className="h-12 w-12 rounded-xl bg-card/90 backdrop-blur-xl border shadow-lg hover:shadow-xl transition-all"
+                            variant="ghost"
+                          >
+                            {showFloatingTools ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">Ferramentas</TooltipContent>
+                      </Tooltip>
+
+                      <AnimatePresence>
+                        {showFloatingTools && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                            className="absolute top-14 left-0 w-64 bg-card/95 backdrop-blur-xl rounded-xl border shadow-2xl p-3 space-y-3"
+                          >
+                            <div className="flex items-center gap-2 pb-2 border-b">
+                              <Zap className="w-4 h-4 text-primary" />
+                              <span className="font-semibold text-sm">Ferramentas Rápidas</span>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => { setShowTemplates(true); setShowFloatingTools(false); }}>
+                                <LayoutTemplate className="w-4 h-4 text-blue-400" />
+                                Templates
+                              </Button>
+                              <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => { setShowSimulator(true); setShowFloatingTools(false); }}>
+                                <PlayCircle className="w-4 h-4 text-green-400" />
+                                Simular
+                              </Button>
+                              <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => { setShowSearch(true); setShowFloatingTools(false); }}>
+                                <Search className="w-4 h-4 text-orange-400" />
+                                Buscar
+                              </Button>
+                              <Button variant="outline" size="sm" className="gap-2 justify-start bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/30" onClick={() => { setIsLunaOpen(true); setShowFloatingTools(false); }}>
+                                <Sparkles className="w-4 h-4 text-purple-400" />
+                                Luna IA
+                              </Button>
+                            </div>
+
+                            <div className="pt-2 border-t">
+                              <p className="text-xs text-muted-foreground mb-2">Componentes</p>
+                              <div className="max-h-48 overflow-y-auto">
+                                <NodeSidebar onDragStart={onDragStart} compact />
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <FlowControls isLocked={isCanvasLocked} onToggleLock={() => setIsCanvasLocked(!isCanvasLocked)} snapToGrid={snapToGrid} onToggleSnap={() => setSnapToGrid(!snapToGrid)} interactionMode={interactionMode} onToggleMode={() => setInteractionMode(m => m === 'select' ? 'pan' : 'select')} />
               <FlowValidationPanel isOpen={showValidation} onClose={() => setShowValidation(false)} errors={validationResult.errors} warnings={validationResult.warnings} onNavigateToNode={navigateToNode} />
