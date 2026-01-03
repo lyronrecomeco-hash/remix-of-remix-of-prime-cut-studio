@@ -529,6 +529,90 @@ app.post('/api/instance/:id/send', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+//                    ENVIAR BOTÕES INTERATIVOS
+// ═══════════════════════════════════════════════════════════
+app.post('/api/instance/:id/send-buttons', async (req, res) => {
+  const { phone, title, message, footer, buttons } = req.body || {};
+  const conn = connections.get(req.params.id);
+
+  if (!conn || conn.status !== 'connected') {
+    return res.status(400).json({ error: 'Instância não conectada' });
+  }
+
+  const jid = String(phone || '').replace(/\\D/g, '') + '@s.whatsapp.net';
+  if (!phone) return res.status(400).json({ error: 'Telefone inválido' });
+  if (!message) return res.status(400).json({ error: 'Mensagem vazia' });
+  if (!buttons || !Array.isArray(buttons) || buttons.length === 0) {
+    return res.status(400).json({ error: 'Botões inválidos' });
+  }
+
+  try {
+    // Formato de botões para Baileys
+    const buttonMessage = {
+      text: message,
+      footer: footer || '',
+      buttons: buttons.slice(0, 3).map((btn, idx) => ({
+        buttonId: btn.id || \`btn_\${idx}\`,
+        buttonText: { displayText: btn.text },
+        type: 1
+      })),
+      headerType: 1
+    };
+
+    await conn.sock.sendMessage(jid, buttonMessage);
+    log('📤', \`Botões enviados para \${phone}: \${buttons.length} botões\`);
+    res.json({ success: true, type: 'buttons', buttonsCount: buttons.length });
+  } catch (err) {
+    log('❌', \`Erro ao enviar botões: \${err.message}\`);
+    res.status(500).json({ error: err.message || 'Falha ao enviar botões' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//                    ENVIAR LISTA INTERATIVA
+// ═══════════════════════════════════════════════════════════
+app.post('/api/instance/:id/send-list', async (req, res) => {
+  const { phone, title, body, footer, buttonText, sections } = req.body || {};
+  const conn = connections.get(req.params.id);
+
+  if (!conn || conn.status !== 'connected') {
+    return res.status(400).json({ error: 'Instância não conectada' });
+  }
+
+  const jid = String(phone || '').replace(/\\D/g, '') + '@s.whatsapp.net';
+  if (!phone) return res.status(400).json({ error: 'Telefone inválido' });
+  if (!body) return res.status(400).json({ error: 'Corpo da mensagem vazio' });
+  if (!sections || !Array.isArray(sections) || sections.length === 0) {
+    return res.status(400).json({ error: 'Seções inválidas' });
+  }
+
+  try {
+    // Formato de lista para Baileys
+    const listMessage = {
+      text: body,
+      footer: footer || '',
+      title: title || '',
+      buttonText: buttonText || 'Ver opções',
+      sections: sections.map(section => ({
+        title: section.title,
+        rows: section.rows.map(row => ({
+          title: row.title,
+          rowId: row.id || row.title,
+          description: row.description || ''
+        }))
+      }))
+    };
+
+    await conn.sock.sendMessage(jid, listMessage);
+    log('📤', \`Lista enviada para \${phone}: \${sections.length} seções\`);
+    res.json({ success: true, type: 'list', sectionsCount: sections.length });
+  } catch (err) {
+    log('❌', \`Erro ao enviar lista: \${err.message}\`);
+    res.status(500).json({ error: err.message || 'Falha ao enviar lista' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
 //                         INICIAR
 // ═══════════════════════════════════════════════════════════
 app.listen(PORT, () => {

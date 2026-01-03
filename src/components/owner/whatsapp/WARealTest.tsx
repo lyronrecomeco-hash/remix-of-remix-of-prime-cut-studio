@@ -250,11 +250,11 @@ export const WARealTest = ({
           payload = {
             phone: formattedPhone,
             title: buttonTitle || undefined,
-            body: buttonBody,
+            message: buttonBody,
             footer: buttonFooter || undefined,
             buttons: customButtons.map(b => ({
-              buttonId: b.id,
-              buttonText: { displayText: b.text }
+              id: b.id,
+              text: b.text
             }))
           };
           logMessage = `[BUTTONS] ${buttonBody} | Botões: ${customButtons.map(b => b.text).join(', ')}`;
@@ -292,11 +292,11 @@ export const WARealTest = ({
             sendEndpoint = `${endpoint}/${connectedInstance.id}/send-buttons`;
             payload = {
               phone: formattedPhone,
-              body: processedMessage,
+              message: processedMessage,
               footer: selectedTemplate.footer_text || undefined,
               buttons: selectedTemplate.buttons.map((b: any) => ({
-                buttonId: b.id,
-                buttonText: { displayText: b.text }
+                id: b.id,
+                text: b.text
               }))
             };
           } else if (selectedTemplate.template_type === 'list') {
