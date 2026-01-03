@@ -10,17 +10,22 @@ import {
   Connection,
   Edge,
   BackgroundVariant,
-  Panel
+  Panel,
+  useReactFlow,
+  ReactFlowProvider,
+  MarkerType,
+  ConnectionLineType
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Save, 
   Loader2, 
@@ -30,7 +35,22 @@ import {
   Pause,
   ArrowLeft,
   Trash2,
-  Copy
+  Maximize2,
+  Minimize2,
+  Download,
+  Upload,
+  Undo2,
+  Redo2,
+  ZoomIn,
+  ZoomOut,
+  Crosshair,
+  Copy,
+  Settings,
+  Sparkles,
+  Keyboard,
+  PanelLeftClose,
+  PanelLeft,
+  Activity
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FlowNode } from './FlowNode';
@@ -44,17 +64,33 @@ import {
   NodeTemplate,
   NODE_COLORS 
 } from './types';
+import { cn } from '@/lib/utils';
 
 const nodeTypes = {
   flowNode: FlowNode
+};
+
+const defaultEdgeOptions = {
+  type: 'smoothstep',
+  animated: true,
+  style: { 
+    strokeWidth: 2,
+    stroke: 'hsl(var(--primary))'
+  },
+  markerEnd: {
+    type: MarkerType.ArrowClosed,
+    color: 'hsl(var(--primary))'
+  }
 };
 
 interface WAFlowBuilderProps {
   onBack?: () => void;
 }
 
-export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
+const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const { fitView, zoomIn, zoomOut, setCenter } = useReactFlow();
+  
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<FlowNodeType | null>(null);
@@ -64,6 +100,84 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newRuleName, setNewRuleName] = useState('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [history, setHistory] = useState<{ nodes: any[]; edges: any[] }[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Fullscreen toggle
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      reactFlowWrapper.current?.parentElement?.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  }, []);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // Add to history
+  const addToHistory = useCallback(() => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push({ nodes: [...nodes], edges: [...edges] });
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  }, [nodes, edges, history, historyIndex]);
+
+  // Undo
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevState = history[historyIndex - 1];
+      setNodes(prevState.nodes);
+      setEdges(prevState.edges);
+      setHistoryIndex(historyIndex - 1);
+    }
+  }, [history, historyIndex, setNodes, setEdges]);
+
+  // Redo
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const nextState = history[historyIndex + 1];
+      setNodes(nextState.nodes);
+      setEdges(nextState.edges);
+      setHistoryIndex(historyIndex + 1);
+    }
+  }, [history, historyIndex, setNodes, setEdges]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        if (selectedRule) saveFlow();
+      }
+      if (e.key === 'Delete' && selectedNode) {
+        deleteNode(selectedNode.id);
+      }
+      if (e.key === 'Escape') {
+        setSelectedNode(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo, selectedRule, selectedNode]);
 
   // Fetch rules
   const fetchRules = useCallback(async () => {
@@ -103,7 +217,6 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
     
     const flowData = rule.flow_data || { nodes: [], edges: [] };
     
-    // Convert to React Flow format
     const rfNodes = flowData.nodes.map(n => ({
       id: n.id,
       type: 'flowNode',
@@ -118,13 +231,16 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
       sourceHandle: e.sourceHandle,
       targetHandle: e.targetHandle,
       label: e.label,
-      animated: true,
-      style: { stroke: '#6b7280' }
+      ...defaultEdgeOptions
     }));
     
     setNodes(rfNodes);
     setEdges(rfEdges);
     setSelectedNode(null);
+    setHistory([{ nodes: rfNodes, edges: rfEdges }]);
+    setHistoryIndex(0);
+    
+    setTimeout(() => fitView({ padding: 0.2 }), 100);
   };
 
   // Create new rule
@@ -140,12 +256,12 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
         nodes: [{
           id: 'trigger-1',
           type: 'flowNode',
-          position: { x: 250, y: 50 },
+          position: { x: 400, y: 100 },
           data: {
-            label: 'Início',
+            label: 'Início do Fluxo',
             type: 'trigger',
             config: { triggerType: 'keyword', keywords: [] },
-            description: 'Gatilho inicial'
+            description: 'Gatilho inicial do fluxo'
           }
         }],
         edges: []
@@ -168,7 +284,7 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
 
       if (error) throw error;
 
-      toast.success('Fluxo criado!');
+      toast.success('Fluxo criado com sucesso!');
       setIsCreateDialogOpen(false);
       setNewRuleName('');
       fetchRules();
@@ -245,8 +361,11 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
         .eq('id', rule.id);
 
       if (error) throw error;
-      toast.success(rule.is_active ? 'Fluxo desativado' : 'Fluxo ativado');
+      toast.success(rule.is_active ? 'Fluxo pausado' : 'Fluxo ativado!');
       fetchRules();
+      if (selectedRule?.id === rule.id) {
+        setSelectedRule(prev => prev ? { ...prev, is_active: !prev.is_active } : null);
+      }
     } catch (error) {
       toast.error('Erro ao alterar status');
     }
@@ -278,14 +397,19 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
   const onConnect = useCallback((connection: Connection) => {
     setEdges((eds) => addEdge({
       ...connection,
-      animated: true,
-      style: { stroke: '#6b7280' }
+      ...defaultEdgeOptions
     }, eds));
-  }, [setEdges]);
+    addToHistory();
+  }, [setEdges, addToHistory]);
 
   // Handle node click
   const onNodeClick = useCallback((_: React.MouseEvent, node: any) => {
     setSelectedNode(node as FlowNodeType);
+  }, []);
+
+  // Handle pane click
+  const onPaneClick = useCallback(() => {
+    setSelectedNode(null);
   }, []);
 
   // Handle drag over
@@ -307,8 +431,8 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
     if (!reactFlowBounds) return;
 
     const position = {
-      x: event.clientX - reactFlowBounds.left - 90,
-      y: event.clientY - reactFlowBounds.top - 25
+      x: event.clientX - reactFlowBounds.left - 100,
+      y: event.clientY - reactFlowBounds.top - 40
     };
 
     const newNode = {
@@ -325,7 +449,8 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
     };
 
     setNodes((nds) => nds.concat(newNode));
-  }, [setNodes]);
+    addToHistory();
+  }, [setNodes, addToHistory]);
 
   // Handle drag start from sidebar
   const onDragStart = (event: React.DragEvent, template: NodeTemplate) => {
@@ -344,6 +469,26 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
       })
     );
     setSelectedNode(null);
+    addToHistory();
+  };
+
+  // Duplicate node
+  const duplicateNode = (nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    
+    const newNode = {
+      ...node,
+      id: `${node.data.type}-${Date.now()}`,
+      position: {
+        x: node.position.x + 50,
+        y: node.position.y + 50
+      }
+    };
+    
+    setNodes((nds) => nds.concat(newNode));
+    addToHistory();
+    toast.success('Nó duplicado!');
   };
 
   // Delete node
@@ -351,12 +496,34 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
     setNodes((nds) => nds.filter((node) => node.id !== nodeId));
     setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
     setSelectedNode(null);
+    addToHistory();
+  };
+
+  // Export flow
+  const exportFlow = () => {
+    const flowData = {
+      name: selectedRule?.name,
+      nodes: nodes,
+      edges: edges
+    };
+    const blob = new Blob([JSON.stringify(flowData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `flow-${selectedRule?.name || 'export'}.json`;
+    a.click();
+    toast.success('Fluxo exportado!');
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+        >
+          <Loader2 className="w-10 h-10 text-primary" />
+        </motion.div>
       </div>
     );
   }
@@ -365,88 +532,134 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
   if (!selectedRule) {
     return (
       <div className="space-y-6">
-        <Card>
-          <CardHeader>
+        <Card className="border-0 shadow-xl bg-gradient-to-br from-card to-card/50">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <GitBranch className="w-5 h-5" />
-                  Flow Builder Visual
-                </CardTitle>
-                <CardDescription>
-                  Crie fluxos de automação arrastando e conectando blocos
-                </CardDescription>
+              <div className="flex items-center gap-4">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                  className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-lg"
+                >
+                  <GitBranch className="w-7 h-7 text-primary" />
+                </motion.div>
+                <div>
+                  <CardTitle className="text-2xl flex items-center gap-2">
+                    Flow Builder
+                    <Badge variant="secondary" className="font-normal">Pro</Badge>
+                  </CardTitle>
+                  <CardDescription className="text-base">
+                    Crie fluxos de automação visuais arrastando e conectando blocos
+                  </CardDescription>
+                </div>
               </div>
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
+              <Button onClick={() => setIsCreateDialogOpen(true)} size="lg" className="gap-2 shadow-lg">
+                <Plus className="w-5 h-5" />
                 Novo Fluxo
               </Button>
             </div>
           </CardHeader>
           <CardContent>
             {rules.length === 0 ? (
-              <div className="text-center py-12">
-                <GitBranch className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="font-medium text-lg mb-2">Nenhum fluxo criado</h3>
-                <p className="text-muted-foreground mb-4">
-                  Crie seu primeiro fluxo de automação visual
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-16"
+              >
+                <motion.div
+                  animate={{ y: [0, -10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="w-24 h-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center"
+                >
+                  <Sparkles className="w-12 h-12 text-primary" />
+                </motion.div>
+                <h3 className="font-semibold text-xl mb-2">Comece a automatizar</h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  Crie seu primeiro fluxo de automação visual para responder mensagens automaticamente
                 </p>
-                <Button onClick={() => setIsCreateDialogOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
+                <Button onClick={() => setIsCreateDialogOpen(true)} size="lg" className="gap-2">
+                  <Plus className="w-5 h-5" />
                   Criar Primeiro Fluxo
                 </Button>
-              </div>
+              </motion.div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {rules.map((rule) => (
-                  <Card 
-                    key={rule.id}
-                    className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => loadRule(rule)}
-                  >
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${
-                            rule.is_active ? 'bg-green-500' : 'bg-gray-400'
-                          }`} />
-                          <h3 className="font-medium">{rule.name}</h3>
-                        </div>
-                        <Badge variant={rule.is_active ? 'default' : 'secondary'}>
-                          {rule.is_active ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        {rule.description || 'Sem descrição'}
-                      </p>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>
-                          {rule.flow_data?.nodes?.length || 0} nós
-                        </span>
-                        <span>
-                          {rule.execution_count || 0} execuções
-                        </span>
-                      </div>
-                      <div className="flex gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => toggleRuleActive(rule)}
-                        >
-                          {rule.is_active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="text-destructive"
-                          onClick={() => deleteRule(rule.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                <AnimatePresence>
+                  {rules.map((rule, index) => (
+                    <motion.div
+                      key={rule.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <Card 
+                        className={cn(
+                          'cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.02] group',
+                          rule.is_active ? 'border-primary/30' : 'border-muted'
+                        )}
+                        onClick={() => loadRule(rule)}
+                      >
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <motion.div 
+                                animate={rule.is_active ? { scale: [1, 1.2, 1] } : {}}
+                                transition={{ duration: 2, repeat: Infinity }}
+                                className={cn(
+                                  'w-4 h-4 rounded-full shadow-lg',
+                                  rule.is_active ? 'bg-green-500' : 'bg-muted-foreground/30'
+                                )}
+                              />
+                              <h3 className="font-semibold group-hover:text-primary transition-colors">
+                                {rule.name}
+                              </h3>
+                            </div>
+                            <Badge variant={rule.is_active ? 'default' : 'secondary'}>
+                              {rule.is_active ? 'Ativo' : 'Pausado'}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                            {rule.description || 'Sem descrição'}
+                          </p>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
+                            <div className="flex items-center gap-1">
+                              <GitBranch className="w-3.5 h-3.5" />
+                              {rule.flow_data?.nodes?.length || 0} nós
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Activity className="w-3.5 h-3.5" />
+                              {rule.execution_count || 0} execuções
+                            </div>
+                          </div>
+                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => toggleRuleActive(rule)}
+                            >
+                              {rule.is_active ? (
+                                <><Pause className="w-4 h-4 mr-1.5" /> Pausar</>
+                              ) : (
+                                <><Play className="w-4 h-4 mr-1.5" /> Ativar</>
+                              )}
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => deleteRule(rule.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             )}
           </CardContent>
@@ -454,11 +667,14 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
 
         {/* Create Dialog */}
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Novo Fluxo de Automação</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                Novo Fluxo de Automação
+              </DialogTitle>
               <DialogDescription>
-                Crie um novo fluxo visual para automatizar conversas
+                Crie um novo fluxo visual para automatizar conversas no WhatsApp
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -467,7 +683,9 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
                 <Input
                   value={newRuleName}
                   onChange={(e) => setNewRuleName(e.target.value)}
-                  placeholder="Ex: Atendimento Inicial"
+                  placeholder="Ex: Atendimento Inicial, FAQ, Vendas..."
+                  className="bg-muted/50"
+                  autoFocus
                 />
               </div>
             </div>
@@ -475,8 +693,12 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={createRule} disabled={isSaving}>
-                {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              <Button onClick={createRule} disabled={isSaving} className="gap-2">
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
                 Criar Fluxo
               </Button>
             </DialogFooter>
@@ -488,88 +710,239 @@ export const WAFlowBuilder = ({ onBack }: WAFlowBuilderProps) => {
 
   // Flow Editor view
   return (
-    <div className="flex h-[calc(100vh-200px)] min-h-[600px] rounded-xl border overflow-hidden bg-background">
-      {/* Sidebar */}
-      <NodeSidebar onDragStart={onDragStart} />
-
-      {/* Canvas */}
-      <div className="flex-1 relative" ref={reactFlowWrapper}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          onDragOver={onDragOver}
-          onDrop={onDrop}
-          nodeTypes={nodeTypes}
-          fitView
-          className="bg-muted/30"
-        >
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-          <Controls />
-          <MiniMap 
-            nodeColor={(node) => {
-              const type = (node.data as any)?.type;
-              return NODE_COLORS[type as keyof typeof NODE_COLORS] || '#6b7280';
-            }}
-            className="!bg-card !border"
+    <TooltipProvider>
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className={cn(
+          'flex rounded-2xl border overflow-hidden bg-background shadow-2xl',
+          isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'h-[calc(100vh-180px)] min-h-[700px]'
+        )}
+      >
+        {/* Sidebar */}
+        <AnimatePresence>
+          <NodeSidebar 
+            onDragStart={onDragStart} 
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           />
-          
-          {/* Top Panel */}
-          <Panel position="top-left" className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setSelectedRule(null)}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Button>
-            <div className="bg-card px-3 py-1.5 rounded-lg border">
-              <span className="font-medium">{selectedRule.name}</span>
-              <Badge variant={selectedRule.is_active ? 'default' : 'secondary'} className="ml-2">
-                v{selectedRule.flow_version || 1}
-              </Badge>
-            </div>
-          </Panel>
+        </AnimatePresence>
 
-          <Panel position="top-right" className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => toggleRuleActive(selectedRule)}
-            >
-              {selectedRule.is_active ? (
-                <>
-                  <Pause className="w-4 h-4 mr-2" />
-                  Pausar
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 mr-2" />
-                  Ativar
-                </>
-              )}
-            </Button>
-            <Button size="sm" onClick={saveFlow} disabled={isSaving}>
-              {isSaving ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4 mr-2" />
-              )}
-              Salvar
-            </Button>
-          </Panel>
-        </ReactFlow>
-      </div>
+        {/* Canvas */}
+        <div className="flex-1 relative" ref={reactFlowWrapper}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            onPaneClick={onPaneClick}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            nodeTypes={nodeTypes}
+            defaultEdgeOptions={defaultEdgeOptions}
+            connectionLineType={ConnectionLineType.SmoothStep}
+            connectionLineStyle={{ stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
+            fitView
+            snapToGrid
+            snapGrid={[15, 15]}
+            className="bg-[radial-gradient(circle_at_center,hsl(var(--muted))_1px,transparent_1px)] bg-[length:24px_24px]"
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background 
+              variant={BackgroundVariant.Dots} 
+              gap={24} 
+              size={1.5} 
+              color="hsl(var(--muted-foreground) / 0.2)"
+            />
+            
+            {/* Custom Controls */}
+            <Panel position="bottom-right" className="flex flex-col gap-1 bg-card/90 backdrop-blur-xl rounded-xl border shadow-lg p-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => zoomIn()}>
+                    <ZoomIn className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">Zoom In</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => zoomOut()}>
+                    <ZoomOut className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">Zoom Out</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => fitView({ padding: 0.2 })}>
+                    <Crosshair className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">Centralizar</TooltipContent>
+              </Tooltip>
+            </Panel>
+            
+            <MiniMap 
+              nodeColor={(node) => {
+                const type = (node.data as any)?.type;
+                return NODE_COLORS[type as keyof typeof NODE_COLORS] || '#6b7280';
+              }}
+              className="!bg-card/90 !backdrop-blur-xl !border !rounded-xl !shadow-lg"
+              maskColor="hsl(var(--background) / 0.8)"
+              pannable
+              zoomable
+            />
+            
+            {/* Top Left Panel */}
+            <Panel position="top-left" className="flex items-center gap-2">
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                className="flex items-center gap-2 bg-card/90 backdrop-blur-xl rounded-xl border shadow-lg p-1.5"
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedRule(null)} className="gap-2">
+                      <ArrowLeft className="w-4 h-4" />
+                      <span className="hidden sm:inline">Voltar</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Voltar para lista</TooltipContent>
+                </Tooltip>
+                
+                <div className="h-6 w-px bg-border" />
+                
+                <div className="px-2">
+                  <span className="font-semibold text-sm">{selectedRule.name}</span>
+                  <Badge variant={selectedRule.is_active ? 'default' : 'secondary'} className="ml-2 text-[10px]">
+                    v{selectedRule.flow_version || 1}
+                  </Badge>
+                </div>
+              </motion.div>
+            </Panel>
 
-      {/* Config Panel */}
-      {selectedNode && (
-        <NodeConfigPanel
-          node={selectedNode}
-          onClose={() => setSelectedNode(null)}
-          onSave={updateNodeData}
-          onDelete={deleteNode}
-        />
-      )}
-    </div>
+            {/* Top Right Panel */}
+            <Panel position="top-right" className="flex items-center gap-2">
+              <motion.div
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                className="flex items-center gap-1 bg-card/90 backdrop-blur-xl rounded-xl border shadow-lg p-1.5"
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={undo} disabled={historyIndex <= 0}>
+                      <Undo2 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Desfazer (⌘Z)</TooltipContent>
+                </Tooltip>
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={redo} disabled={historyIndex >= history.length - 1}>
+                      <Redo2 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Refazer (⌘⇧Z)</TooltipContent>
+                </Tooltip>
+                
+                <div className="h-6 w-px bg-border" />
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={exportFlow}>
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Exportar</TooltipContent>
+                </Tooltip>
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleFullscreen}>
+                      {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{isFullscreen ? 'Sair da Tela Cheia' : 'Tela Cheia'}</TooltipContent>
+                </Tooltip>
+                
+                <div className="h-6 w-px bg-border" />
+                
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className={cn('gap-1.5', selectedRule.is_active && 'text-green-500')}
+                      onClick={() => toggleRuleActive(selectedRule)}
+                    >
+                      {selectedRule.is_active ? (
+                        <>
+                          <Pause className="w-4 h-4" />
+                          <span className="hidden sm:inline">Pausar</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-4 h-4" />
+                          <span className="hidden sm:inline">Ativar</span>
+                        </>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{selectedRule.is_active ? 'Pausar fluxo' : 'Ativar fluxo'}</TooltipContent>
+                </Tooltip>
+                
+                <Button size="sm" onClick={saveFlow} disabled={isSaving} className="gap-1.5 shadow-md">
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  <span className="hidden sm:inline">Salvar</span>
+                </Button>
+              </motion.div>
+            </Panel>
+
+            {/* Keyboard shortcuts hint */}
+            <Panel position="bottom-left" className="hidden lg:block">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1 }}
+                className="flex items-center gap-2 text-xs text-muted-foreground bg-card/50 backdrop-blur-sm rounded-lg px-3 py-1.5 border"
+              >
+                <Keyboard className="w-3.5 h-3.5" />
+                <span><kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">⌘S</kbd> Salvar</span>
+                <span><kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">⌘Z</kbd> Desfazer</span>
+                <span><kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Del</kbd> Excluir</span>
+              </motion.div>
+            </Panel>
+          </ReactFlow>
+        </div>
+
+        {/* Config Panel */}
+        <AnimatePresence>
+          {selectedNode && (
+            <NodeConfigPanel
+              node={selectedNode}
+              onClose={() => setSelectedNode(null)}
+              onSave={updateNodeData}
+              onDelete={deleteNode}
+              onDuplicate={duplicateNode}
+            />
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </TooltipProvider>
   );
 };
+
+// Wrap with ReactFlowProvider
+export const WAFlowBuilder = (props: WAFlowBuilderProps) => (
+  <ReactFlowProvider>
+    <FlowBuilderContent {...props} />
+  </ReactFlowProvider>
+);
