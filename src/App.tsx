@@ -9,7 +9,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { FeedbackProvider } from "@/contexts/FeedbackContext";
 import { GalleryProvider } from "@/contexts/GalleryContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
-import { CRMProvider } from "@/contexts/CRMContext";
+// CRM removed
 import { useSecurityProtection } from "@/hooks/useSecurityProtection";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -38,9 +38,6 @@ const Docs = lazy(() => import("./pages/Docs"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AffiliateLogin = lazy(() => import("./pages/AffiliateLogin"));
 const AffiliatePanel = lazy(() => import("./pages/AffiliatePanel"));
-const CRMLogin = lazy(() => import("./pages/CRMLogin"));
-const CRMPanel = lazy(() => import("./pages/CRMPanel"));
-const CRMTokenLogin = lazy(() => import("./pages/CRMTokenLogin"));
 const ProposalPage = lazy(() => import("./pages/ProposalPage"));
 const WADocsPage = lazy(() => import("./pages/WADocsPage"));
 
@@ -219,9 +216,6 @@ const AppContent = () => {
             <Route path="/docs/whatsapp-api" element={<WADocsPage />} />
             <Route path="/afiliado/login" element={<AffiliateLogin />} />
             <Route path="/afiliado" element={<AffiliatePanel />} />
-            <Route path="/crm/login" element={<CRMProvider><CRMLogin /></CRMProvider>} />
-            <Route path="/crm/token" element={<CRMProvider><CRMTokenLogin /></CRMProvider>} />
-            <Route path="/crmpainel" element={<CRMProvider><CRMPanel /></CRMProvider>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

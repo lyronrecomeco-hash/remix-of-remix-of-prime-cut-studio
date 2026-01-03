@@ -14,5 +14,6 @@ export { FlowControls } from './FlowControls';
 export { NodeSearch } from './NodeSearch';
 export { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
 export { VariableAutocomplete, VariableBadges } from './VariableAutocomplete';
+export { FlowBuilderSidebar } from './FlowBuilderSidebar';
 export * from './types';
 export * from './hooks';

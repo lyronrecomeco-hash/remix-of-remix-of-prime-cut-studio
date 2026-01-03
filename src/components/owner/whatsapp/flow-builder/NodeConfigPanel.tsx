@@ -335,6 +335,26 @@ export const NodeConfigPanel = ({ node, onClose, onSave, onDelete, onDuplicate }
       case 'ai':
         return (
           <div className="space-y-4">
+            {/* API Key Configuration */}
+            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <Label className="text-sm font-medium">Configuração da API</Label>
+              </div>
+              <div className="space-y-2">
+                <Input
+                  type="password"
+                  value={formData.openaiApiKey || ''}
+                  onChange={(e) => updateField('openaiApiKey', e.target.value)}
+                  placeholder="sk-... (sua chave OpenAI)"
+                  className="bg-background/50 text-xs font-mono"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  💡 Configure sua chave API do ChatGPT para usar IA neste nó
+                </p>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Prompt do Sistema</Label>
               <Textarea
@@ -347,19 +367,35 @@ export const NodeConfigPanel = ({ node, onClose, onSave, onDelete, onDuplicate }
             <div className="space-y-2">
               <Label className="text-xs uppercase tracking-wide text-muted-foreground">Modelo de IA</Label>
               <Select 
-                value={formData.model || 'gemini-2.5-flash'} 
+                value={formData.model || 'gpt-4o-mini'} 
                 onValueChange={(v) => updateField('model', v)}
               >
                 <SelectTrigger className="bg-muted/50">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="gemini-2.5-flash">⚡ Gemini 2.5 Flash</SelectItem>
-                  <SelectItem value="gemini-2.5-pro">🧠 Gemini 2.5 Pro</SelectItem>
-                  <SelectItem value="gpt-5-mini">🤖 GPT-5 Mini</SelectItem>
-                  <SelectItem value="gpt-5">🚀 GPT-5</SelectItem>
+                  <SelectItem value="gpt-4o-mini">⚡ GPT-4o Mini (Recomendado)</SelectItem>
+                  <SelectItem value="gpt-4o">🧠 GPT-4o</SelectItem>
+                  <SelectItem value="gpt-4-turbo">🚀 GPT-4 Turbo</SelectItem>
+                  <SelectItem value="gemini-2.5-flash">💎 Gemini 2.5 Flash</SelectItem>
+                  <SelectItem value="gemini-2.5-pro">💎 Gemini 2.5 Pro</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Temperatura</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={formData.temperature ?? 0.7}
+                  onChange={(e) => updateField('temperature', parseFloat(e.target.value))}
+                  className="bg-muted/50 w-20"
+                />
+                <span className="text-xs text-muted-foreground">0 = Preciso | 1 = Criativo</span>
+              </div>
             </div>
             <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
               <div>
@@ -369,6 +405,16 @@ export const NodeConfigPanel = ({ node, onClose, onSave, onDelete, onDuplicate }
               <Switch
                 checked={formData.useContext ?? true}
                 onCheckedChange={(v) => updateField('useContext', v)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
+              <div>
+                <Label className="text-sm">Streaming</Label>
+                <p className="text-[11px] text-muted-foreground">Envia resposta gradualmente</p>
+              </div>
+              <Switch
+                checked={formData.streaming ?? false}
+                onCheckedChange={(v) => updateField('streaming', v)}
               />
             </div>
           </div>
