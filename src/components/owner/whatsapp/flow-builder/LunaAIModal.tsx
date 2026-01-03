@@ -16,10 +16,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Clock,
-  Target,
-  Pause,
-  Play,
-  X
+  Target
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,12 +35,9 @@ interface Message {
   content: string;
   flow?: { nodes: FlowNode[]; edges: FlowEdge[] };
   plan?: FlowPlan;
-  summary?: string;
-  tips?: string[];
   timestamp: Date;
   isError?: boolean;
   isPlanApproved?: boolean;
-  isBuilding?: boolean;
 }
 
 interface FlowPlan {
@@ -54,19 +48,14 @@ interface FlowPlan {
   estimatedTime: string;
 }
 
-interface BuildStep {
-  id: string;
-  label: string;
-  status: 'pending' | 'active' | 'done';
-  detail?: string;
-}
-
 interface LunaAIModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onApplyFlow: (nodes: FlowNode[], edges: FlowEdge[]) => void;
   currentNodes?: FlowNode[];
   currentEdges?: FlowEdge[];
+  flowId?: string;
+  onSaveFlow?: () => Promise<void>;
 }
 
 const QUICK_PROMPTS = [
@@ -100,30 +89,18 @@ export const LunaAIModal = ({
   onOpenChange,
   onApplyFlow, 
   currentNodes = [], 
-  currentEdges = []
+  currentEdges = [],
+  flowId,
+  onSaveFlow
 }: LunaAIModalProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [buildSteps, setBuildSteps] = useState<BuildStep[]>([]);
   const [showQuickPrompts, setShowQuickPrompts] = useState(true);
   const [currentPlan, setCurrentPlan] = useState<FlowPlan | null>(null);
   const [pendingPrompt, setPendingPrompt] = useState<string>('');
-  const [isBuilding, setIsBuilding] = useState(false);
-  const [buildProgress, setBuildProgress] = useState(0);
-  const [currentBuildNode, setCurrentBuildNode] = useState<string | null>(null);
-  const [isPaused, setIsPaused] = useState(false);
-  const [builtNodesCount, setBuiltNodesCount] = useState(0);
-  const [totalNodesTouild, setTotalNodesToBuild] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const buildAbortRef = useRef(false);
-  const pauseRef = useRef(false);
-
-  // Keep pauseRef in sync
-  useEffect(() => {
-    pauseRef.current = isPaused;
-  }, [isPaused]);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -131,7 +108,7 @@ export const LunaAIModal = ({
       setMessages([{
         id: 'welcome',
         role: 'assistant',
-        content: 'Olá! 👋 Sou a **Luna**, sua assistente especialista em automação WhatsApp.\n\nMe descreva o fluxo que você precisa e eu vou:\n1. 📋 **Analisar** sua necessidade\n2. 📐 **Propor** uma estrutura\n3. ⏳ **Aguardar** sua aprovação\n4. 🔧 **Construir** o fluxo ao vivo no canvas!\n\n⏱️ *O processo de construção leva de 2 a 5 minutos, pois cada nó é configurado com cuidado.*',
+        content: 'Olá! 👋 Sou a **Luna**, sua assistente de automação WhatsApp.\n\nMe descreva o fluxo que você precisa e eu vou:\n1. 📋 **Analisar** sua necessidade\n2. 📐 **Propor** uma estrutura\n3. ⏳ **Aguardar** sua aprovação\n4. 🔧 **Construir** o fluxo no canvas!\n\n*Após aprovação, fecharei esta janela e você verá os nós sendo criados em tempo real!*',
         timestamp: new Date()
       }]);
     }
@@ -142,7 +119,7 @@ export const LunaAIModal = ({
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, buildSteps, builtNodesCount]);
+  }, [messages]);
 
   // Generate a plan from the AI
   const generatePlan = useCallback(async (prompt: string): Promise<FlowPlan> => {
@@ -221,168 +198,85 @@ export const LunaAIModal = ({
       estimatedNodes = 7;
     }
 
-    // Calculate realistic time (15-25 seconds per node)
-    const minMinutes = Math.ceil((estimatedNodes * 15) / 60);
-    const maxMinutes = Math.ceil((estimatedNodes * 25) / 60);
-
     return {
       objective,
       approach,
       steps,
       estimatedNodes,
-      estimatedTime: `${minMinutes}-${maxMinutes} minutos`
+      estimatedTime: '~45 segundos'
     };
   }, []);
 
-  // Delay helper that respects pause
-  const delayWithPause = useCallback((ms: number): Promise<void> => {
-    return new Promise((resolve) => {
-      const checkInterval = 100;
-      let elapsed = 0;
-      
-      const check = () => {
-        if (buildAbortRef.current) {
-          resolve();
-          return;
-        }
-        if (pauseRef.current) {
-          setTimeout(check, checkInterval);
-          return;
-        }
-        elapsed += checkInterval;
-        if (elapsed >= ms) {
-          resolve();
-        } else {
-          setTimeout(check, checkInterval);
-        }
-      };
-      
-      setTimeout(check, checkInterval);
-    });
-  }, []);
-
-  // Build flow on canvas node by node (SLOW - human speed 2-5 minutes)
+  // Build flow on canvas node by node (MAX 1 MINUTE)
   const buildFlowOnCanvas = useCallback(async (nodes: FlowNode[], edges: FlowEdge[]) => {
-    setIsBuilding(true);
-    setBuildProgress(0);
-    setBuiltNodesCount(0);
-    setTotalNodesToBuild(nodes.length);
-    buildAbortRef.current = false;
+    // Close modal immediately when building starts
+    onOpenChange(false);
     
-    const totalSteps = nodes.length + 4; // nodes + analyze/prepare/connect/finish
-    let currentStep = 0;
+    // Calculate timing: max 60 seconds total
+    // Analysis: 3s, Per node: ~4-5s each, Connections: 3s, Finish: 2s
+    const analysisTime = 3000;
+    const connectionTime = 3000;
+    const finishTime = 2000;
+    const availableForNodes = 60000 - analysisTime - connectionTime - finishTime; // 52 seconds for nodes
+    const perNodeTime = Math.min(5000, Math.floor(availableForNodes / nodes.length));
     
-    // Initialize build steps
-    const steps: BuildStep[] = [
-      { id: 'analyze', label: 'Analisando estrutura...', status: 'active' },
-      { id: 'prepare', label: 'Preparando canvas...', status: 'pending' },
-      ...nodes.map((n, i) => ({ 
-        id: `node-${i}`, 
-        label: `${NODE_ICONS[n.type] || '📦'} ${n.data?.label || `Nó ${i + 1}`}`, 
-        status: 'pending' as const 
-      })),
-      { id: 'connect', label: 'Conectando fluxo...', status: 'pending' },
-      { id: 'finish', label: 'Finalizando...', status: 'pending' }
-    ];
-    setBuildSteps(steps);
+    // Show toast with progress
+    const toastId = toast.loading('🤖 Luna está construindo o fluxo...', {
+      description: 'Analisando estrutura...'
+    });
     
-    const updateStep = (stepId: string, status: 'active' | 'done', detail?: string) => {
-      setBuildSteps(prev => prev.map(s => 
-        s.id === stepId ? { ...s, status, detail } : s
-      ));
-    };
+    // Step 1: Analysis
+    await new Promise(r => setTimeout(r, analysisTime));
     
-    // Step 1: Analyze (8-15 seconds)
-    setCurrentBuildNode('Analisando estrutura do fluxo...');
-    await delayWithPause(8000 + Math.random() * 7000);
-    if (buildAbortRef.current) { setIsBuilding(false); return; }
-    updateStep('analyze', 'done', 'Estrutura mapeada');
-    currentStep++;
-    setBuildProgress((currentStep / totalSteps) * 100);
-    
-    // Step 2: Prepare canvas (5-10 seconds)
-    updateStep('prepare', 'active');
-    setCurrentBuildNode('Preparando área de trabalho...');
-    await delayWithPause(5000 + Math.random() * 5000);
-    if (buildAbortRef.current) { setIsBuilding(false); return; }
-    updateStep('prepare', 'done', 'Canvas pronto');
-    currentStep++;
-    setBuildProgress((currentStep / totalSteps) * 100);
-    
-    // Step 3: Add nodes one by one (12-25 seconds each)
+    // Step 2: Add nodes one by one
     const addedNodes: FlowNode[] = [];
     for (let i = 0; i < nodes.length; i++) {
-      if (buildAbortRef.current) { setIsBuilding(false); return; }
-      
       const node = nodes[i];
-      const stepId = `node-${i}`;
       const nodeLabel = node.data?.label || `Nó ${i + 1}`;
       
-      updateStep(stepId, 'active');
-      setCurrentBuildNode(`Criando: ${nodeLabel}`);
-      
-      // Simulate thinking/configuring time based on node complexity
-      // AI nodes take longer, simple messages are faster
-      let baseTime = 12000; // 12 seconds minimum
-      if (node.type === 'ai') baseTime = 20000;
-      else if (node.type === 'list' || node.type === 'wa_send_list') baseTime = 18000;
-      else if (node.type === 'condition') baseTime = 16000;
-      else if (node.type === 'webhook') baseTime = 15000;
-      
-      const randomExtra = Math.random() * 8000; // 0-8 seconds extra
-      await delayWithPause(baseTime + randomExtra);
-      
-      if (buildAbortRef.current) { setIsBuilding(false); return; }
+      toast.loading(`🤖 Luna está construindo o fluxo...`, {
+        id: toastId,
+        description: `Criando: ${nodeLabel} (${i + 1}/${nodes.length})`
+      });
       
       // Add node to canvas
       addedNodes.push(node);
       onApplyFlow([...addedNodes], []);
-      setBuiltNodesCount(i + 1);
       
-      updateStep(stepId, 'done', 'Configurado ✓');
-      currentStep++;
-      setBuildProgress((currentStep / totalSteps) * 100);
-      
-      // Small pause between nodes (2-4 seconds)
-      await delayWithPause(2000 + Math.random() * 2000);
+      // Wait per node time (with slight randomness)
+      await new Promise(r => setTimeout(r, perNodeTime * (0.8 + Math.random() * 0.4)));
     }
     
-    // Step 4: Connect edges (10-20 seconds)
-    if (buildAbortRef.current) { setIsBuilding(false); return; }
-    updateStep('connect', 'active');
-    setCurrentBuildNode('Conectando nós...');
-    await delayWithPause(10000 + Math.random() * 10000);
-    if (buildAbortRef.current) { setIsBuilding(false); return; }
-    
-    // Apply all edges
-    onApplyFlow(addedNodes, edges);
-    updateStep('connect', 'done', `${edges.length} conexões`);
-    currentStep++;
-    setBuildProgress((currentStep / totalSteps) * 100);
-    
-    // Step 5: Finish (3-6 seconds)
-    updateStep('finish', 'active');
-    setCurrentBuildNode('Validando e finalizando...');
-    await delayWithPause(3000 + Math.random() * 3000);
-    if (buildAbortRef.current) { setIsBuilding(false); return; }
-    updateStep('finish', 'done', 'Completo!');
-    setBuildProgress(100);
-    setCurrentBuildNode(null);
-    
-    // Add completion message
-    setMessages(prev => [...prev, {
-      id: `complete-${Date.now()}`,
-      role: 'assistant',
-      content: `✅ **Fluxo construído com sucesso!**\n\nCriei **${nodes.length} nós** e **${edges.length} conexões** no canvas.\n\nO fluxo está pronto! Você pode:\n- 🔧 **Editar** qualquer nó clicando nele\n- ▶️ **Testar** usando o preview do celular\n- 💾 **Salvar** para manter suas alterações\n\nPrecisa de algum ajuste?`,
-      timestamp: new Date()
-    }]);
-    
-    setIsBuilding(false);
-    setBuildSteps([]);
-    toast.success('🎉 Fluxo construído pela Luna!', {
-      description: `${nodes.length} nós criados e conectados`
+    // Step 3: Connect edges
+    toast.loading(`🤖 Luna está construindo o fluxo...`, {
+      id: toastId,
+      description: 'Conectando nós...'
     });
-  }, [onApplyFlow, delayWithPause]);
+    await new Promise(r => setTimeout(r, connectionTime));
+    onApplyFlow(addedNodes, edges);
+    
+    // Step 4: Save automatically
+    toast.loading(`🤖 Luna está construindo o fluxo...`, {
+      id: toastId,
+      description: 'Salvando...'
+    });
+    
+    if (onSaveFlow) {
+      try {
+        await onSaveFlow();
+      } catch (error) {
+        console.error('Error auto-saving flow:', error);
+      }
+    }
+    
+    await new Promise(r => setTimeout(r, finishTime));
+    
+    // Complete!
+    toast.success('🎉 Fluxo construído pela Luna!', {
+      id: toastId,
+      description: `${nodes.length} nós criados e salvos automaticamente`
+    });
+  }, [onApplyFlow, onOpenChange, onSaveFlow]);
 
   // Handle plan approval
   const approvePlan = useCallback(async () => {
@@ -394,16 +288,6 @@ export const LunaAIModal = ({
         ? { ...msg, isPlanApproved: true }
         : msg
     ));
-    
-    // Add building message
-    const buildingMessage: Message = {
-      id: `building-${Date.now()}`,
-      role: 'assistant',
-      content: '🔧 **Iniciando construção do fluxo!**\n\nVocê verá cada nó sendo criado no canvas em tempo real.\n\n⏱️ Este processo pode levar alguns minutos - estou configurando cada etapa com cuidado para garantir o melhor funcionamento.\n\n*Mantenha esta janela aberta para acompanhar o progresso.*',
-      isBuilding: true,
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, buildingMessage]);
     
     setIsLoading(true);
     setShowQuickPrompts(false);
@@ -418,7 +302,7 @@ export const LunaAIModal = ({
       if (data.error) throw new Error(data.error);
 
       if (data.flow?.nodes) {
-        // Start slow building process - DO NOT close modal
+        // Close modal and start building on canvas
         await buildFlowOnCanvas(data.flow.nodes, data.flow.edges || []);
       } else {
         throw new Error('Resposta inválida da IA');
@@ -436,8 +320,6 @@ export const LunaAIModal = ({
         isError: true
       };
       setMessages(prev => [...prev, errorMessage]);
-      setIsBuilding(false);
-      setBuildSteps([]);
     } finally {
       setIsLoading(false);
       setCurrentPlan(null);
@@ -459,24 +341,9 @@ export const LunaAIModal = ({
     setShowQuickPrompts(false);
   }, []);
 
-  // Toggle pause
-  const togglePause = useCallback(() => {
-    setIsPaused(prev => !prev);
-  }, []);
-
-  // Cancel build
-  const cancelBuild = useCallback(() => {
-    buildAbortRef.current = true;
-    setIsBuilding(false);
-    setBuildSteps([]);
-    setBuildProgress(0);
-    setCurrentBuildNode(null);
-    toast.info('Construção cancelada');
-  }, []);
-
   const sendMessage = async (prompt?: string) => {
     const messageContent = prompt || input.trim();
-    if (!messageContent || isLoading || isBuilding) return;
+    if (!messageContent || isLoading) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -491,8 +358,8 @@ export const LunaAIModal = ({
     setShowQuickPrompts(false);
 
     try {
-      // Simulate thinking (3-6 seconds)
-      await new Promise(resolve => setTimeout(resolve, 3000 + Math.random() * 3000));
+      // Simulate thinking (2-3 seconds)
+      await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 1000));
       
       const plan = await generatePlan(messageContent);
       setCurrentPlan(plan);
@@ -533,156 +400,40 @@ export const LunaAIModal = ({
     }
   };
 
-  // Prevent closing while building
-  const handleOpenChange = (newOpen: boolean) => {
-    if (isBuilding && !newOpen) {
-      toast.info('Aguarde a construção terminar ou cancele primeiro');
-      return;
-    }
-    onOpenChange(newOpen);
-  };
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden bg-gradient-to-b from-background to-background/95">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl h-[80vh] flex flex-col p-0 gap-0 overflow-hidden bg-gradient-to-b from-background to-background/95">
         {/* Header - Genesis Theme */}
         <DialogHeader className="p-4 border-b border-border bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <motion.div 
-                className="relative"
-                animate={isLoading || isBuilding ? { scale: [1, 1.1, 1] } : {}}
-                transition={{ duration: 1, repeat: Infinity }}
-              >
-                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-primary to-primary/60 flex items-center justify-center overflow-hidden ring-2 ring-primary/30">
-                  <img src={lunaAvatar} alt="Luna" className="w-full h-full object-cover" />
-                </div>
-                <motion.div 
-                  className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-background"
-                  animate={isBuilding ? { scale: [1, 1.3, 1], backgroundColor: ['#22c55e', '#3b82f6', '#22c55e'] } : {}}
-                  transition={{ duration: 0.8, repeat: Infinity }}
-                />
-              </motion.div>
-              <div>
-                <DialogTitle className="flex items-center gap-2 text-lg">
-                  Luna IA
-                  <Badge className="bg-gradient-to-r from-primary to-primary/60 text-primary-foreground border-0 text-[10px]">
-                    GENESIS
-                  </Badge>
-                </DialogTitle>
-                <p className="text-xs text-muted-foreground">
-                  {isBuilding 
-                    ? `🔧 Construindo... ${builtNodesCount}/${totalNodesTouild} nós`
-                    : isLoading 
-                      ? '🔍 Processando...' 
-                      : currentPlan 
-                        ? '📋 Aguardando aprovação' 
-                        : '✨ Arquiteta de Fluxos'
-                  }
-                </p>
+          <div className="flex items-center gap-3">
+            <motion.div 
+              className="relative"
+              animate={isLoading ? { scale: [1, 1.1, 1] } : {}}
+              transition={{ duration: 1, repeat: Infinity }}
+            >
+              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-primary to-primary/60 flex items-center justify-center overflow-hidden ring-2 ring-primary/30">
+                <img src={lunaAvatar} alt="Luna" className="w-full h-full object-cover" />
               </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />
+            </motion.div>
+            <div>
+              <DialogTitle className="flex items-center gap-2 text-lg">
+                Luna IA
+                <Badge className="bg-gradient-to-r from-primary to-primary/60 text-primary-foreground border-0 text-[10px]">
+                  GENESIS
+                </Badge>
+              </DialogTitle>
+              <p className="text-xs text-muted-foreground">
+                {isLoading 
+                  ? '🔍 Processando...' 
+                  : currentPlan 
+                    ? '📋 Aguardando aprovação' 
+                    : '✨ Arquiteta de Fluxos'
+                }
+              </p>
             </div>
-            
-            {/* Build controls */}
-            {isBuilding && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={togglePause}
-                  className="h-8 px-2"
-                >
-                  {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={cancelBuild}
-                  className="h-8 px-2 text-destructive hover:text-destructive"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
           </div>
         </DialogHeader>
-
-        {/* Build Progress Bar */}
-        {isBuilding && (
-          <div className="px-4 py-3 bg-gradient-to-r from-primary/10 to-primary/5 border-b border-border">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground flex items-center gap-2">
-                {isPaused ? (
-                  <>
-                    <Pause className="h-4 w-4 text-yellow-500" />
-                    <span className="text-yellow-500">Pausado</span>
-                  </>
-                ) : (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    {currentBuildNode}
-                  </>
-                )}
-              </span>
-              <span className="text-sm font-medium text-primary">
-                {Math.round(buildProgress)}%
-              </span>
-            </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-gradient-to-r from-primary to-primary/60"
-                initial={{ width: 0 }}
-                animate={{ width: `${buildProgress}%` }}
-                transition={{ duration: 0.5 }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Build Steps Animation */}
-        <AnimatePresence>
-          {buildSteps.length > 0 && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="border-b border-border overflow-hidden max-h-[200px]"
-            >
-              <ScrollArea className="h-full max-h-[200px]">
-                <div className="p-4 space-y-1">
-                  {buildSteps.map((step, i) => (
-                    <motion.div
-                      key={step.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.02 }}
-                      className={cn(
-                        "flex items-center gap-2 py-1 text-sm transition-all",
-                        step.status === 'done' && 'text-green-500',
-                        step.status === 'active' && 'text-primary font-medium',
-                        step.status === 'pending' && 'text-muted-foreground/50'
-                      )}
-                    >
-                      {step.status === 'done' && <CheckCircle2 className="h-4 w-4 flex-shrink-0" />}
-                      {step.status === 'active' && (
-                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
-                          <Loader2 className="h-4 w-4 flex-shrink-0" />
-                        </motion.div>
-                      )}
-                      {step.status === 'pending' && <div className="w-4 h-4 rounded-full border border-current flex-shrink-0" />}
-                      <span className="truncate">{step.label}</span>
-                      {step.detail && (
-                        <span className="text-xs text-muted-foreground ml-auto flex-shrink-0">
-                          {step.detail}
-                        </span>
-                      )}
-                    </motion.div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Messages */}
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>
@@ -788,7 +539,7 @@ export const LunaAIModal = ({
                               onClick={approvePlan}
                               className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:opacity-90 gap-2"
                               size="sm"
-                              disabled={isLoading || isBuilding}
+                              disabled={isLoading}
                             >
                               <ThumbsUp className="h-4 w-4" />
                               Sim, implementar!
@@ -798,7 +549,7 @@ export const LunaAIModal = ({
                               variant="outline"
                               className="flex-1 gap-2"
                               size="sm"
-                              disabled={isLoading || isBuilding}
+                              disabled={isLoading}
                             >
                               <ThumbsDown className="h-4 w-4" />
                               Modificar
@@ -816,7 +567,7 @@ export const LunaAIModal = ({
                         className="mt-3 p-3 bg-green-500/10 rounded-xl border border-green-500/30 flex items-center gap-2"
                       >
                         <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        <span className="text-sm text-green-500 font-medium">Plano aprovado!</span>
+                        <span className="text-sm text-green-500 font-medium">Plano aprovado! Construindo...</span>
                       </motion.div>
                     )}
 
@@ -829,7 +580,7 @@ export const LunaAIModal = ({
             </AnimatePresence>
 
             {/* Loading */}
-            {isLoading && !isBuilding && buildSteps.length === 0 && (
+            {isLoading && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -841,7 +592,7 @@ export const LunaAIModal = ({
                 <div className="bg-muted rounded-2xl rounded-tl-sm p-3">
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    <span className="text-sm text-muted-foreground">Analisando sua solicitação...</span>
+                    <span className="text-sm text-muted-foreground">Analisando...</span>
                   </div>
                 </div>
               </motion.div>
@@ -851,60 +602,48 @@ export const LunaAIModal = ({
 
         {/* Quick Prompts */}
         <AnimatePresence>
-          {showQuickPrompts && !isLoading && !isBuilding && !currentPlan && (
+          {showQuickPrompts && !isLoading && messages.length <= 1 && (
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="px-4 pb-2 border-t border-border overflow-hidden"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="p-4 border-t border-border"
             >
-              <div className="pt-3">
-                <span className="text-xs text-muted-foreground mb-2 block">💡 Sugestões rápidas</span>
-                <div className="grid grid-cols-2 gap-2">
-                  {QUICK_PROMPTS.map((item, index) => (
-                    <motion.button
-                      key={index}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      onClick={() => sendMessage(item.prompt)}
-                      className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-all text-left group border border-transparent hover:border-primary/30"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-primary/20 to-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <item.icon className="h-4 w-4 text-primary" />
-                      </div>
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </motion.button>
-                  ))}
-                </div>
+              <p className="text-xs text-muted-foreground mb-2">Sugestões rápidas:</p>
+              <div className="grid grid-cols-2 gap-2">
+                {QUICK_PROMPTS.map((qp, i) => (
+                  <Button
+                    key={i}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => sendMessage(qp.prompt)}
+                    className="justify-start gap-2 h-auto py-2 text-xs"
+                  >
+                    <qp.icon className="h-4 w-4 text-primary" />
+                    {qp.label}
+                  </Button>
+                ))}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Input */}
-        <div className="p-4 border-t border-border bg-background">
+        <div className="p-4 border-t border-border bg-background/50">
           <div className="flex gap-2">
             <Textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={
-                isBuilding 
-                  ? "Aguarde a construção terminar..." 
-                  : currentPlan 
-                    ? "Descreva as modificações desejadas..." 
-                    : "Descreva o fluxo que você deseja criar..."
-              }
-              className="min-h-[50px] max-h-[120px] resize-none text-sm"
-              disabled={isLoading || isBuilding}
+              placeholder={currentPlan ? 'Aguardando aprovação do plano...' : 'Descreva o fluxo que você precisa...'}
+              className="min-h-[44px] max-h-32 resize-none text-sm"
+              disabled={isLoading || !!currentPlan}
             />
             <Button
               onClick={() => sendMessage()}
-              disabled={!input.trim() || isLoading || isBuilding}
-              className="bg-gradient-to-r from-primary to-primary/80 hover:opacity-90 shrink-0 h-[50px] w-[50px]"
-              size="icon"
+              disabled={!input.trim() || isLoading || !!currentPlan}
+              className="px-3 bg-gradient-to-r from-primary to-primary/80 hover:opacity-90"
             >
               {isLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -913,14 +652,10 @@ export const LunaAIModal = ({
               )}
             </Button>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-2 text-center">
-            {isBuilding 
-              ? `⏱️ Construindo... ${builtNodesCount}/${totalNodesTouild} nós criados`
-              : 'Pressione Enter para enviar • Shift+Enter para nova linha'
-            }
-          </p>
         </div>
       </DialogContent>
     </Dialog>
   );
 };
+
+export default LunaAIModal;

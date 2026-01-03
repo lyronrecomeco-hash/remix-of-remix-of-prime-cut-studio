@@ -784,7 +784,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange, onNavigateToInstances }: 
         </Dialog>
 
         {/* Luna AI Modal */}
-        <LunaAIModal open={isLunaOpen} onOpenChange={setIsLunaOpen} onApplyFlow={handleApplyLunaFlow} currentNodes={[]} currentEdges={[]} />
+        <LunaAIModal open={isLunaOpen} onOpenChange={setIsLunaOpen} onApplyFlow={handleApplyLunaFlow} currentNodes={[]} currentEdges={[]} flowId={selectedRule?.id} onSaveFlow={saveFlow} />
       </div>
     );
   }
@@ -1011,7 +1011,7 @@ const FlowBuilderContent = ({ onBack, onEditingChange, onNavigateToInstances }: 
         onOpenLuna={() => { setShowComponentsModal(false); setIsLunaOpen(true); }}
         onNavigateToInstances={onNavigateToInstances}
       />
-      <LunaAIModal open={isLunaOpen} onOpenChange={setIsLunaOpen} onApplyFlow={handleApplyLunaFlow} currentNodes={nodes as unknown as FlowNodeType[]} currentEdges={edges as unknown as FlowEdge[]} />
+      <LunaAIModal open={isLunaOpen} onOpenChange={setIsLunaOpen} onApplyFlow={handleApplyLunaFlow} currentNodes={nodes as unknown as FlowNodeType[]} currentEdges={edges as unknown as FlowEdge[]} flowId={selectedRule?.id} onSaveFlow={saveFlow} />
       <FlowTemplates open={showTemplates} onClose={() => setShowTemplates(false)} onSelectTemplate={handleApplyTemplate} />
       <FlowSimulator open={showSimulator} onClose={() => setShowSimulator(false)} nodes={nodes as unknown as FlowNodeType[]} edges={edges as unknown as FlowEdge[]} onNavigateToNode={navigateToNode} />
       <NodeSearch nodes={nodes as unknown as FlowNodeType[]} onNavigateToNode={navigateToNode} isOpen={showSearch} onClose={() => setShowSearch(false)} />
