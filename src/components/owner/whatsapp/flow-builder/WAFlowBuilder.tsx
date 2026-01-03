@@ -27,8 +27,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { 
+import {
   Save, 
   Loader2, 
   Plus, 
@@ -61,7 +60,7 @@ import { toast } from 'sonner';
 import { FlowNode } from './FlowNode';
 import { NodeSidebar } from './NodeSidebar';
 import { NodeConfigPanel } from './NodeConfigPanel';
-import { FlowToolbar } from './FlowToolbar';
+import { MinimalToolbar } from './MinimalToolbar';
 import { FlowStats } from './FlowStats';
 import { FlowValidationPanel } from './FlowValidationPanel';
 import { HelpModal } from './HelpModal';
@@ -71,6 +70,8 @@ import { FlowSimulator } from './FlowSimulator';
 import { FlowControls } from './FlowControls';
 import { NodeSearch } from './NodeSearch';
 import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
+import { ComponentsModal } from './ComponentsModal';
+import { EmptyCanvasState } from './EmptyCanvasState';
 import { 
   FlowNode as FlowNodeType, 
   FlowEdge, 
@@ -128,6 +129,7 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
   const [interactionMode, setInteractionMode] = useState<'select' | 'pan'>('select');
   const [isCanvasLocked, setIsCanvasLocked] = useState(false);
   const [showFloatingTools, setShowFloatingTools] = useState(false);
+  const [showComponentsModal, setShowComponentsModal] = useState(false);
   
   // Luna AI building state
   const [isLunaBuilding, setIsLunaBuilding] = useState(false);
@@ -354,6 +356,22 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
   const updateNodeData = (nodeId: string, newData: any) => { setNodes(nds => nds.map(node => node.id === nodeId ? { ...node, data: newData } : node)); setSelectedNode(null); addToHistory(); };
   const duplicateNode = (nodeId: string) => { const node = nodes.find(n => n.id === nodeId); if (!node) return; const newNode = { ...node, id: `${node.data.type}-${Date.now()}`, position: { x: node.position.x + 50, y: node.position.y + 50 } }; setNodes(nds => nds.concat(newNode)); addToHistory(); toast.success('Nó duplicado!'); };
   const deleteNode = (nodeId: string) => { setNodes(nds => nds.filter(node => node.id !== nodeId)); setEdges(eds => eds.filter(edge => edge.source !== nodeId && edge.target !== nodeId)); setSelectedNode(null); addToHistory(); };
+
+  // Add component from modal
+  const addComponentFromModal = useCallback((template: NodeTemplate) => {
+    const centerX = 400 + Math.random() * 100;
+    const centerY = 200 + nodes.length * 120;
+    const newNode = { 
+      id: `${template.type}-${Date.now()}`, 
+      type: 'flowNode', 
+      position: { x: centerX, y: centerY }, 
+      data: { label: template.label, type: template.type, config: template.defaultConfig, description: template.description, icon: template.icon } 
+    };
+    setNodes((nds) => nds.concat(newNode));
+    addToHistory();
+    toast.success(`${template.label} adicionado!`);
+    setTimeout(() => fitView({ padding: 0.3 }), 100);
+  }, [nodes.length, setNodes, addToHistory, fitView]);
 
   const exportFlow = () => { const flowData = { name: selectedRule?.name, version: selectedRule?.flow_version, nodes, edges }; const blob = new Blob([JSON.stringify(flowData, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `flow-${selectedRule?.name || 'export'}-v${selectedRule?.flow_version || 1}.json`; a.click(); toast.success('Fluxo exportado!'); };
   const importFlow = () => fileInputRef.current?.click();
@@ -623,7 +641,7 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
     );
   }
 
-  // Flow Editor with Resizable Panels
+  // Flow Editor - Clean n8n-style canvas
   return (
     <TooltipProvider>
       <motion.div 
@@ -631,73 +649,13 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
         animate={{ opacity: 1 }}
         className={cn(
           'flex flex-col rounded-2xl border overflow-hidden bg-background shadow-2xl relative',
-          isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'h-[calc(100vh-180px)] min-h-[700px]'
+          isFullscreen ? 'fixed inset-0 z-50 rounded-none' : 'h-[calc(100vh-180px)] min-h-[600px]'
         )}
       >
         <input type="file" ref={fileInputRef} accept=".json" className="hidden" onChange={handleFileImport} />
 
-        <ResizablePanelGroup direction="horizontal" className="flex-1">
-          {/* Sidebar Panel */}
-          <ResizablePanel defaultSize={22} minSize={15} maxSize={35} collapsible collapsedSize={4}>
-            <div className="h-full bg-card/95 backdrop-blur-xl border-r overflow-hidden flex flex-col">
-              {/* Quick Actions */}
-              <div className="p-3 border-b space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <Zap className="w-4 h-4 text-primary" />
-                    </div>
-                    <span className="font-semibold text-sm">Ferramentas</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" onClick={() => setShowTemplates(true)} className="h-10 w-full hover:bg-blue-500/10 hover:border-blue-500/30">
-                        <LayoutTemplate className="w-4 h-4 text-blue-400" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Templates</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" onClick={() => setShowSimulator(true)} className="h-10 w-full hover:bg-green-500/10 hover:border-green-500/30">
-                        <PlayCircle className="w-4 h-4 text-green-400" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Simulador</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" onClick={() => setShowSearch(true)} className="h-10 w-full hover:bg-orange-500/10 hover:border-orange-500/30">
-                        <Search className="w-4 h-4 text-orange-400" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Buscar (Ctrl+F)</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" size="icon" onClick={() => setIsLunaOpen(true)} className="h-10 w-full bg-gradient-to-br from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 border-purple-500/30">
-                        <Sparkles className="w-4 h-4 text-purple-400" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Luna IA</TooltipContent>
-                  </Tooltip>
-                </div>
-              </div>
-              
-              {/* Node Sidebar */}
-              <div className="flex-1 overflow-hidden">
-                <NodeSidebar onDragStart={onDragStart} />
-              </div>
-            </div>
-          </ResizablePanel>
-
-          <ResizableHandle withHandle />
-
-          {/* Canvas Panel */}
-          <ResizablePanel defaultSize={78}>
-            <div className="flex-1 h-full relative" ref={reactFlowWrapper}>
+        {/* Full Canvas - No sidebar */}
+        <div className="flex-1 h-full relative" ref={reactFlowWrapper}>
               <svg style={{ position: 'absolute', width: 0, height: 0 }}>
                 <defs>
                   <linearGradient id="edge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -748,7 +706,15 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
               >
                 <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="hsl(var(--muted-foreground) / 0.2)" />
                 
-                <FlowToolbar
+                {/* Empty Canvas State */}
+                {nodes.length === 0 && (
+                  <EmptyCanvasState 
+                    onAddComponent={() => setShowComponentsModal(true)} 
+                    onCreateWithLuna={() => setIsLunaOpen(true)} 
+                  />
+                )}
+                
+                <MinimalToolbar
                   ruleName={selectedRule.name}
                   ruleVersion={selectedRule.flow_version || 1}
                   isActive={selectedRule.is_active}
@@ -774,6 +740,8 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
                   onDeleteSelected={handleDeleteSelected}
                   onToggleFullscreen={toggleFullscreen}
                   onShowHelp={() => setShowHelp(true)}
+                  onAddComponent={() => setShowComponentsModal(true)}
+                  onOpenLuna={() => setIsLunaOpen(true)}
                 />
 
                 <FlowStats nodes={nodes} edges={edges} />
@@ -909,8 +877,6 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
               <FlowControls isLocked={isCanvasLocked} onToggleLock={() => setIsCanvasLocked(!isCanvasLocked)} snapToGrid={snapToGrid} onToggleSnap={() => setSnapToGrid(!snapToGrid)} interactionMode={interactionMode} onToggleMode={() => setInteractionMode(m => m === 'select' ? 'pan' : 'select')} />
               <FlowValidationPanel isOpen={showValidation} onClose={() => setShowValidation(false)} errors={validationResult.errors} warnings={validationResult.warnings} onNavigateToNode={navigateToNode} />
             </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
 
         {/* Config Panel */}
         <AnimatePresence>
@@ -921,6 +887,12 @@ const FlowBuilderContent = ({ onBack }: WAFlowBuilderProps) => {
       </motion.div>
 
       {/* Modals - outside fullscreen container for proper z-index */}
+      <ComponentsModal 
+        open={showComponentsModal} 
+        onClose={() => setShowComponentsModal(false)} 
+        onSelectComponent={addComponentFromModal}
+        onOpenLuna={() => { setShowComponentsModal(false); setIsLunaOpen(true); }}
+      />
       <LunaAIModal open={isLunaOpen} onOpenChange={setIsLunaOpen} onApplyFlow={handleApplyLunaFlow} currentNodes={nodes as unknown as FlowNodeType[]} currentEdges={edges as unknown as FlowEdge[]} />
       <FlowTemplates open={showTemplates} onClose={() => setShowTemplates(false)} onSelectTemplate={handleApplyTemplate} />
       <FlowSimulator open={showSimulator} onClose={() => setShowSimulator(false)} nodes={nodes as unknown as FlowNodeType[]} edges={edges as unknown as FlowEdge[]} onNavigateToNode={navigateToNode} />
