@@ -130,59 +130,38 @@ serve(async (req) => {
       });
     }
 
-    // Get backend config - prefer per-instance unless it's a local placeholder
-    let backendUrl = instance.backend_url;
-    let backendToken = instance.backend_token;
+    // Get backend config from instance ONLY - each Genesis instance is independent
+    const backendUrl = instance.backend_url;
+    const backendToken = instance.backend_token;
 
-    const isLocalBackendUrl = (url?: string | null) => {
-      const raw = String(url ?? '').trim();
-      if (!raw) return false;
-      try {
-        const parsed = new URL(raw);
-        return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '0.0.0.0';
-      } catch {
-        return raw.includes('localhost') || raw.includes('127.0.0.1') || raw.includes('0.0.0.0');
-      }
-    };
-
-    const isPlaceholderToken = (token?: string | null) => {
-      const t = String(token ?? '').trim();
-      return t === 'genesis-auto-token';
-    };
-
-    // Never allow local backends for Genesis users
-    if (isLocalBackendUrl(backendUrl)) backendUrl = null;
-    if (isPlaceholderToken(backendToken)) backendToken = null;
-
-    if (!backendUrl || !backendToken) {
-      // Fallback to global config (WhatsApp Automação)
-      const { data: globalConfig } = await supabaseAdmin
-        .from("whatsapp_backend_config")
-        .select("backend_url, master_token, is_connected")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (globalConfig?.backend_url && globalConfig?.master_token) {
-        backendUrl = globalConfig.backend_url;
-        backendToken = globalConfig.master_token;
-
-        // Save to instance for future use (overwrite old placeholders)
-        await supabaseAdmin
-          .from("genesis_instances")
-          .update({
-            backend_url: backendUrl,
-            backend_token: backendToken,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", instanceId);
-      }
-    }
-
+    // Validate backend config exists
     if (!backendUrl || !backendToken) {
       return new Response(
         JSON.stringify({
-          error: "Backend do WhatsApp Automação não configurado. Entre em contato com o suporte.",
+          error: "Configure a URL e Token do backend nas configurações da instância.",
+          needsConfig: true,
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Block localhost/local backends - must use VPS
+    const isLocalBackend = (url: string) => {
+      try {
+        const parsed = new URL(url);
+        return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '0.0.0.0';
+      } catch {
+        return url.includes('localhost') || url.includes('127.0.0.1') || url.includes('0.0.0.0');
+      }
+    };
+
+    if (isLocalBackend(backendUrl)) {
+      return new Response(
+        JSON.stringify({
+          error: "Backend local não é suportado. Configure uma URL de VPS válida.",
           needsConfig: true,
         }),
         {
