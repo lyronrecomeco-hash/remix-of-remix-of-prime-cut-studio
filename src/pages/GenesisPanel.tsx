@@ -46,6 +46,7 @@ import { WelcomeModal } from '@/components/genesis/WelcomeModal';
 import { GenesisDebugPanel } from '@/components/genesis/GenesisDebugPanel';
 import { GenesisCreditUsage } from '@/components/genesis/GenesisCreditUsage';
 import { GenesisWebhooks } from '@/components/genesis/GenesisWebhooks';
+import { GenesisMyAccount } from '@/components/genesis/GenesisMyAccount';
 
 // Dashboard component with real data
 const GenesisDashboard = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
@@ -304,6 +305,7 @@ export default function GenesisPanel() {
     { id: 'chatbots', label: 'Chatbots', icon: Bot },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'credits', label: 'Créditos', icon: CreditCard },
+    { id: 'account', label: 'Minha Conta', icon: User },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 
@@ -329,6 +331,8 @@ export default function GenesisPanel() {
         return <AnalyticsDashboard />;
       case 'credits':
         return <CreditsManager />;
+      case 'account':
+        return <GenesisMyAccount />;
       case 'settings':
         return (
           <div className="space-y-6">
@@ -452,9 +456,13 @@ export default function GenesisPanel() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setActiveTab('account')}>
+                  <User className="w-4 h-4 mr-2" />
+                  Minha Conta
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setActiveTab('settings')}>
                   <Settings className="w-4 h-4 mr-2" />
-                  Minha Conta
+                  Configurações
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <HelpCircle className="w-4 h-4 mr-2" />
