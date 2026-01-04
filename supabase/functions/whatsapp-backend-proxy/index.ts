@@ -25,6 +25,11 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  console.log("whatsapp-backend-proxy request", {
+    method: req.method,
+    hasAuth: Boolean(req.headers.get("Authorization")),
+  });
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -50,6 +55,11 @@ serve(async (req) => {
     } = await supabaseAuthed.auth.getUser();
 
     if (userError || !user) {
+      console.warn("whatsapp-backend-proxy invalid caller jwt", {
+        hasUser: Boolean(user),
+        error: userError?.message,
+      });
+
       return new Response(JSON.stringify({ error: "Token inválido" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

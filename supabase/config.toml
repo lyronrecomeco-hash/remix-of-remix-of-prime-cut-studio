@@ -124,3 +124,6 @@ verify_jwt = false
 
 [functions.flow-ai-builder]
 verify_jwt = false
+
+[functions.whatsapp-backend-proxy]
+verify_jwt = false
