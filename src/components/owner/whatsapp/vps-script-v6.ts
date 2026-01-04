@@ -1,6 +1,7 @@
 // VPS Script v6.0 - Ultra Stable
-export const getVPSScriptV6 = (masterToken: string): string => {
+export const getVPSScriptV6 = (masterToken: string, instanceId?: string): string => {
   const token = masterToken || 'GNS_' + Math.random().toString(36).substring(2, 34);
+  const resolvedInstanceId = instanceId || 'default';
   
   return `#!/usr/bin/env node
 // ╔══════════════════════════════════════════════════════════════════════════════════╗
@@ -24,7 +25,7 @@ const PORT = process.env.PORT || 3001;
 const MASTER_TOKEN = process.env.MASTER_TOKEN || '${token}';
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wvnszzrvrrueuycrpgyc.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2bnN6enJ2cnJ1ZXV5Y3JwZ3ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4MTE4MjYsImV4cCI6MjA4MjM4NzgyNn0.mHs-vau3qsSRLqZ9AmWMsFB5ZLMmd1s003MxdLhBPw0';
-const INSTANCE_ID = process.env.INSTANCE_ID || 'default';
+const INSTANCE_ID = process.env.INSTANCE_ID || '${resolvedInstanceId}';
 const HEARTBEAT_INTERVAL = 20000; // 20s para garantir status sempre atualizado
 
 // ╔═══════════════════════════════════════════════════════════════════════════════════╗

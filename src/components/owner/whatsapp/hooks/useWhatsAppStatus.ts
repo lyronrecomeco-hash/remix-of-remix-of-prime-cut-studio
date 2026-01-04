@@ -14,9 +14,8 @@ interface InstanceStatus {
   heartbeat_age_seconds: number;
 }
 
-// Threshold mais agressivo: 60s ao invés de 120s
-const STALE_THRESHOLD_MS = 60000; // 1 minuto
-
+// Threshold mais seguro: 120s (evita “desconectou sozinho” por jitter de rede)
+const STALE_THRESHOLD_MS = 120000; // 2 minutos
 export const useWhatsAppStatus = (pollInterval = 15000) => {
   const [instances, setInstances] = useState<InstanceStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);

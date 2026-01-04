@@ -173,7 +173,7 @@ const WhatsAppAutomation = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
 
   // Heartbeat-based status source of truth
-  const { instances: hbInstances } = useWhatsAppStatus(30000);
+  const { instances: hbInstances } = useWhatsAppStatus(3000);
   
   // Backend mode
   const [backendMode, setBackendMode] = useState<BackendMode>(() => {
@@ -308,6 +308,28 @@ const WhatsAppAutomation = () => {
       });
   }, [backendMode, localToken, localEndpoint, localPort, instances]);
 
+  // Ensure VPS master token/url are stored on instances so heartbeats work 24/7 (independente do painel aberto)
+  useEffect(() => {
+    if (backendMode !== 'vps') return;
+    if (!masterToken) return;
+    if (!backendUrl) return;
+    if (instances.length === 0) return;
+
+    const desiredBackendUrl = backendUrl.replace(/\/$/, '');
+    const needsSync = instances.some(
+      (i) => i.backend_token !== masterToken || i.backend_url !== desiredBackendUrl || i.is_active !== true
+    );
+    if (!needsSync) return;
+
+    supabase
+      .from('whatsapp_instances')
+      .update({ backend_token: masterToken, backend_url: desiredBackendUrl, is_active: true })
+      .in('id', instances.map((i) => i.id))
+      .then(({ error }) => {
+        if (error) console.error('[WhatsApp] Failed syncing VPS backend token:', error);
+      });
+  }, [backendMode, masterToken, backendUrl, instances]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -364,9 +386,18 @@ const WhatsAppAutomation = () => {
       case 'webhooks':
         return <WAWebhooks instances={instancesProps} />;
       case 'vps-setup':
-        return <WAVPSSetup backendUrl={backendUrl} setBackendUrl={setBackendUrl} masterToken={masterToken} setMasterToken={setMasterToken} backendConfig={backendConfig} onRefresh={fetchData} />;
-      case 'security':
-        return <WASecurity instances={instancesProps} />;
+        return (
+          <WAVPSSetup
+            backendUrl={backendUrl}
+            setBackendUrl={setBackendUrl}
+            masterToken={masterToken}
+            setMasterToken={setMasterToken}
+            backendConfig={backendConfig}
+            defaultInstanceId={mergedInstances[0]?.id || instances[0]?.id || ''}
+            defaultInstanceName={mergedInstances[0]?.name || instances[0]?.name || 'Principal'}
+            onRefresh={fetchData}
+          />
+        );
       case 'integrations':
         return <WAIntegrations />;
       case 'backend':

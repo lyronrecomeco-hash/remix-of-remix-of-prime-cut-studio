@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-instance-token",
 };
 
-// Threshold para considerar instância stale (60 segundos)
-const STALE_THRESHOLD_SECONDS = 60;
+// Threshold para considerar instância stale (120 segundos)
+const STALE_THRESHOLD_SECONDS = 120;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -23,7 +23,8 @@ serve(async (req) => {
     const pathParts = url.pathname.split("/").filter(Boolean);
     
     // POST /whatsapp-heartbeat/:instanceId - Recebe heartbeat do backend
-    if (req.method === "POST" && pathParts.length >= 2) {
+    // Nota: precisa ignorar a rota /cleanup para não capturar no handler errado.
+    if (req.method === "POST" && pathParts.length >= 2 && pathParts[1] !== "cleanup") {
       const instanceId = pathParts[1];
       const instanceToken = req.headers.get("x-instance-token");
 

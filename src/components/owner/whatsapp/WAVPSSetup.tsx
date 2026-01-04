@@ -45,6 +45,8 @@ interface WAVPSSetupProps {
   masterToken: string;
   setMasterToken: (token: string) => void;
   backendConfig: BackendConfig | null;
+  defaultInstanceId: string;
+  defaultInstanceName?: string;
   onRefresh: () => void;
 }
 
@@ -54,6 +56,8 @@ export const WAVPSSetup = ({
   masterToken,
   setMasterToken,
   backendConfig,
+  defaultInstanceId,
+  defaultInstanceName,
   onRefresh
 }: WAVPSSetupProps) => {
   const [isSaving, setIsSaving] = useState(false);
@@ -658,7 +662,7 @@ app.listen(PORT, '0.0.0.0', async () => {
   };
 
   const downloadScript = () => {
-    const script = getVPSScriptV6(masterToken);
+    const script = getVPSScriptV6(masterToken, defaultInstanceId);
     const blob = new Blob([script], { type: 'application/javascript' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -745,7 +749,7 @@ PORT=3001
 MASTER_TOKEN=${masterToken || 'SEU_TOKEN_AQUI'}
 SUPABASE_URL=https://wvnszzrvrrueuycrpgyc.supabase.co
 SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2bnN6enJ2cnJ1ZXV5Y3JwZ3ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY4MTE4MjYsImV4cCI6MjA4MjM4NzgyNn0.mHs-vau3qsSRLqZ9AmWMsFB5ZLMmd1s003MxdLhBPw0
-INSTANCE_ID=principal
+INSTANCE_ID=${defaultInstanceId || 'SEU_INSTANCE_ID'}
 EOF
 
 # Instalar dotenv para carregar .env
