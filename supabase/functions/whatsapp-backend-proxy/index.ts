@@ -129,6 +129,13 @@ serve(async (req) => {
     const backendUrl = String(config.backend_url).replace(/\/$/, "");
     const targetUrl = backendUrl + path;
 
+    console.log("whatsapp-backend-proxy forwarding", {
+      path,
+      method,
+      targetUrl,
+      hasBody: Boolean(body?.body),
+    });
+
     const headers: Record<string, string> = {
       Authorization: `Bearer ${config.master_token}`,
     };
