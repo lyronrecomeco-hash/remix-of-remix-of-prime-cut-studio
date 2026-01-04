@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   QrCode,
-  Smartphone,
   CheckCircle2,
   XCircle,
   RefreshCw,
@@ -12,8 +11,7 @@ import {
   Send,
   AlertCircle,
   Zap,
-  Shield,
-  Settings2
+  Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,14 +19,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { useGenesisWhatsAppConnection } from './hooks/useGenesisWhatsAppConnection';
 import { cn } from '@/lib/utils';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger
-} from '@/components/ui/collapsible';
 
 interface Instance {
   id: string;
@@ -47,9 +39,10 @@ interface GenesisWhatsAppConnectProps {
 }
 
 export function GenesisWhatsAppConnect({ instance, onRefresh }: GenesisWhatsAppConnectProps) {
-  const [backendUrl, setBackendUrl] = useState(instance.backend_url || '');
-  const [backendToken, setBackendToken] = useState(instance.backend_token || '');
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  // Backend config is managed internally - users don't need to configure
+  const backendUrl = instance.backend_url || 'http://localhost:3001';
+  const backendToken = instance.backend_token || 'genesis-auto-token';
+  
   const [liveStatus, setLiveStatus] = useState({
     status: instance.status,
     phoneNumber: instance.phone_number,
@@ -79,14 +72,8 @@ export function GenesisWhatsAppConnect({ instance, onRefresh }: GenesisWhatsAppC
     return () => stopStatusPolling();
   }, [instance.id, startStatusPolling, stopStatusPolling]);
 
-  // Auto-load backend config from DB
-  useEffect(() => {
-    if (instance.backend_url) setBackendUrl(instance.backend_url);
-    if (instance.backend_token) setBackendToken(instance.backend_token);
-  }, [instance.backend_url, instance.backend_token]);
-
   const handleConnect = async () => {
-    // Use default local backend if not configured
+    // Use instance backend config or defaults
     const url = backendUrl || 'http://localhost:3001';
     const token = backendToken || 'genesis-auto-token';
 
@@ -422,55 +409,7 @@ Sua instância está conectada e funcionando perfeitamente!
             <Button variant="ghost" onClick={onRefresh} size="icon" className="shrink-0">
               <RefreshCw className="w-5 h-5" />
             </Button>
-
-            {/* Advanced Settings Toggle */}
-            <div className="ml-auto">
-              <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
-                    <Settings2 className="w-4 h-4" />
-                    Avançado
-                  </Button>
-                </CollapsibleTrigger>
-              </Collapsible>
-            </div>
           </div>
-
-          {/* Advanced Settings */}
-          <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
-            <CollapsibleContent className="mt-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="p-4 rounded-xl bg-muted/30 border space-y-4"
-              >
-                <p className="text-xs text-muted-foreground">
-                  Configurações avançadas para conexão externa (VPS/servidor próprio)
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs">URL do Backend</Label>
-                    <Input
-                      value={backendUrl}
-                      onChange={(e) => setBackendUrl(e.target.value)}
-                      placeholder="http://localhost:3001"
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Token Externo</Label>
-                    <Input
-                      type="password"
-                      value={backendToken}
-                      onChange={(e) => setBackendToken(e.target.value)}
-                      placeholder="Token para conexão externa"
-                      className="text-sm"
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            </CollapsibleContent>
-          </Collapsible>
         </div>
       </CardContent>
     </Card>
