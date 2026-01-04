@@ -50,14 +50,30 @@ serve(async (req) => {
         );
       }
 
+      // Também aceita o MASTER_TOKEN atual do backend (VPS v6 envia ele no x-instance-token)
+      const { data: backendCfg } = await supabase
+        .from("whatsapp_backend_config")
+        .select("master_token")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
       const expectedInstanceToken = instance.instance_token;
       const expectedBackendToken = (instance as Record<string, unknown>).backend_token as string | null;
+      const expectedMasterToken = (backendCfg as Record<string, unknown> | null)?.master_token as string | null;
 
       const isValidToken =
         (expectedInstanceToken && expectedInstanceToken === instanceToken) ||
-        (expectedBackendToken && expectedBackendToken === instanceToken);
+        (expectedBackendToken && expectedBackendToken === instanceToken) ||
+        (expectedMasterToken && expectedMasterToken === instanceToken);
 
       if (!isValidToken) {
+        console.warn("whatsapp-heartbeat invalid token", {
+          instanceId,
+          tokenPrefix: String(instanceToken).slice(0, 8),
+          hasMasterToken: Boolean(expectedMasterToken),
+          masterPrefix: expectedMasterToken ? String(expectedMasterToken).slice(0, 8) : null,
+        });
         return new Response(
           JSON.stringify({ error: "Invalid token" }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
