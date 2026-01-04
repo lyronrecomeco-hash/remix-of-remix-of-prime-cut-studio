@@ -203,10 +203,12 @@ export const WAVPSSetup = ({
     
     const token = masterToken || generateToken();
     
-    return `// ╔══════════════════════════════════════════════════════════════════════════════╗
-// ║              GENESIS WHATSAPP BACKEND - v4.2 PROFESSIONAL                     ║
-// ║                    Ubuntu 24.04 LTS | Baileys Latest                          ║
-// ╚══════════════════════════════════════════════════════════════════════════════╝
+    return `#!/usr/bin/env node
+// ╔══════════════════════════════════════════════════════════════════════════════════╗
+// ║           GENESIS WHATSAPP BACKEND - v5.0 INTERACTIVE MENU                       ║
+// ║                    Ubuntu 24.04 LTS | Baileys Latest                             ║
+// ║                      Professional Terminal Interface                             ║
+// ╚══════════════════════════════════════════════════════════════════════════════════╝
 
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const express = require('express');
@@ -215,10 +217,11 @@ const fs = require('fs');
 const path = require('path');
 const pino = require('pino');
 const os = require('os');
+const readline = require('readline');
 
-// ╔═══════════════════════════════════════════════════════════════════════════════╗
-// ║                              CONFIGURAÇÃO                                      ║
-// ╚═══════════════════════════════════════════════════════════════════════════════╝
+// ╔═══════════════════════════════════════════════════════════════════════════════════╗
+// ║                                CONFIGURAÇÃO                                        ║
+// ╚═══════════════════════════════════════════════════════════════════════════════════╝
 const PORT = process.env.PORT || 3001;
 const MASTER_TOKEN = process.env.MASTER_TOKEN || '${token}';
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
@@ -226,27 +229,54 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
 const INSTANCE_ID = process.env.INSTANCE_ID || 'default';
 const HEARTBEAT_INTERVAL = 30000;
 
-// ╔═══════════════════════════════════════════════════════════════════════════════╗
-// ║                              INICIALIZAÇÃO                                     ║
-// ╚═══════════════════════════════════════════════════════════════════════════════╝
+// ╔═══════════════════════════════════════════════════════════════════════════════════╗
+// ║                               INICIALIZAÇÃO                                        ║
+// ╚═══════════════════════════════════════════════════════════════════════════════════╝
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-const logger = pino({ level: 'silent' });
+const pinoLogger = pino({ level: 'silent' });
 
+// Estado Global
 let sock = null;
 let qrCode = null;
 let connectionStatus = 'disconnected';
 let phoneNumber = null;
 let startTime = Date.now();
 let serverIP = 'localhost';
+let logsEnabled = false;
+let menuVisible = true;
+let proxyMode = 'off'; // off, auto, rotating
+let proxyList = [];
+let currentProxyIndex = 0;
+let messageCount = 0;
+let errorCount = 0;
+let lastHeartbeat = null;
 
 const AUTH_FOLDER = path.join(__dirname, 'auth_info_' + INSTANCE_ID);
+const logs = [];
+const MAX_LOGS = 100;
 
-// ╔═══════════════════════════════════════════════════════════════════════════════╗
-// ║                           CORES DO TERMINAL                                    ║
-// ╚═══════════════════════════════════════════════════════════════════════════════╝
+// ╔═══════════════════════════════════════════════════════════════════════════════════╗
+// ║                              SISTEMA DE LOGS                                       ║
+// ╚═══════════════════════════════════════════════════════════════════════════════════╝
+const addLog = (type, message, details = null) => {
+  const timestamp = new Date().toLocaleTimeString('pt-BR');
+  const log = { timestamp, type, message, details };
+  logs.unshift(log);
+  if (logs.length > MAX_LOGS) logs.pop();
+  
+  if (logsEnabled) {
+    const colors = { info: c.cyan, success: c.green, error: c.red, warn: c.yellow, msg: c.magenta };
+    const color = colors[type] || c.white;
+    console.log(color + '[' + timestamp + '] [' + type.toUpperCase() + '] ' + c.reset + message);
+  }
+};
+
+// ╔═══════════════════════════════════════════════════════════════════════════════════╗
+// ║                            CORES DO TERMINAL                                       ║
+// ╚═══════════════════════════════════════════════════════════════════════════════════╝
 const c = {
   reset: '\\x1b[0m',
   bold: '\\x1b[1m',
