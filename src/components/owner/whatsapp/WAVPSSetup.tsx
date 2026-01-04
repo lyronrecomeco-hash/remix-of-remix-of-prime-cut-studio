@@ -428,8 +428,23 @@ const connectWhatsApp = async () => {
       
       connectionStatus = 'disconnected';
       qrCode = null;
+      sock = null;
       
-      if (reason !== DisconnectReason.loggedOut) {
+      // 401 = sessão inválida/expirada - limpa auth e reconecta
+      if (reason === 401 || reason === DisconnectReason.loggedOut) {
+        console.log(c.yellow + '  [WhatsApp]' + c.reset + ' Sessão inválida - limpando autenticação...');
+        try {
+          const fs = require('fs');
+          if (fs.existsSync(AUTH_FOLDER)) {
+            fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
+            console.log(c.green + '  [WhatsApp]' + c.reset + ' Pasta de autenticação limpa!');
+          }
+        } catch (e) {
+          console.error(c.red + '  [WhatsApp]' + c.reset + ' Erro ao limpar auth:', e.message);
+        }
+        console.log(c.cyan + '  [WhatsApp]' + c.reset + ' Reconectando para novo QR em 3s...');
+        setTimeout(connectWhatsApp, 3000);
+      } else {
         console.log(c.yellow + '  [WhatsApp]' + c.reset + ' Reconectando em 5s...');
         setTimeout(connectWhatsApp, 5000);
       }
