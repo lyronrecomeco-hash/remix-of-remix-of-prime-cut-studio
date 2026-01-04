@@ -123,18 +123,31 @@ export function InstancePanel({ instance: initialInstance, onBack }: InstancePan
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-4"
+        className="flex items-center justify-between"
       >
-        <Button variant="ghost" size="sm" onClick={onBack} className="gap-2 text-primary">
-          <ArrowLeft className="w-4 h-4" />
-          Minhas instâncias
-        </Button>
-        <span className="text-lg font-bold">{instance.name}</span>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack} className="gap-2 text-primary hover:text-primary">
+            <ArrowLeft className="w-4 h-4" />
+            Voltar
+          </Button>
+          <div className="h-6 w-px bg-border" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+              <Smartphone className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-bold text-lg">{instance.name}</h2>
+              <p className="text-xs text-muted-foreground">
+                {instance.phone_number || 'Aguardando conexão'}
+              </p>
+            </div>
+          </div>
+        </div>
       </motion.div>
 
       {/* WhatsApp Connection - MAIN FOCUS */}
@@ -155,58 +168,52 @@ export function InstancePanel({ instance: initialInstance, onBack }: InstancePan
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <Card>
-          <CardContent className="pt-6">
-            {/* Instance Summary */}
-            <div className="flex items-center gap-4 mb-4 pb-4 border-b">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Smartphone className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium">{instance.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {instance.phone_number || 'Aguardando conexão'}
-                </p>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
+        <Card className="border bg-card/50 backdrop-blur-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Settings2 className="w-4 h-4 text-primary" />
+              Ações Rápidas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Action Buttons Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
               {instance.is_paused ? (
-                <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Retomar')}>
-                  <Play className="w-4 h-4" />
+                <Button variant="outline" size="sm" className="gap-2 h-10" onClick={() => handleAction('Retomar')}>
+                  <Play className="w-4 h-4 text-green-500" />
                   Retomar
                 </Button>
               ) : (
-                <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Pausar')}>
-                  <Pause className="w-4 h-4" />
+                <Button variant="outline" size="sm" className="gap-2 h-10" onClick={() => handleAction('Pausar')}>
+                  <Pause className="w-4 h-4 text-yellow-500" />
                   Pausar
                 </Button>
               )}
-              <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Reiniciar')}>
-                <RefreshCw className="w-4 h-4" />
+              <Button variant="outline" size="sm" className="gap-2 h-10" onClick={() => handleAction('Reiniciar')}>
+                <RefreshCw className="w-4 h-4 text-blue-500" />
                 Reiniciar
               </Button>
-              <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Exportar contatos')}>
+              <Button variant="outline" size="sm" className="gap-2 h-10" onClick={() => handleAction('Exportar contatos')}>
                 <Download className="w-4 h-4" />
                 Contatos
               </Button>
-              <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Exportar chats')}>
+              <Button variant="outline" size="sm" className="gap-2 h-10" onClick={() => handleAction('Exportar chats')}>
                 <Download className="w-4 h-4" />
                 Chats
               </Button>
-              <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Histórico')}>
+              <Button variant="outline" size="sm" className="gap-2 h-10" onClick={() => handleAction('Histórico')}>
                 <FileText className="w-4 h-4" />
                 Histórico
               </Button>
-              <Button variant="outline" size="sm" className="gap-2 justify-start opacity-50" disabled>
+              <Button variant="outline" size="sm" className="gap-2 h-10 opacity-50" disabled>
                 <FileText className="w-4 h-4" />
                 Docs
               </Button>
             </div>
 
-            <p className="text-xs text-muted-foreground mt-4">
-              Consumo mínimo de créditos: cada instância ativa deve consumir no mínimo 15 créditos por dia.
+            <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              Consumo mínimo: 15 créditos/dia por instância ativa
             </p>
           </CardContent>
         </Card>

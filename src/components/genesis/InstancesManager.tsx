@@ -13,8 +13,7 @@ import {
   XCircle,
   AlertCircle,
   CreditCard,
-  Eye,
-  ExternalLink
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -270,49 +269,67 @@ export function InstancesManager() {
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
       >
-        <h1 className="text-2xl font-bold">Minhas instâncias</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Minhas Instâncias</h1>
+          <p className="text-muted-foreground text-sm mt-1">Gerencie suas conexões WhatsApp</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="gap-1.5 px-3 py-1.5">
+            <Smartphone className="w-3.5 h-3.5" />
+            {instances.length}/{maxInstances} instâncias
+          </Badge>
+          {canAddMore && (
+            <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Nova Instância
+            </Button>
+          )}
+        </div>
       </motion.div>
 
-      {/* Status Filter Tabs */}
+      {/* Status Filter Tabs - More polished */}
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex items-center gap-4"
+        className="flex items-center gap-2 p-1 rounded-xl bg-muted/50 w-fit"
       >
         <button
           onClick={() => setStatusFilter('all')}
           className={cn(
-            "px-4 py-2 rounded-full text-sm font-medium transition-all",
+            "px-4 py-2 rounded-lg text-sm font-medium transition-all",
             statusFilter === 'all' 
-              ? "bg-primary text-primary-foreground" 
+              ? "bg-background shadow-sm text-foreground" 
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          Todos: {instances.length}
+          Todas ({instances.length})
         </button>
         <button
           onClick={() => setStatusFilter('connected')}
           className={cn(
-            "text-sm transition-colors",
+            "px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2",
             statusFilter === 'connected' 
-              ? "text-foreground font-medium" 
+              ? "bg-background shadow-sm text-foreground" 
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          Conectados: {connectedCount}
+          <span className="w-2 h-2 rounded-full bg-green-500" />
+          Conectadas ({connectedCount})
         </button>
         <button
           onClick={() => setStatusFilter('disconnected')}
           className={cn(
-            "text-sm transition-colors",
+            "px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2",
             statusFilter === 'disconnected' 
-              ? "text-foreground font-medium" 
+              ? "bg-background shadow-sm text-foreground" 
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          Desconectados: {disconnectedCount}
+          <span className="w-2 h-2 rounded-full bg-red-500" />
+          Desconectadas ({disconnectedCount})
         </button>
       </motion.div>
 
@@ -338,24 +355,24 @@ export function InstancesManager() {
                 layoutId={instance.id}
               >
                 <Card className={cn(
-                  "relative overflow-hidden border-2 transition-all duration-300 hover:shadow-xl",
-                  status.borderColor,
-                  isConnected && "hover:shadow-green-500/10"
-                )}>
+                  "relative overflow-hidden transition-all duration-300 hover:shadow-xl group cursor-pointer",
+                  "border bg-card/50 backdrop-blur-sm",
+                  isConnected && "ring-1 ring-green-500/30 hover:ring-green-500/50"
+                )}
+                onClick={() => setSelectedInstance(instance)}
+                >
+                  {/* Gradient overlay based on status */}
+                  <div className={cn(
+                    "absolute inset-0 opacity-5 transition-opacity group-hover:opacity-10",
+                    isConnected ? "bg-gradient-to-br from-green-500 to-emerald-600" : "bg-gradient-to-br from-gray-500 to-gray-600"
+                  )} />
+                  
                   {/* Status indicator bar at top */}
                   <div className={cn("h-1 w-full", status.color)} />
-                  
-                  {/* Refresh button */}
-                  <button 
-                    className="absolute top-5 right-4 p-1.5 rounded-md hover:bg-muted transition-colors"
-                    onClick={() => fetchInstances()}
-                  >
-                    <RefreshCw className="w-4 h-4 text-muted-foreground" />
-                  </button>
 
-                  <CardContent className="pt-6 pb-6">
-                    {/* Status Badge */}
-                    <div className="flex items-center gap-2 mb-4">
+                  <CardContent className="relative pt-5 pb-5">
+                    {/* Top row: Status + Menu */}
+                    <div className="flex items-start justify-between mb-4">
                       <Badge className={cn(
                         "gap-1.5 text-xs font-medium",
                         status.bgColor,
@@ -368,97 +385,34 @@ export function InstancesManager() {
                         )} />
                         {status.label}
                       </Badge>
-                    </div>
-                    
-                    {/* Instance Name */}
-                    <h3 className="font-bold text-lg">
-                      {instance.name}
-                    </h3>
-                    
-                    {/* Phone Number */}
-                    <p className={cn(
-                      "text-sm mt-1",
-                      instance.phone_number ? "text-foreground" : "text-muted-foreground"
-                    )}>
-                      {instance.phone_number 
-                        ? `📱 ${instance.phone_number.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, '+$1 ($2) $3-$4')}`
-                        : "Número não conectado"
-                      }
-                    </p>
-
-                    {/* Instance Icon */}
-                    <motion.div 
-                      className="my-5 flex justify-center"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', delay: 0.2 }}
-                    >
-                      <div className="relative">
-                        <motion.div
-                          animate={isConnected ? { scale: [1, 1.05, 1] } : {}}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        >
-                          <div className={cn(
-                            "w-14 h-14 rounded-full flex items-center justify-center transition-colors",
-                            status.bgColor
-                          )}>
-                            <Smartphone className={cn("w-7 h-7", status.textColor)} />
-                          </div>
-                        </motion.div>
-                        {isConnected && (
-                          <motion.div 
-                            className="absolute -bottom-1 -right-1"
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                          >
-                            <CheckCircle2 className="w-5 h-5 text-green-500 fill-green-500/20" />
-                          </motion.div>
-                        )}
-                      </div>
-                    </motion.div>
-
-                    {/* Action Button */}
-                    <div className="mt-4">
-                      <Button 
-                        className="w-full gap-2"
-                        variant={isConnected ? "default" : "secondary"}
-                        onClick={() => setSelectedInstance(instance)}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        {isConnected ? "Gerenciar" : "Conectar"}
-                      </Button>
-                    </div>
-
-                    {/* Actions Menu */}
-                    <div className="mt-3 flex justify-center">
+                      
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground">
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
                             <MoreVertical className="w-4 h-4" />
-                            Mais opções
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="center" className="w-48 bg-popover">
+                        <DropdownMenuContent align="end" className="w-44 bg-popover">
                           {isConnected && (
-                            <DropdownMenuItem onClick={() => updateInstanceStatus(instance.id, { is_paused: true })}>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); updateInstanceStatus(instance.id, { is_paused: true }); }}>
                               <Pause className="w-4 h-4 mr-2" />
                               Pausar
                             </DropdownMenuItem>
                           )}
                           {instance.is_paused && (
-                            <DropdownMenuItem onClick={() => updateInstanceStatus(instance.id, { is_paused: false })}>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); updateInstanceStatus(instance.id, { is_paused: false }); }}>
                               <Play className="w-4 h-4 mr-2" />
                               Retomar
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem onClick={() => fetchInstances()}>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); fetchInstances(); }}>
                             <RefreshCw className="w-4 h-4 mr-2" />
-                            Atualizar Status
+                            Atualizar
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
                             className="text-destructive focus:text-destructive"
-                            onClick={() => deleteInstance(instance.id)}
+                            onClick={(e) => { e.stopPropagation(); deleteInstance(instance.id); }}
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
                             Excluir
@@ -466,6 +420,61 @@ export function InstancesManager() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+
+                    {/* Instance Info */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <motion.div
+                        animate={isConnected ? { scale: [1, 1.02, 1] } : {}}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <div className={cn(
+                          "w-12 h-12 rounded-xl flex items-center justify-center transition-colors",
+                          status.bgColor
+                        )}>
+                          <Smartphone className={cn("w-6 h-6", status.textColor)} />
+                        </div>
+                      </motion.div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-base truncate">{instance.name}</h3>
+                        <p className={cn(
+                          "text-sm truncate",
+                          instance.phone_number ? "text-foreground" : "text-muted-foreground"
+                        )}>
+                          {instance.phone_number 
+                            ? instance.phone_number.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, '+$1 ($2) $3-$4')
+                            : "Aguardando conexão"
+                          }
+                        </p>
+                      </div>
+                      {isConnected && (
+                        <motion.div 
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="shrink-0"
+                        >
+                          <CheckCircle2 className="w-5 h-5 text-green-500" />
+                        </motion.div>
+                      )}
+                    </div>
+
+                    {/* Action Button */}
+                    <Button 
+                      className="w-full gap-2 group-hover:shadow-md transition-shadow"
+                      variant={isConnected ? "default" : "secondary"}
+                      onClick={(e) => { e.stopPropagation(); setSelectedInstance(instance); }}
+                    >
+                      {isConnected ? (
+                        <>
+                          <Eye className="w-4 h-4" />
+                          Gerenciar
+                        </>
+                      ) : (
+                        <>
+                          <QrCode className="w-4 h-4" />
+                          Conectar
+                        </>
+                      )}
+                    </Button>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -473,55 +482,50 @@ export function InstancesManager() {
           })}
 
           {/* Add More Card */}
-          <motion.div
-            variants={itemVariants}
-            layout
-          >
-            <Card 
-              className={cn(
-                "border-2 border-dashed h-full min-h-[280px] flex flex-col items-center justify-center transition-all cursor-pointer",
-                canAddMore 
-                  ? "hover:border-primary/50 hover:bg-muted/30" 
-                  : "opacity-60 cursor-not-allowed"
-              )}
-              onClick={() => canAddMore && setCreateModalOpen(true)}
-            >
-              <CardContent className="text-center py-12">
-                <motion.div
-                  animate={canAddMore ? { y: [0, -5, 0] } : {}}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <Plus className="w-12 h-12 mx-auto text-muted-foreground/50" />
-                </motion.div>
-                <h3 className="text-lg font-medium text-muted-foreground mt-4">
-                  Adicionar mais instâncias?
-                </h3>
-                <p className="text-sm text-muted-foreground/70 mt-2 max-w-[200px] mx-auto">
-                  {canAddMore 
-                    ? `Você pode criar até ${maxInstances} instâncias`
-                    : 'Compre créditos para liberar a criação de mais instâncias'
-                  }
-                </p>
-                <Button 
-                  variant={canAddMore ? "default" : "secondary"}
-                  className="mt-6 rounded-full gap-2"
-                  disabled={!canAddMore}
-                >
-                  {canAddMore ? (
-                    <>
-                      <Plus className="w-4 h-4" />
-                      criar instância
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-4 h-4" />
-                      comprar créditos
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
+          {canAddMore && (
+            <motion.div variants={itemVariants} layout>
+              <Card 
+                className="border-2 border-dashed h-full min-h-[200px] flex flex-col items-center justify-center transition-all cursor-pointer hover:border-primary/50 hover:bg-muted/30"
+                onClick={() => setCreateModalOpen(true)}
+              >
+                <CardContent className="text-center py-8">
+                  <motion.div
+                    animate={{ y: [0, -5, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <div className="w-14 h-14 mx-auto rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Plus className="w-7 h-7 text-primary" />
+                    </div>
+                  </motion.div>
+                  <h3 className="text-base font-medium mt-4">Nova Instância</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Conecte mais um WhatsApp
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Upgrade Card when limit reached */}
+          {!canAddMore && (
+            <motion.div variants={itemVariants} layout>
+              <Card className="border-2 border-dashed h-full min-h-[200px] flex flex-col items-center justify-center opacity-70">
+                <CardContent className="text-center py-8">
+                  <div className="w-14 h-14 mx-auto rounded-xl bg-amber-500/10 flex items-center justify-center">
+                    <CreditCard className="w-7 h-7 text-amber-500" />
+                  </div>
+                  <h3 className="text-base font-medium mt-4">Limite Atingido</h3>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-[180px] mx-auto">
+                    Faça upgrade para mais instâncias
+                  </p>
+                  <Button variant="outline" size="sm" className="mt-4 gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    Ver Planos
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
         </AnimatePresence>
       </motion.div>
 

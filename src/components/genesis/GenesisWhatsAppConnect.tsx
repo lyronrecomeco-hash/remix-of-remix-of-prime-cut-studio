@@ -402,7 +402,7 @@ Sua instância está conectada e funcionando perfeitamente!
             )}
           </AnimatePresence>
 
-          {/* Connected State - Test Message */}
+          {/* Connected State - Success Message (No manual test input - test is automatic) */}
           <AnimatePresence>
             {isConnected && (
               <motion.div
@@ -426,43 +426,25 @@ Sua instância está conectada e funcionando perfeitamente!
                   <div className="flex-1">
                     <p className="text-sm font-medium">Instância conectada com sucesso!</p>
                     <p className="text-xs text-muted-foreground">
-                      {liveStatus.phoneNumber || 'Pronto para enviar mensagens'}
+                      {liveStatus.phoneNumber 
+                        ? `📱 ${liveStatus.phoneNumber.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, '+$1 ($2) $3-$4')}`
+                        : 'Pronto para enviar mensagens'
+                      }
                     </p>
                   </div>
                 </motion.div>
 
-                {/* Quick Test */}
+                {/* Auto test message info */}
                 <motion.div 
-                  className="p-4 rounded-xl bg-muted/30 border"
-                  initial={{ opacity: 0, y: 10 }}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20"
+                  initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+                  transition={{ delay: 0.3 }}
                 >
-                  <Label className="text-sm font-medium flex items-center gap-2">
-                    <Send className="w-4 h-4" />
-                    Enviar mensagem de teste
-                  </Label>
-                  <div className="flex gap-2 mt-3">
-                    <Input
-                      value={testNumber}
-                      onChange={(e) => setTestNumber(e.target.value)}
-                      placeholder="11999999999"
-                      className="flex-1 bg-background"
-                    />
-                    <Button
-                      onClick={handleSendTest}
-                      disabled={isSendingTest || !testNumber.trim()}
-                      size="sm"
-                      className="gap-2 px-4"
-                    >
-                      {isSendingTest ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4" />
-                      )}
-                      Enviar
-                    </Button>
-                  </div>
+                  <Send className="w-4 h-4 text-blue-500" />
+                  <p className="text-xs text-muted-foreground">
+                    Uma mensagem de teste foi enviada automaticamente para o número conectado.
+                  </p>
                 </motion.div>
               </motion.div>
             )}
