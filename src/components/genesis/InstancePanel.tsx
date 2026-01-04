@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
   Smartphone,
-  CheckCircle2,
   Copy,
   Pause,
+  Play,
   RefreshCw,
   Download,
   FileText,
@@ -20,6 +20,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { GenesisWhatsAppConnect } from './GenesisWhatsAppConnect';
 
 // Import integration logos
 import shopifyLogo from '@/assets/integrations/shopify.png';
@@ -35,6 +37,10 @@ interface Instance {
   status: string;
   is_paused: boolean;
   created_at: string;
+  backend_url?: string;
+  backend_token?: string;
+  last_heartbeat?: string;
+  effective_status?: string;
 }
 
 interface InstancePanelProps {
@@ -42,7 +48,7 @@ interface InstancePanelProps {
   onBack: () => void;
 }
 
-// Integration cards - ChatPro removed, using real logos
+// Integration cards
 const integrations = [
   { id: 'shopify', name: 'Shopify', description: 'Integre sua loja Shopify para enviar notificações.', logo: shopifyLogo, enabled: false },
   { id: 'woocommerce', name: 'WooCommerce', description: 'Integre sua loja WooCommerce para enviar notificações.', logo: woocommerceLogo, enabled: false },
@@ -51,7 +57,8 @@ const integrations = [
   { id: 'rdstation', name: 'RD Station', description: 'Integre sua conta RD Station para realizar gráficos.', logo: rdstationLogo, enabled: false },
 ];
 
-export function InstancePanel({ instance, onBack }: InstancePanelProps) {
+export function InstancePanel({ instance: initialInstance, onBack }: InstancePanelProps) {
+  const [instance, setInstance] = useState<Instance>(initialInstance);
   const [webhookUrl, setWebhookUrl] = useState('');
   const [events, setEvents] = useState({
     message_received: true,
@@ -67,6 +74,22 @@ export function InstancePanel({ instance, onBack }: InstancePanelProps) {
   const endpoint = `https://api.genesis.com.br/instances/${instanceCode}`;
   const token = `gns_${instance.id.replace(/-/g, '').slice(0, 24)}...`;
 
+  const fetchInstance = async () => {
+    const { data, error } = await supabase
+      .from('genesis_instances')
+      .select('*')
+      .eq('id', instance.id)
+      .single();
+
+    if (!error && data) {
+      setInstance(data as Instance);
+    }
+  };
+
+  useEffect(() => {
+    fetchInstance();
+  }, [instance.id]);
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copiado!`);
@@ -74,14 +97,29 @@ export function InstancePanel({ instance, onBack }: InstancePanelProps) {
 
   const handleSaveSettings = async () => {
     setSaving(true);
-    // Simulated save
     await new Promise(r => setTimeout(r, 800));
     toast.success('Configurações salvas!');
     setSaving(false);
   };
 
-  const handleAction = (action: string) => {
-    toast.info(`${action} - Em implementação`);
+  const handleAction = async (action: string) => {
+    if (action === 'Pausar') {
+      await supabase
+        .from('genesis_instances')
+        .update({ is_paused: true })
+        .eq('id', instance.id);
+      toast.success('Instância pausada');
+      fetchInstance();
+    } else if (action === 'Retomar') {
+      await supabase
+        .from('genesis_instances')
+        .update({ is_paused: false })
+        .eq('id', instance.id);
+      toast.success('Instância retomada');
+      fetchInstance();
+    } else {
+      toast.info(`${action} - Em implementação`);
+    }
   };
 
   return (
@@ -99,11 +137,23 @@ export function InstancePanel({ instance, onBack }: InstancePanelProps) {
         <span className="text-lg font-bold">{instance.name}</span>
       </motion.div>
 
-      {/* Status and Actions */}
+      {/* WhatsApp Connection - NEW */}
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
+      >
+        <GenesisWhatsAppConnect 
+          instance={instance} 
+          onRefresh={fetchInstance} 
+        />
+      </motion.div>
+
+      {/* Status and Actions */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
       >
         <Card>
           <CardContent className="pt-6">
@@ -115,8 +165,12 @@ export function InstancePanel({ instance, onBack }: InstancePanelProps) {
                   </div>
                 </div>
                 <div>
-                  <p className="text-muted-foreground font-semibold text-sm">Aguardando conexão</p>
-                  <p className="text-sm text-muted-foreground">Pushname: <span className="text-foreground">{instance.name}</span></p>
+                  <p className="text-muted-foreground font-semibold text-sm">
+                    {instance.status === 'connected' ? 'Conectado' : 'Aguardando conexão'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Pushname: <span className="text-foreground">{instance.name}</span>
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     Número: <span className="text-foreground">{instance.phone_number || 'Não conectado'}</span>
                   </p>
@@ -124,12 +178,19 @@ export function InstancePanel({ instance, onBack }: InstancePanelProps) {
               </div>
             </div>
 
-            {/* Action Buttons - Better organized */}
+            {/* Action Buttons */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-4">
-              <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Pausar')}>
-                <Pause className="w-4 h-4" />
-                Pausar
-              </Button>
+              {instance.is_paused ? (
+                <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Retomar')}>
+                  <Play className="w-4 h-4" />
+                  Retomar
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Pausar')}>
+                  <Pause className="w-4 h-4" />
+                  Pausar
+                </Button>
+              )}
               <Button variant="outline" size="sm" className="gap-2 justify-start" onClick={() => handleAction('Reiniciar')}>
                 <RefreshCw className="w-4 h-4" />
                 Reiniciar
@@ -153,7 +214,7 @@ export function InstancePanel({ instance, onBack }: InstancePanelProps) {
             </div>
 
             <p className="text-xs text-muted-foreground mt-4">
-              Consumo mínimo de créditos: cada instância ativa deve consumir no mínimo 15 créditos por dia. Se o consumo diário for menor, a diferença será debitada automaticamente.
+              Consumo mínimo de créditos: cada instância ativa deve consumir no mínimo 15 créditos por dia.
             </p>
           </CardContent>
         </Card>
@@ -163,7 +224,7 @@ export function InstancePanel({ instance, onBack }: InstancePanelProps) {
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.3 }}
       >
         <Card>
           <CardHeader>
@@ -203,7 +264,7 @@ export function InstancePanel({ instance, onBack }: InstancePanelProps) {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Nome da Instância</Label>
-                <Input value={instance.name} className="mt-1" />
+                <Input value={instance.name} className="mt-1" readOnly />
               </div>
             </div>
           </CardContent>
@@ -214,7 +275,7 @@ export function InstancePanel({ instance, onBack }: InstancePanelProps) {
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.4 }}
       >
         <Card>
           <CardHeader>
@@ -279,7 +340,7 @@ export function InstancePanel({ instance, onBack }: InstancePanelProps) {
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.5 }}
       >
         <Card>
           <CardHeader>

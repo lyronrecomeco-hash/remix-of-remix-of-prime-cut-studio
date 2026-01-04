@@ -38,6 +38,10 @@ interface Instance {
   last_activity_at?: string;
   qr_code?: string;
   created_at: string;
+  backend_url?: string;
+  backend_token?: string;
+  last_heartbeat?: string;
+  effective_status?: string;
 }
 
 export function InstancesManager() {
