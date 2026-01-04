@@ -22,7 +22,8 @@ import {
   Building2,
   Menu,
   X,
-  Server
+  Server,
+  Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -44,6 +45,7 @@ import WhatsAppAutomation from '@/components/owner/WhatsAppAutomation';
 import WhatsAppAPIManager from '@/components/owner/WhatsAppAPIManager';
 import CRMUsersManager from '@/components/owner/CRMUsersManager';
 import ProposalsManager from '@/components/owner/ProposalsManager';
+import GenesisInstancesMonitor from '@/components/owner/GenesisInstancesMonitor';
 import { OwnerProfileMenu } from '@/components/owner/OwnerProfileMenu';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -93,6 +95,7 @@ const navSections: NavSection[] = [
     title: 'Automação',
     items: [
       { id: 'whatsapp-automation', label: 'WhatsApp Automação', icon: Bot },
+      { id: 'genesis-monitor', label: 'Genesis Monitor', icon: Zap, badge: 'Live', badgeVariant: 'default' },
     ]
   },
   {
@@ -179,6 +182,8 @@ const OwnerPanel = () => {
         return <WhatsAppTemplatesManager />;
       case 'whatsapp-automation':
         return <WhatsAppAutomation />;
+      case 'genesis-monitor':
+        return <GenesisInstancesMonitor />;
       case 'api-projects':
         return <WhatsAppAPIManager />;
       case 'logs':
