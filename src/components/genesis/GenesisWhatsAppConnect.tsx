@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { useGenesisWhatsAppConnection } from './hooks/useGenesisWhatsAppConnection';
 import { cn } from '@/lib/utils';
 
@@ -41,9 +42,6 @@ interface GenesisWhatsAppConnectProps {
 }
 
 export function GenesisWhatsAppConnect({ instance, onRefresh }: GenesisWhatsAppConnectProps) {
-  const backendUrl = instance.backend_url || 'http://localhost:3001';
-  const backendToken = instance.backend_token || 'genesis-auto-token';
-  
   const [liveStatus, setLiveStatus] = useState({
     status: instance.status,
     phoneNumber: instance.phone_number,
@@ -73,13 +71,15 @@ export function GenesisWhatsAppConnect({ instance, onRefresh }: GenesisWhatsAppC
   }, [instance.id, startStatusPolling, stopStatusPolling]);
 
   const handleConnect = async () => {
-    await startConnection(instance.id, backendUrl, backendToken, () => {
+    // No need to pass backend URL/token - hook fetches from Owner config
+    await startConnection(instance.id, undefined, undefined, () => {
       onRefresh();
     });
   };
 
   const handleDisconnect = async () => {
-    await disconnect(instance.id, backendUrl, backendToken);
+    // Disconnect using stored instance config
+    await disconnect(instance.id, instance.backend_url, instance.backend_token);
     onRefresh();
   };
 
@@ -109,22 +109,25 @@ Sua instância está conectada e funcionando perfeitamente!
 ✅ Status: Ativo
 📱 Sistema: Genesis Auto`;
 
-      const response = await fetch(`${backendUrl}/api/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${backendToken}`,
+      // Use proxy for sending test messages (via VPS config)
+      const { data, error } = await supabase.functions.invoke('whatsapp-backend-proxy', {
+        body: {
+          path: `/api/send`,
+          method: 'POST',
+          body: {
+            instanceId: instance.id,
+            to: phone,
+            message,
+          },
         },
-        body: JSON.stringify({
-          instanceId: instance.id,
-          to: phone,
-          message,
-        }),
       });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
+      if (error) {
         throw new Error(error.message || 'Erro ao enviar mensagem');
+      }
+
+      if (data && !data.ok) {
+        throw new Error(data.error || 'Erro ao enviar mensagem');
       }
 
       toast.success('Mensagem enviada com sucesso!');

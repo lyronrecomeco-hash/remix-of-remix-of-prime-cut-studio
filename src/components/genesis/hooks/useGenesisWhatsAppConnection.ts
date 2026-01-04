@@ -19,6 +19,12 @@ interface InstanceStatus {
   isStale: boolean;
 }
 
+interface BackendConfig {
+  backend_url: string;
+  master_token: string;
+  is_connected: boolean;
+}
+
 const STALE_THRESHOLD_MS = 180000; // 3 minutes
 
 export function useGenesisWhatsAppConnection() {
@@ -88,6 +94,30 @@ export function useGenesisWhatsAppConnection() {
       }
     } catch (error) {
       console.error('Error updating genesis instance:', error);
+    }
+  };
+
+  // Fetch VPS backend config from Owner
+  const getOwnerBackendConfig = async (): Promise<BackendConfig | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('whatsapp_backend_config')
+        .select('backend_url, master_token, is_connected')
+        .single();
+
+      if (error || !data) {
+        console.error('Error fetching backend config:', error);
+        return null;
+      }
+
+      return {
+        backend_url: data.backend_url,
+        master_token: data.master_token,
+        is_connected: data.is_connected || false,
+      };
+    } catch (error) {
+      console.error('Error fetching backend config:', error);
+      return null;
     }
   };
 
@@ -238,8 +268,8 @@ export function useGenesisWhatsAppConnection() {
 
   const startConnection = useCallback(async (
     instanceId: string,
-    backendUrl: string,
-    token: string,
+    _backendUrl?: string,
+    _token?: string,
     onConnected?: () => void
   ) => {
     stopPolling();
@@ -254,6 +284,20 @@ export function useGenesisWhatsAppConnection() {
     }));
 
     try {
+      // Always fetch VPS config from Owner's whatsapp_backend_config
+      const ownerConfig = await getOwnerBackendConfig();
+      
+      if (!ownerConfig || !ownerConfig.backend_url || !ownerConfig.master_token) {
+        throw new Error('Backend VPS não configurado. O administrador precisa configurar a VPS no painel Owner.');
+      }
+
+      if (!ownerConfig.is_connected) {
+        throw new Error('Backend VPS não está conectado. Verifique com o administrador.');
+      }
+
+      const backendUrl = ownerConfig.backend_url;
+      const token = ownerConfig.master_token;
+
       // Save backend config to instance
       await updateInstanceInDB(instanceId, {
         backend_url: backendUrl,
@@ -263,7 +307,7 @@ export function useGenesisWhatsAppConnection() {
       // Validate backend health
       const isHealthy = await validateBackendHealth(backendUrl, token);
       if (!isHealthy) {
-        throw new Error('Backend não disponível. Verifique se o script local está rodando.');
+        throw new Error('Backend VPS não está respondendo. Verifique se o servidor está online.');
       }
 
       safeSetState(prev => ({ ...prev, phase: 'generating' }));
