@@ -131,44 +131,74 @@ export function InstancesManager() {
     }
   };
 
-  const getStatusConfig = (status: string, isPaused: boolean) => {
+  // Determinar status real baseado em effective_status e heartbeat
+  const getEffectiveStatus = (instance: Instance): string => {
+    // Se tiver heartbeat recente (< 3 min), usa effective_status
+    if (instance.last_heartbeat) {
+      const lastHb = new Date(instance.last_heartbeat).getTime();
+      const isStale = Date.now() - lastHb > 180000; // 3 minutos
+      
+      if (isStale && instance.effective_status === 'connected') {
+        return 'disconnected'; // Heartbeat expirado = desconectado
+      }
+      return instance.effective_status || instance.status;
+    }
+    return instance.status;
+  };
+
+  const getStatusConfig = (instance: Instance) => {
+    const effectiveStatus = getEffectiveStatus(instance);
+    const isPaused = instance.is_paused;
+    
     if (isPaused) return { 
       color: 'bg-yellow-500', 
       label: 'Pausado', 
       icon: Pause,
-      textColor: 'text-yellow-500'
+      textColor: 'text-yellow-500',
+      bgColor: 'bg-yellow-500/10',
+      borderColor: 'border-yellow-500/30'
     };
     
-    switch (status) {
+    switch (effectiveStatus) {
       case 'connected': return { 
         color: 'bg-green-500', 
-        label: 'conectado', 
+        label: 'Conectado', 
         icon: CheckCircle2,
-        textColor: 'text-green-500'
+        textColor: 'text-green-500',
+        bgColor: 'bg-green-500/10',
+        borderColor: 'border-green-500/30'
       };
       case 'disconnected': return { 
         color: 'bg-red-500', 
-        label: 'desconectado', 
+        label: 'Desconectado', 
         icon: XCircle,
-        textColor: 'text-red-500'
+        textColor: 'text-red-500',
+        bgColor: 'bg-red-500/10',
+        borderColor: 'border-red-500/30'
       };
       case 'connecting': return { 
         color: 'bg-blue-500', 
-        label: 'conectando...', 
+        label: 'Conectando...', 
         icon: RefreshCw,
-        textColor: 'text-blue-500'
+        textColor: 'text-blue-500',
+        bgColor: 'bg-blue-500/10',
+        borderColor: 'border-blue-500/30'
       };
       case 'qr_pending': return { 
         color: 'bg-purple-500', 
-        label: 'aguardando QR', 
+        label: 'Aguardando QR', 
         icon: QrCode,
-        textColor: 'text-purple-500'
+        textColor: 'text-purple-500',
+        bgColor: 'bg-purple-500/10',
+        borderColor: 'border-purple-500/30'
       };
       default: return { 
         color: 'bg-gray-500', 
-        label: status, 
+        label: effectiveStatus, 
         icon: AlertCircle,
-        textColor: 'text-gray-500'
+        textColor: 'text-muted-foreground',
+        bgColor: 'bg-muted/30',
+        borderColor: 'border-border'
       };
     }
   };
@@ -183,14 +213,15 @@ export function InstancesManager() {
     );
   }
 
-  // Compute filtered stats
-  const connectedCount = instances.filter(i => i.status === 'connected' && !i.is_paused).length;
-  const disconnectedCount = instances.filter(i => i.status !== 'connected' || i.is_paused).length;
+  // Compute filtered stats usando status efetivo
+  const connectedCount = instances.filter(i => getEffectiveStatus(i) === 'connected' && !i.is_paused).length;
+  const disconnectedCount = instances.filter(i => getEffectiveStatus(i) !== 'connected' || i.is_paused).length;
   
   const filteredInstances = instances.filter(i => {
+    const effectiveStatus = getEffectiveStatus(i);
     if (statusFilter === 'all') return true;
-    if (statusFilter === 'connected') return i.status === 'connected' && !i.is_paused;
-    return i.status !== 'connected' || i.is_paused;
+    if (statusFilter === 'connected') return effectiveStatus === 'connected' && !i.is_paused;
+    return effectiveStatus !== 'connected' || i.is_paused;
   });
 
   const canAddMore = instances.length < maxInstances;
@@ -294,8 +325,10 @@ export function InstancesManager() {
       >
         <AnimatePresence mode="popLayout">
           {filteredInstances.map((instance) => {
-            const status = getStatusConfig(instance.status, instance.is_paused);
+            const status = getStatusConfig(instance);
             const StatusIcon = status.icon;
+            const effectiveStatus = getEffectiveStatus(instance);
+            const isConnected = effectiveStatus === 'connected' && !instance.is_paused;
 
             return (
               <motion.div
@@ -304,70 +337,100 @@ export function InstancesManager() {
                 layout
                 layoutId={instance.id}
               >
-                <Card className="relative overflow-hidden border-2 hover:border-primary/30 transition-all duration-300 hover:shadow-xl hover:shadow-primary/5">
+                <Card className={cn(
+                  "relative overflow-hidden border-2 transition-all duration-300 hover:shadow-xl",
+                  status.borderColor,
+                  isConnected && "hover:shadow-green-500/10"
+                )}>
+                  {/* Status indicator bar at top */}
+                  <div className={cn("h-1 w-full", status.color)} />
+                  
                   {/* Refresh button */}
                   <button 
-                    className="absolute top-4 right-4 p-1.5 rounded-md hover:bg-muted transition-colors"
+                    className="absolute top-5 right-4 p-1.5 rounded-md hover:bg-muted transition-colors"
                     onClick={() => fetchInstances()}
                   >
                     <RefreshCw className="w-4 h-4 text-muted-foreground" />
                   </button>
 
-                  <CardContent className="pt-8 pb-6 text-center">
+                  <CardContent className="pt-6 pb-6">
+                    {/* Status Badge */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <Badge className={cn(
+                        "gap-1.5 text-xs font-medium",
+                        status.bgColor,
+                        status.textColor,
+                        "border-0"
+                      )}>
+                        <StatusIcon className={cn(
+                          "w-3 h-3",
+                          effectiveStatus === 'connecting' && "animate-spin"
+                        )} />
+                        {status.label}
+                      </Badge>
+                    </div>
+                    
                     {/* Instance Name */}
-                    <h3 className="font-bold text-lg uppercase tracking-wide">
+                    <h3 className="font-bold text-lg">
                       {instance.name}
                     </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {instance.phone_number || `genesis-${instance.id.slice(0, 8)}`}
+                    
+                    {/* Phone Number */}
+                    <p className={cn(
+                      "text-sm mt-1",
+                      instance.phone_number ? "text-foreground" : "text-muted-foreground"
+                    )}>
+                      {instance.phone_number 
+                        ? `📱 ${instance.phone_number.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, '+$1 ($2) $3-$4')}`
+                        : "Número não conectado"
+                      }
                     </p>
 
-                    {/* Status Icon */}
+                    {/* Instance Icon */}
                     <motion.div 
-                      className="my-6 flex justify-center"
+                      className="my-5 flex justify-center"
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ type: 'spring', delay: 0.2 }}
                     >
                       <div className="relative">
                         <motion.div
-                          animate={instance.status === 'connected' && !instance.is_paused ? { scale: [1, 1.2, 1] } : {}}
+                          animate={isConnected ? { scale: [1, 1.05, 1] } : {}}
                           transition={{ duration: 2, repeat: Infinity }}
                         >
-                          <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
-                            <Smartphone className="w-8 h-8 text-muted-foreground" />
+                          <div className={cn(
+                            "w-14 h-14 rounded-full flex items-center justify-center transition-colors",
+                            status.bgColor
+                          )}>
+                            <Smartphone className={cn("w-7 h-7", status.textColor)} />
                           </div>
                         </motion.div>
-                        {instance.status === 'connected' && !instance.is_paused && (
+                        {isConnected && (
                           <motion.div 
                             className="absolute -bottom-1 -right-1"
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
                           >
-                            <CheckCircle2 className="w-6 h-6 text-green-500 fill-green-500/20" />
+                            <CheckCircle2 className="w-5 h-5 text-green-500 fill-green-500/20" />
                           </motion.div>
                         )}
                       </div>
                     </motion.div>
 
-                    {/* Status Text */}
-                    <p className={cn("font-semibold", status.textColor)}>
-                      {status.label}
-                    </p>
-
-                    {/* Action Button - Always "Acessar" */}
-                    <div className="mt-6">
+                    {/* Action Button */}
+                    <div className="mt-4">
                       <Button 
-                        className="w-32 rounded-full gap-2"
+                        className="w-full gap-2"
+                        variant={isConnected ? "default" : "secondary"}
                         onClick={() => setSelectedInstance(instance)}
                       >
                         <ExternalLink className="w-4 h-4" />
-                        Acessar
+                        {isConnected ? "Gerenciar" : "Conectar"}
                       </Button>
                     </div>
 
                     {/* Actions Menu */}
-                    <div className="mt-4 flex justify-center">
+                    <div className="mt-3 flex justify-center">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm" className="gap-1 text-xs text-muted-foreground">
@@ -376,7 +439,7 @@ export function InstancesManager() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="center" className="w-48 bg-popover">
-                          {instance.status === 'connected' && !instance.is_paused && (
+                          {isConnected && (
                             <DropdownMenuItem onClick={() => updateInstanceStatus(instance.id, { is_paused: true })}>
                               <Pause className="w-4 h-4 mr-2" />
                               Pausar
@@ -388,9 +451,9 @@ export function InstancesManager() {
                               Retomar
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem onClick={() => updateInstanceStatus(instance.id, { status: 'connecting' })}>
+                          <DropdownMenuItem onClick={() => fetchInstances()}>
                             <RefreshCw className="w-4 h-4 mr-2" />
-                            Reiniciar
+                            Atualizar Status
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 

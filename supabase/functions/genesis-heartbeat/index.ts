@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-instance-token",
 };
 
+// Limite de inatividade: 180 segundos (3 minutos) - igual ao whatsapp-heartbeat
+const STALE_THRESHOLD_SECONDS = 180;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -17,6 +20,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { instanceId, status, phoneNumber, metrics } = await req.json();
+    const instanceToken = req.headers.get("x-instance-token") || "";
 
     if (!instanceId) {
       return new Response(
@@ -28,7 +32,7 @@ serve(async (req) => {
     // Get instance and user info
     const { data: instance, error: instanceError } = await supabase
       .from("genesis_instances")
-      .select("id, user_id, status, effective_status")
+      .select("id, user_id, status, effective_status, backend_token")
       .eq("id", instanceId)
       .single();
 
@@ -38,6 +42,24 @@ serve(async (req) => {
         JSON.stringify({ error: "Instance not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Validar token se fornecido - aceita backend_token da instância
+    // Se não há token configurado, aceita qualquer heartbeat (backwards compatibility)
+    const expectedBackendToken = (instance as Record<string, unknown>).backend_token as string | null;
+    
+    if (expectedBackendToken && instanceToken) {
+      if (expectedBackendToken !== instanceToken) {
+        console.warn("genesis-heartbeat invalid token", {
+          instanceId,
+          tokenPrefix: String(instanceToken).slice(0, 8),
+          expectedPrefix: String(expectedBackendToken).slice(0, 8),
+        });
+        return new Response(
+          JSON.stringify({ error: "Invalid token" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const now = new Date().toISOString();
@@ -59,15 +81,18 @@ serve(async (req) => {
       console.error("Error updating instance:", updateError);
     }
 
-    // Log heartbeat event
-    await supabase.from("genesis_event_logs").insert({
-      instance_id: instanceId,
-      user_id: instance.user_id,
-      event_type: "heartbeat",
-      severity: "info",
-      message: `Heartbeat received - Status: ${effectiveStatus}`,
-      details: { status: effectiveStatus, phoneNumber, metrics, timestamp: now },
-    });
+    // Log heartbeat event (apenas a cada 60s para não sobrecarregar)
+    const shouldLogHeartbeat = Math.random() < 0.017; // ~1 log a cada 60 heartbeats
+    if (shouldLogHeartbeat) {
+      await supabase.from("genesis_event_logs").insert({
+        instance_id: instanceId,
+        user_id: instance.user_id,
+        event_type: "heartbeat",
+        severity: "info",
+        message: `Heartbeat received - Status: ${effectiveStatus}`,
+        details: { status: effectiveStatus, phoneNumber, metrics, timestamp: now },
+      });
+    }
 
     // Check for status change and trigger webhooks
     if (instance.effective_status !== effectiveStatus) {
@@ -175,6 +200,7 @@ serve(async (req) => {
         success: true, 
         status: effectiveStatus,
         heartbeat: now,
+        staleThreshold: STALE_THRESHOLD_SECONDS,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

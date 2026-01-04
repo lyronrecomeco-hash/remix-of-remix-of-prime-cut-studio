@@ -188,6 +188,30 @@ export function useGenesisWhatsAppConnection() {
     throw new Error('QR Code não disponível');
   };
 
+  // Enviar mensagem de boas-vindas automática ao conectar
+  const sendWelcomeMessage = async (instanceId: string, phoneNumber: string) => {
+    try {
+      const message = `✅ *WhatsApp conectado com sucesso!*
+
+🚀 Sua instância Genesis Hub está ativa e pronta para uso.
+
+📱 Sistema: Genesis Auto
+⏰ ${new Date().toLocaleString('pt-BR')}
+
+Agora você pode automatizar seu atendimento!`;
+
+      await proxyRequest(instanceId, `/api/instance/${instanceId}/send`, 'POST', {
+        phone: phoneNumber,
+        message: message,
+      });
+      
+      console.log('Welcome message sent to:', phoneNumber);
+    } catch (error) {
+      console.error('Error sending welcome message:', error);
+      // Não bloqueia o fluxo se falhar
+    }
+  };
+
   const startConnection = useCallback(async (
     instanceId: string,
     _backendUrl?: string,
@@ -328,6 +352,12 @@ export function useGenesisWhatsAppConnection() {
             phase: 'connected',
           }));
           toast.success('WhatsApp conectado com sucesso!');
+          
+          // Enviar mensagem de teste automática para o próprio número
+          if (statusResult.phoneNumber) {
+            sendWelcomeMessage(instanceId, statusResult.phoneNumber);
+          }
+          
           onConnected?.();
         }
       }, pollingInterval);
