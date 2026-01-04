@@ -2096,10 +2096,15 @@ export type Database = {
       }
       genesis_instances: {
         Row: {
+          backend_token: string | null
+          backend_url: string | null
           created_at: string
+          effective_status: string | null
+          heartbeat_age_seconds: number | null
           id: string
           is_paused: boolean
           last_activity_at: string | null
+          last_heartbeat: string | null
           name: string
           phone_number: string | null
           qr_code: string | null
@@ -2109,10 +2114,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          backend_token?: string | null
+          backend_url?: string | null
           created_at?: string
+          effective_status?: string | null
+          heartbeat_age_seconds?: number | null
           id?: string
           is_paused?: boolean
           last_activity_at?: string | null
+          last_heartbeat?: string | null
           name: string
           phone_number?: string | null
           qr_code?: string | null
@@ -2122,10 +2132,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          backend_token?: string | null
+          backend_url?: string | null
           created_at?: string
+          effective_status?: string | null
+          heartbeat_age_seconds?: number | null
           id?: string
           is_paused?: boolean
           last_activity_at?: string | null
+          last_heartbeat?: string | null
           name?: string
           phone_number?: string | null
           qr_code?: string | null
