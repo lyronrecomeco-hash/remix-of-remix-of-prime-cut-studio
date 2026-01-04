@@ -127,3 +127,9 @@ verify_jwt = false
 
 [functions.whatsapp-backend-proxy]
 verify_jwt = false
+
+[functions.genesis-heartbeat]
+verify_jwt = false
+
+[functions.genesis-webhook-dispatcher]
+verify_jwt = false
