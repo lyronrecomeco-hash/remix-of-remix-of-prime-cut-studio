@@ -155,13 +155,21 @@ export const WAVPSSetup = ({
   };
 
   const getVPSScript = () => {
-    const token = masterToken || 'SEU_TOKEN_AQUI';
+    const generateToken = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = 'GNS_';
+      for (let i = 0; i < 32; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    };
     
-    return `// ============================================
-// WhatsApp Backend VPS - v4.1
-// Para Ubuntu 24.04 LTS (8GB RAM)
-// Compatível com Baileys mais recente
-// ============================================
+    const token = masterToken || generateToken();
+    
+    return `// ╔══════════════════════════════════════════════════════════════════════════════╗
+// ║              GENESIS WHATSAPP BACKEND - v4.2 PROFESSIONAL                     ║
+// ║                    Ubuntu 24.04 LTS | Baileys Latest                          ║
+// ╚══════════════════════════════════════════════════════════════════════════════╝
 
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const express = require('express');
@@ -169,16 +177,21 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const pino = require('pino');
+const os = require('os');
 
-// ============ CONFIGURAÇÃO ============
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║                              CONFIGURAÇÃO                                      ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
 const PORT = process.env.PORT || 3001;
 const MASTER_TOKEN = process.env.MASTER_TOKEN || '${token}';
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
 const INSTANCE_ID = process.env.INSTANCE_ID || 'default';
-const HEARTBEAT_INTERVAL = 30000; // 30 segundos
+const HEARTBEAT_INTERVAL = 30000;
 
-// ============ INICIALIZAÇÃO ============
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║                              INICIALIZAÇÃO                                     ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -190,11 +203,94 @@ let qrCode = null;
 let connectionStatus = 'disconnected';
 let phoneNumber = null;
 let startTime = Date.now();
+let serverIP = 'localhost';
 
-// Auth state persistido
 const AUTH_FOLDER = path.join(__dirname, 'auth_info_' + INSTANCE_ID);
 
-// ============ MIDDLEWARE DE AUTH ============
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║                           CORES DO TERMINAL                                    ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
+const c = {
+  reset: '\\x1b[0m',
+  bold: '\\x1b[1m',
+  dim: '\\x1b[2m',
+  green: '\\x1b[32m',
+  cyan: '\\x1b[36m',
+  yellow: '\\x1b[33m',
+  red: '\\x1b[31m',
+  magenta: '\\x1b[35m',
+  blue: '\\x1b[34m',
+  white: '\\x1b[37m',
+  bgGreen: '\\x1b[42m',
+  bgBlue: '\\x1b[44m',
+  bgCyan: '\\x1b[46m',
+  bgMagenta: '\\x1b[45m'
+};
+
+// Detecta IP público da VPS
+const getPublicIP = async () => {
+  try {
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json();
+    return data.ip;
+  } catch {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          return iface.address;
+        }
+      }
+    }
+    return 'localhost';
+  }
+};
+
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║                         BANNER PROFISSIONAL                                    ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
+const showBanner = async () => {
+  serverIP = await getPublicIP();
+  const url = 'http://' + serverIP + ':' + PORT;
+  const ram = Math.round(os.totalmem() / 1024 / 1024 / 1024);
+  const cpus = os.cpus().length;
+  
+  console.clear();
+  console.log('');
+  console.log(c.cyan + '  ╔══════════════════════════════════════════════════════════════════════════╗' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + c.bold + c.green + '      ██████╗ ███████╗███╗   ██╗███████╗███████╗██╗███████╗              ' + c.reset + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + c.bold + c.green + '     ██╔════╝ ██╔════╝████╗  ██║██╔════╝██╔════╝██║██╔════╝              ' + c.reset + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + c.bold + c.green + '     ██║  ███╗█████╗  ██╔██╗ ██║█████╗  ███████╗██║███████╗              ' + c.reset + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + c.bold + c.green + '     ██║   ██║██╔══╝  ██║╚██╗██║██╔══╝  ╚════██║██║╚════██║              ' + c.reset + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + c.bold + c.green + '     ╚██████╔╝███████╗██║ ╚████║███████╗███████║██║███████║              ' + c.reset + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + c.bold + c.green + '      ╚═════╝ ╚══════╝╚═╝  ╚═══╝╚══════╝╚══════╝╚═╝╚══════╝              ' + c.reset + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + '                                                                          ' + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + c.bold + c.white + '              WhatsApp Backend VPS - v4.2 Professional                   ' + c.reset + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ╠══════════════════════════════════════════════════════════════════════════╣' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + '                                                                          ' + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + '  ' + c.yellow + '⚡ STATUS:' + c.reset + ' ' + c.bgGreen + c.bold + c.white + ' ONLINE ' + c.reset + '                                                  ' + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + '                                                                          ' + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ╠══════════════════════════════════════════════════════════════════════════╣' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + c.bold + c.magenta + '  📋 COPIE ESTAS INFORMAÇÕES PARA O PAINEL OWNER:                        ' + c.reset + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ╠══════════════════════════════════════════════════════════════════════════╣' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + '                                                                          ' + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + '  ' + c.green + '🌐 URL do Backend:' + c.reset + '                                                      ' + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + '  ' + c.bold + c.yellow + url + c.reset + '                                                            ' + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + '                                                                          ' + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + '  ' + c.green + '🔐 Master Token:' + c.reset + '                                                        ' + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + '  ' + c.bold + c.yellow + MASTER_TOKEN + c.reset + '                                                    ' + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + '                                                                          ' + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ╠══════════════════════════════════════════════════════════════════════════╣' + c.reset);
+  console.log(c.cyan + '  ║' + c.reset + '  ' + c.blue + '📊 Sistema:' + c.reset + ' Porta ' + c.bold + PORT + c.reset + ' | RAM ' + c.bold + ram + 'GB' + c.reset + ' | CPUs ' + c.bold + cpus + c.reset + '                           ' + c.cyan + '║' + c.reset);
+  console.log(c.cyan + '  ╚══════════════════════════════════════════════════════════════════════════╝' + c.reset);
+  console.log('');
+  console.log(c.green + '  ✅ Backend iniciado! Aguardando conexão do WhatsApp...' + c.reset);
+  console.log('');
+};
+
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║                           MIDDLEWARE AUTH                                      ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '') || 
                 req.headers['x-instance-token'];
@@ -205,7 +301,9 @@ const authMiddleware = (req, res, next) => {
   next();
 };
 
-// ============ HEARTBEAT AUTOMÁTICO ============
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║                         HEARTBEAT AUTOMÁTICO                                   ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
 const sendHeartbeat = async () => {
   if (!SUPABASE_URL || !SUPABASE_KEY) return;
   
@@ -226,23 +324,24 @@ const sendHeartbeat = async () => {
       })
     });
     
-    console.log('[Heartbeat] Enviado - Status:', connectionStatus, '- Uptime:', uptimeSeconds + 's');
+    console.log(c.blue + '  [Heartbeat]' + c.reset + ' Status: ' + c.green + connectionStatus + c.reset + ' | Uptime: ' + uptimeSeconds + 's');
   } catch (err) {
-    console.error('[Heartbeat] Erro:', err.message);
+    console.error(c.red + '  [Heartbeat] Erro:' + c.reset, err.message);
   }
 };
 
 setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
 
-// ============ CONEXÃO WHATSAPP ============
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║                          CONEXÃO WHATSAPP                                      ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
 const connectWhatsApp = async () => {
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
   
   sock = makeWASocket({
     auth: state,
-    printQRInTerminal: true,
     logger,
-    browser: ['WhatsApp VPS', 'Chrome', '120.0.0'],
+    browser: ['Genesis VPS', 'Chrome', '120.0.0'],
     syncFullHistory: false,
     generateHighQualityLinkPreview: true,
   });
@@ -253,25 +352,28 @@ const connectWhatsApp = async () => {
     if (qr) {
       qrCode = qr;
       connectionStatus = 'qr_pending';
-      console.log('[WhatsApp] QR Code gerado');
+      console.log(c.yellow + '  [WhatsApp]' + c.reset + ' QR Code gerado - Escaneie via Painel Owner!');
     }
     
     if (connection === 'close') {
       const reason = lastDisconnect?.error?.output?.statusCode;
-      console.log('[WhatsApp] Desconectado. Razão:', reason);
+      console.log(c.red + '  [WhatsApp]' + c.reset + ' Desconectado. Razão:', reason);
       
       connectionStatus = 'disconnected';
       qrCode = null;
       
       if (reason !== DisconnectReason.loggedOut) {
-        console.log('[WhatsApp] Reconectando em 5s...');
+        console.log(c.yellow + '  [WhatsApp]' + c.reset + ' Reconectando em 5s...');
         setTimeout(connectWhatsApp, 5000);
       }
     } else if (connection === 'open') {
-      console.log('[WhatsApp] Conectado!');
+      console.log('');
+      console.log(c.bgGreen + c.bold + c.white + '  ✅ WHATSAPP CONECTADO!  ' + c.reset);
       connectionStatus = 'connected';
       qrCode = null;
       phoneNumber = sock.user?.id?.split(':')[0] || null;
+      console.log(c.green + '  [WhatsApp]' + c.reset + ' Número: ' + c.bold + phoneNumber + c.reset);
+      console.log('');
       sendHeartbeat();
     }
   });
@@ -288,213 +390,99 @@ const connectWhatsApp = async () => {
       const text = msg.message?.conversation || 
                    msg.message?.extendedTextMessage?.text || '';
       
-      console.log('[Mensagem]', from, ':', text);
-      
-      // Webhook para mensagens recebidas
-      // Implemente aqui sua lógica de automação
+      console.log(c.magenta + '  [Msg]' + c.reset + ' ' + from + ': ' + text);
     }
   });
 };
 
-// ============ ROTAS API ============
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║                              ROTAS API                                         ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
 
-// Health check
 app.get('/health', authMiddleware, (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    whatsapp: connectionStatus,
-    phone: phoneNumber,
-    uptime: Math.floor((Date.now() - startTime) / 1000)
-  });
+  res.json({ status: 'ok', whatsapp: connectionStatus, phone: phoneNumber, uptime: Math.floor((Date.now() - startTime) / 1000), version: '4.2' });
 });
 
-// Status da conexão
 app.get('/status', authMiddleware, (req, res) => {
-  res.json({ 
-    connected: connectionStatus === 'connected',
-    status: connectionStatus,
-    phone: phoneNumber,
-    qr: qrCode ? true : false
-  });
+  res.json({ connected: connectionStatus === 'connected', status: connectionStatus, phone: phoneNumber, qr: qrCode ? true : false });
 });
 
-// QR Code
 app.get('/qrcode', authMiddleware, (req, res) => {
-  if (connectionStatus === 'connected') {
-    return res.json({ connected: true, phone: phoneNumber });
-  }
-  
-  if (!qrCode) {
-    return res.json({ connected: false, qr: null, message: 'Aguardando QR...' });
-  }
-  
+  if (connectionStatus === 'connected') return res.json({ connected: true, phone: phoneNumber });
+  if (!qrCode) return res.json({ connected: false, qr: null, message: 'Aguardando QR...' });
   res.json({ connected: false, qr: qrCode });
 });
 
-// Iniciar conexão
 app.post('/connect', authMiddleware, async (req, res) => {
-  if (connectionStatus === 'connected') {
-    return res.json({ success: true, message: 'Já conectado', phone: phoneNumber });
-  }
-  
-  try {
-    connectWhatsApp();
-    res.json({ success: true, message: 'Iniciando conexão...' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  if (connectionStatus === 'connected') return res.json({ success: true, message: 'Já conectado', phone: phoneNumber });
+  try { connectWhatsApp(); res.json({ success: true, message: 'Iniciando conexão...' }); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Desconectar
 app.post('/disconnect', authMiddleware, async (req, res) => {
   try {
-    if (sock) {
-      await sock.logout();
-    }
-    
-    // Limpa auth
-    if (fs.existsSync(AUTH_FOLDER)) {
-      fs.rmSync(AUTH_FOLDER, { recursive: true });
-    }
-    
-    connectionStatus = 'disconnected';
-    qrCode = null;
-    phoneNumber = null;
-    
+    if (sock) await sock.logout();
+    if (fs.existsSync(AUTH_FOLDER)) fs.rmSync(AUTH_FOLDER, { recursive: true });
+    connectionStatus = 'disconnected'; qrCode = null; phoneNumber = null;
     res.json({ success: true, message: 'Desconectado' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Enviar mensagem de texto
 app.post('/send', authMiddleware, async (req, res) => {
   const { phone, message } = req.body;
-  
-  if (!phone || !message) {
-    return res.status(400).json({ error: 'phone e message são obrigatórios' });
-  }
-  
-  if (connectionStatus !== 'connected' || !sock) {
-    return res.status(503).json({ error: 'WhatsApp não conectado' });
-  }
-  
+  if (!phone || !message) return res.status(400).json({ error: 'phone e message obrigatórios' });
+  if (connectionStatus !== 'connected' || !sock) return res.status(503).json({ error: 'WhatsApp não conectado' });
   try {
     const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
     await sock.sendMessage(jid, { text: message });
     res.json({ success: true, to: phone });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Enviar mensagem com botões
 app.post('/send-buttons', authMiddleware, async (req, res) => {
   const { phone, text, buttons, footer } = req.body;
-  
-  if (!phone || !text || !buttons) {
-    return res.status(400).json({ error: 'phone, text e buttons são obrigatórios' });
-  }
-  
-  if (connectionStatus !== 'connected' || !sock) {
-    return res.status(503).json({ error: 'WhatsApp não conectado' });
-  }
-  
+  if (!phone || !text || !buttons) return res.status(400).json({ error: 'Campos obrigatórios faltando' });
+  if (connectionStatus !== 'connected' || !sock) return res.status(503).json({ error: 'WhatsApp não conectado' });
   try {
     const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
-    
-    const buttonMessage = {
-      text: text,
-      footer: footer || '',
-      buttons: buttons.map((btn, idx) => ({
-        buttonId: btn.id || 'btn_' + idx,
-        buttonText: { displayText: btn.text },
-        type: 1
-      })),
-      headerType: 1
-    };
-    
-    await sock.sendMessage(jid, buttonMessage);
+    const msg = { text, footer: footer || '', buttons: buttons.map((b, i) => ({ buttonId: b.id || 'btn_' + i, buttonText: { displayText: b.text }, type: 1 })), headerType: 1 };
+    await sock.sendMessage(jid, msg);
     res.json({ success: true, to: phone });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Enviar lista
 app.post('/send-list', authMiddleware, async (req, res) => {
   const { phone, text, buttonText, sections, footer, title } = req.body;
-  
-  if (!phone || !text || !buttonText || !sections) {
-    return res.status(400).json({ error: 'phone, text, buttonText e sections são obrigatórios' });
-  }
-  
-  if (connectionStatus !== 'connected' || !sock) {
-    return res.status(503).json({ error: 'WhatsApp não conectado' });
-  }
-  
+  if (!phone || !text || !buttonText || !sections) return res.status(400).json({ error: 'Campos obrigatórios' });
+  if (connectionStatus !== 'connected' || !sock) return res.status(503).json({ error: 'WhatsApp não conectado' });
   try {
     const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
-    
-    const listMessage = {
-      text: text,
-      footer: footer || '',
-      title: title || '',
-      buttonText: buttonText,
-      sections: sections
-    };
-    
-    await sock.sendMessage(jid, listMessage);
+    await sock.sendMessage(jid, { text, footer: footer || '', title: title || '', buttonText, sections });
     res.json({ success: true, to: phone });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Enviar mídia
 app.post('/send-media', authMiddleware, async (req, res) => {
   const { phone, mediaUrl, caption, type } = req.body;
-  
-  if (!phone || !mediaUrl) {
-    return res.status(400).json({ error: 'phone e mediaUrl são obrigatórios' });
-  }
-  
-  if (connectionStatus !== 'connected' || !sock) {
-    return res.status(503).json({ error: 'WhatsApp não conectado' });
-  }
-  
+  if (!phone || !mediaUrl) return res.status(400).json({ error: 'phone e mediaUrl obrigatórios' });
+  if (connectionStatus !== 'connected' || !sock) return res.status(503).json({ error: 'WhatsApp não conectado' });
   try {
     const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
-    
-    let messageContent = {};
-    const mediaType = type || 'image';
-    
-    if (mediaType === 'image') {
-      messageContent = { image: { url: mediaUrl }, caption: caption || '' };
-    } else if (mediaType === 'video') {
-      messageContent = { video: { url: mediaUrl }, caption: caption || '' };
-    } else if (mediaType === 'audio') {
-      messageContent = { audio: { url: mediaUrl }, mimetype: 'audio/mp4' };
-    } else if (mediaType === 'document') {
-      messageContent = { document: { url: mediaUrl }, fileName: caption || 'document' };
-    }
-    
-    await sock.sendMessage(jid, messageContent);
+    let msg = {}; const mt = type || 'image';
+    if (mt === 'image') msg = { image: { url: mediaUrl }, caption: caption || '' };
+    else if (mt === 'video') msg = { video: { url: mediaUrl }, caption: caption || '' };
+    else if (mt === 'audio') msg = { audio: { url: mediaUrl }, mimetype: 'audio/mp4' };
+    else if (mt === 'document') msg = { document: { url: mediaUrl }, fileName: caption || 'file' };
+    await sock.sendMessage(jid, msg);
     res.json({ success: true, to: phone });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ============ INICIAR SERVIDOR ============
-app.listen(PORT, '0.0.0.0', () => {
-  console.log('============================================');
-  console.log('  WhatsApp Backend VPS v4.1');
-  console.log('  Porta:', PORT);
-  console.log('  Instância:', INSTANCE_ID);
-  console.log('============================================');
-  
-  // Inicia conexão automaticamente
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║                           INICIAR SERVIDOR                                     ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
+app.listen(PORT, '0.0.0.0', async () => {
+  await showBanner();
   connectWhatsApp();
 });
 `;
