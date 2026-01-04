@@ -8,6 +8,7 @@ import {
   GitBranch, 
   Settings, 
   Users,
+  User,
   CreditCard,
   BarChart3,
   LogOut,
@@ -318,7 +319,7 @@ export default function GenesisPanel() {
       case 'dashboard':
         return <GenesisDashboard onNavigate={setActiveTab} />;
       case 'instances':
-        return <InstancesManager />;
+        return <InstancesManager onNavigateToAccount={() => setActiveTab('account')} />;
       case 'flows':
         return <WAFlowBuilder 
           onBack={() => setActiveTab('dashboard')} 

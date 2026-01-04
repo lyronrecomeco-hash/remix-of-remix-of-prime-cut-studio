@@ -2346,6 +2346,8 @@ export type Database = {
           name: string
           phone: string | null
           updated_at: string
+          whatsapp_commercial: string | null
+          whatsapp_test: string | null
         }
         Insert: {
           auth_user_id: string
@@ -2358,6 +2360,8 @@ export type Database = {
           name: string
           phone?: string | null
           updated_at?: string
+          whatsapp_commercial?: string | null
+          whatsapp_test?: string | null
         }
         Update: {
           auth_user_id?: string
@@ -2370,6 +2374,8 @@ export type Database = {
           name?: string
           phone?: string | null
           updated_at?: string
+          whatsapp_commercial?: string | null
+          whatsapp_test?: string | null
         }
         Relationships: []
       }

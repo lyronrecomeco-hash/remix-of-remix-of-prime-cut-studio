@@ -11,6 +11,8 @@ interface GenesisUser {
   avatar_url?: string;
   phone?: string;
   company_name?: string;
+  whatsapp_commercial?: string;
+  whatsapp_test?: string;
   is_active: boolean;
 }
 
@@ -26,6 +28,7 @@ interface GenesisCredits {
 
 interface GenesisSubscription {
   plan: 'free' | 'starter' | 'professional' | 'enterprise';
+  plan_name?: string;
   status: string;
   max_instances: number;
   max_flows: number;

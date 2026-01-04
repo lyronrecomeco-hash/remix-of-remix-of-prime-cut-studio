@@ -11,7 +11,11 @@ import {
   FileText,
   Settings2,
   Link2,
-  Lock
+  Lock,
+  Coins,
+  AlertCircle,
+  CheckCircle2,
+  Phone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,9 +23,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { GenesisWhatsAppConnect } from './GenesisWhatsAppConnect';
+import { cn } from '@/lib/utils';
 
 // Import integration logos
 import shopifyLogo from '@/assets/integrations/shopify.png';
@@ -122,19 +128,41 @@ export function InstancePanel({ instance: initialInstance, onBack }: InstancePan
     }
   };
 
+  const isConnected = instance.effective_status === 'connected' || instance.status === 'connected';
+  const formattedPhone = instance.phone_number 
+    ? instance.phone_number.replace(/(\d{2})(\d{2})(\d{5})(\d{4})/, '+$1 ($2) $3-$4')
+    : null;
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-4"
+        className="flex items-center justify-between"
       >
-        <Button variant="ghost" size="sm" onClick={onBack} className="gap-2 text-primary">
-          <ArrowLeft className="w-4 h-4" />
-          Minhas instâncias
-        </Button>
-        <span className="text-lg font-bold">{instance.name}</span>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack} className="gap-2 text-primary">
+            <ArrowLeft className="w-4 h-4" />
+            Voltar
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold">{instance.name}</h1>
+            <p className="text-sm text-muted-foreground">Gerencie esta instância</p>
+          </div>
+        </div>
+        <Badge 
+          variant="secondary" 
+          className={cn(
+            "gap-1.5",
+            isConnected 
+              ? "bg-green-500/10 text-green-600 border-green-500/20" 
+              : "bg-red-500/10 text-red-600 border-red-500/20"
+          )}
+        >
+          {isConnected ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+          {isConnected ? 'Conectado' : 'Desconectado'}
+        </Badge>
       </motion.div>
 
       {/* WhatsApp Connection - MAIN FOCUS */}
@@ -149,27 +177,83 @@ export function InstancePanel({ instance: initialInstance, onBack }: InstancePan
         />
       </motion.div>
 
-      {/* Quick Actions Card */}
+      {/* Connected Number Info - Show after connected */}
+      {isConnected && instance.phone_number && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <Card className="border-green-500/20 bg-gradient-to-r from-green-500/5 to-transparent">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+                  <Phone className="w-6 h-6 text-green-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground">Número Conectado</p>
+                  <p className="text-lg font-bold text-green-600">{formattedPhone}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {instance.phone_number}@s.whatsapp.net
+                  </p>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="gap-2"
+                  onClick={() => copyToClipboard(instance.phone_number || '', 'Número')}
+                >
+                  <Copy className="w-4 h-4" />
+                  Copiar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Credit Consumption Info */}
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <Card>
+        <Card className="border-amber-500/20 bg-gradient-to-r from-amber-500/5 to-transparent">
           <CardContent className="pt-6">
-            {/* Instance Summary */}
-            <div className="flex items-center gap-4 mb-4 pb-4 border-b">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Smartphone className="w-5 h-5 text-primary" />
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                <Coins className="w-5 h-5 text-amber-500" />
               </div>
               <div className="flex-1">
-                <p className="font-medium">{instance.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {instance.phone_number || 'Aguardando conexão'}
+                <p className="font-medium text-amber-600">Consumo mínimo de créditos</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Cada instância ativa deve consumir no mínimo <strong>15 créditos por dia</strong>. 
+                  Se o consumo diário for menor, a diferença será debitada automaticamente.
+                </p>
+                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  Para evitar essa cobrança, recomendamos pausar a instância quando não estiver em uso.
                 </p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
+      {/* Quick Actions Card */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+      >
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Settings2 className="w-4 h-4 text-primary" />
+              Ações Rápidas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
             {/* Action Buttons */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
               {instance.is_paused ? (
@@ -204,10 +288,6 @@ export function InstancePanel({ instance: initialInstance, onBack }: InstancePan
                 Docs
               </Button>
             </div>
-
-            <p className="text-xs text-muted-foreground mt-4">
-              Consumo mínimo de créditos: cada instância ativa deve consumir no mínimo 15 créditos por dia.
-            </p>
           </CardContent>
         </Card>
       </motion.div>
