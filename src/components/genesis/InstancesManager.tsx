@@ -270,8 +270,10 @@ export function InstancesManager() {
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col gap-1"
       >
-        <h1 className="text-2xl font-bold">Minhas instâncias</h1>
+        <h1 className="text-2xl font-bold">Minhas Instâncias</h1>
+        <p className="text-sm text-muted-foreground">Gerencie suas conexões WhatsApp</p>
       </motion.div>
 
       {/* Status Filter Tabs */}

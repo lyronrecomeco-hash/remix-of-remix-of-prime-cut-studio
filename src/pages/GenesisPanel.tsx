@@ -452,9 +452,9 @@ export default function GenesisPanel() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setActiveTab('settings')}>
                   <Settings className="w-4 h-4 mr-2" />
-                  Configurações
+                  Minha Conta
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <HelpCircle className="w-4 h-4 mr-2" />
