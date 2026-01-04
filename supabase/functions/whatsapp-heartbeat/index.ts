@@ -6,8 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-instance-token",
 };
 
+// Threshold para considerar instância stale (60 segundos)
+const STALE_THRESHOLD_SECONDS = 60;
+
 serve(async (req) => {
-  // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -20,7 +22,7 @@ serve(async (req) => {
     const url = new URL(req.url);
     const pathParts = url.pathname.split("/").filter(Boolean);
     
-    // POST /whatsapp-heartbeat/:instanceId
+    // POST /whatsapp-heartbeat/:instanceId - Recebe heartbeat do backend
     if (req.method === "POST" && pathParts.length >= 2) {
       const instanceId = pathParts[1];
       const instanceToken = req.headers.get("x-instance-token");
@@ -63,7 +65,7 @@ serve(async (req) => {
 
       // Parse body
       const body = await req.json().catch(() => ({}));
-      const { status, phone_number, uptime_seconds } = body;
+      const { status, phone_number, uptime_seconds, heartbeat_count, version } = body;
 
       // Update instance with heartbeat
       const nowIso = new Date().toISOString();
@@ -95,18 +97,18 @@ serve(async (req) => {
         instance_id: instanceId,
         is_healthy: status === "connected",
         latency_ms: 0,
-        details: { source: "heartbeat", status },
+        details: { source: "heartbeat", status, version: version || "unknown", heartbeat_count },
       });
 
-      console.log(`Heartbeat received for instance ${instanceId}, status: ${status}`);
+      console.log(`Heartbeat OK: instance=${instanceId}, status=${status}, version=${version}, #${heartbeat_count}`);
 
       return new Response(
-        JSON.stringify({ success: true, timestamp: new Date().toISOString() }),
+        JSON.stringify({ success: true, timestamp: nowIso }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // GET /whatsapp-heartbeat/status/:instanceId - Check instance status from DB
+    // GET /whatsapp-heartbeat/status/:instanceId - Check instance status
     if (req.method === "GET" && pathParts.length >= 3 && pathParts[1] === "status") {
       const instanceId = pathParts[2];
 
@@ -123,21 +125,33 @@ serve(async (req) => {
         );
       }
 
-      // Check if heartbeat is stale (> 2 minutes = likely disconnected)
       const lastHeartbeat = instance.last_heartbeat_at ? new Date(instance.last_heartbeat_at) : null;
-      const isStale = lastHeartbeat ? (Date.now() - lastHeartbeat.getTime()) > 120000 : true;
+      const ageSeconds = lastHeartbeat ? Math.floor((Date.now() - lastHeartbeat.getTime()) / 1000) : Infinity;
+      const isStale = ageSeconds > STALE_THRESHOLD_SECONDS;
+
+      // Se está stale e status é connected, marca como disconnected automaticamente
+      let effectiveStatus = instance.status;
+      if (isStale && instance.status === "connected") {
+        effectiveStatus = "disconnected";
+        // Atualiza no banco para refletir o status real
+        await supabase
+          .from("whatsapp_instances")
+          .update({ status: "disconnected" })
+          .eq("id", instanceId);
+      }
 
       return new Response(
         JSON.stringify({
           ...instance,
+          heartbeat_age_seconds: ageSeconds,
           is_stale: isStale,
-          effective_status: isStale && instance.status === "connected" ? "disconnected" : instance.status,
+          effective_status: effectiveStatus,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // GET /whatsapp-heartbeat/all - Get all instances status
+    // GET /whatsapp-heartbeat/all - Get all instances with cleanup
     if (req.method === "GET" && pathParts.length >= 2 && pathParts[1] === "all") {
       const { data: instances, error } = await supabase
         .from("whatsapp_instances")
@@ -151,19 +165,72 @@ serve(async (req) => {
         );
       }
 
-      // Add stale check to each instance
+      const now = Date.now();
+      const staleIds: string[] = [];
+      
       const enrichedInstances = (instances || []).map(inst => {
         const lastHeartbeat = inst.last_heartbeat_at ? new Date(inst.last_heartbeat_at) : null;
-        const isStale = lastHeartbeat ? (Date.now() - lastHeartbeat.getTime()) > 120000 : true;
+        const ageSeconds = lastHeartbeat ? Math.floor((now - lastHeartbeat.getTime()) / 1000) : Infinity;
+        const isStale = ageSeconds > STALE_THRESHOLD_SECONDS;
+        
+        // Marca para cleanup se stale e connected
+        if (isStale && inst.status === "connected") {
+          staleIds.push(inst.id);
+        }
+        
         return {
           ...inst,
+          heartbeat_age_seconds: ageSeconds,
           is_stale: isStale,
           effective_status: isStale && inst.status === "connected" ? "disconnected" : inst.status,
         };
       });
 
+      // Cleanup: marca instâncias stale como disconnected
+      if (staleIds.length > 0) {
+        await supabase
+          .from("whatsapp_instances")
+          .update({ status: "disconnected" })
+          .in("id", staleIds);
+        console.log(`Cleanup: marked ${staleIds.length} stale instances as disconnected`);
+      }
+
       return new Response(
         JSON.stringify({ instances: enrichedInstances }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // POST /whatsapp-heartbeat/cleanup - Force cleanup of stale instances
+    if (req.method === "POST" && pathParts.length >= 2 && pathParts[1] === "cleanup") {
+      const thresholdDate = new Date(Date.now() - STALE_THRESHOLD_SECONDS * 1000).toISOString();
+      
+      const { data: staleInstances, error: fetchError } = await supabase
+        .from("whatsapp_instances")
+        .select("id")
+        .eq("status", "connected")
+        .lt("last_heartbeat_at", thresholdDate);
+
+      if (fetchError) {
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch stale instances" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const staleIds = (staleInstances || []).map(i => i.id);
+      
+      if (staleIds.length > 0) {
+        await supabase
+          .from("whatsapp_instances")
+          .update({ status: "disconnected" })
+          .in("id", staleIds);
+      }
+
+      console.log(`Cleanup forced: ${staleIds.length} instances marked as disconnected`);
+
+      return new Response(
+        JSON.stringify({ success: true, cleaned: staleIds.length, ids: staleIds }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

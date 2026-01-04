@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { getVPSScriptV6 } from './vps-script-v6';
 import { 
   Server, 
   Wifi, 
@@ -657,7 +658,7 @@ app.listen(PORT, '0.0.0.0', async () => {
   };
 
   const downloadScript = () => {
-    const script = getVPSScript();
+    const script = getVPSScriptV6(masterToken);
     const blob = new Blob([script], { type: 'application/javascript' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -665,7 +666,7 @@ app.listen(PORT, '0.0.0.0', async () => {
     a.download = 'whatsapp-vps.js';
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Script baixado!');
+    toast.success('Script v6.0 Ultra Stable baixado!');
   };
 
   const setupSteps = [
@@ -707,7 +708,7 @@ cd ~/whatsapp-backend`
       content: `cat > package.json << 'EOF'
 {
   "name": "whatsapp-backend-vps",
-  "version": "4.0.0",
+  "version": "6.0.0",
   "main": "whatsapp-vps.js",
   "scripts": {
     "start": "node whatsapp-vps.js"

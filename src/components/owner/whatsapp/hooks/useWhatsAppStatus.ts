@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface InstanceStatus {
@@ -11,42 +11,54 @@ interface InstanceStatus {
   last_seen: string | null;
   is_stale: boolean;
   effective_status: string;
+  heartbeat_age_seconds: number;
 }
 
-export const useWhatsAppStatus = (pollInterval = 30000) => {
+// Threshold mais agressivo: 60s ao invés de 120s
+const STALE_THRESHOLD_MS = 60000; // 1 minuto
+
+export const useWhatsAppStatus = (pollInterval = 15000) => {
   const [instances, setInstances] = useState<InstanceStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const isMountedRef = useRef(true);
 
   const fetchStatus = useCallback(async () => {
+    if (!isMountedRef.current) return;
+    
     try {
-      // Fetch from database directly - this is the source of truth
       const { data, error } = await supabase
         .from('whatsapp_instances')
         .select('id, name, status, phone_number, last_heartbeat_at, uptime_seconds, last_seen')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      if (!isMountedRef.current) return;
 
-      // Process instances - check for stale heartbeats
+      const now = Date.now();
       const enriched = (data || []).map(inst => {
-        // Use last_heartbeat_at OR last_seen as the freshness indicator
+        // Prioriza last_heartbeat_at, depois last_seen
         const lastActivity = inst.last_heartbeat_at || inst.last_seen;
         const lastActivityDate = lastActivity ? new Date(lastActivity) : null;
-        const STALE_THRESHOLD_MS = 120000; // 2 minutes
+        const heartbeatAgeMs = lastActivityDate ? (now - lastActivityDate.getTime()) : Infinity;
+        const heartbeatAgeSeconds = Math.floor(heartbeatAgeMs / 1000);
         
-        // Only consider stale if we have a timestamp that is old
-        // If we have NO timestamp but status is 'connected', trust the database status
+        // Considera stale se:
+        // 1. Tem timestamp e está velho (> 60s)
+        // 2. Não tem timestamp nenhum E status diz conectado (inconsistente)
         const isStale = lastActivityDate 
-          ? (Date.now() - lastActivityDate.getTime()) > STALE_THRESHOLD_MS 
-          : false; // If no timestamp, don't assume stale - trust the status field
+          ? heartbeatAgeMs > STALE_THRESHOLD_MS 
+          : inst.status === 'connected'; // Se não tem timestamp mas diz conectado, é stale
 
-        // Determine effective status:
-        // - If database says 'connected' and activity is recent (or no activity data), trust it
-        // - If database says 'connected' but activity is stale, mark as disconnected
+        // Effective status baseado em heartbeat real
         let effectiveStatus = inst.status;
         if (inst.status === 'connected' && isStale) {
           effectiveStatus = 'disconnected';
+        }
+        // Se tem heartbeat recente mas status diz disconnected, confia no heartbeat
+        if (inst.status === 'disconnected' && lastActivityDate && heartbeatAgeMs < STALE_THRESHOLD_MS) {
+          // Verifica se o último heartbeat tinha status conectado
+          // Neste caso mantém o status do banco pois o heartbeat pode ter enviado 'disconnected'
         }
 
         return {
@@ -54,6 +66,7 @@ export const useWhatsAppStatus = (pollInterval = 30000) => {
           uptime_seconds: inst.uptime_seconds || 0,
           is_stale: isStale,
           effective_status: effectiveStatus,
+          heartbeat_age_seconds: heartbeatAgeSeconds,
         };
       });
 
@@ -62,25 +75,29 @@ export const useWhatsAppStatus = (pollInterval = 30000) => {
     } catch (error) {
       console.error('Error fetching WhatsApp status:', error);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
   // Initial fetch
   useEffect(() => {
+    isMountedRef.current = true;
     fetchStatus();
+    return () => { isMountedRef.current = false; };
   }, [fetchStatus]);
 
-  // Polling
+  // Polling mais frequente (15s padrão)
   useEffect(() => {
     const interval = setInterval(fetchStatus, pollInterval);
     return () => clearInterval(interval);
   }, [fetchStatus, pollInterval]);
 
-  // Subscribe to realtime changes
+  // Subscribe to realtime changes - reage instantaneamente
   useEffect(() => {
     const channel = supabase
-      .channel('whatsapp_instances_changes')
+      .channel('whatsapp_instances_realtime')
       .on(
         'postgres_changes',
         {
@@ -88,8 +105,8 @@ export const useWhatsAppStatus = (pollInterval = 30000) => {
           schema: 'public',
           table: 'whatsapp_instances',
         },
-        (payload) => {
-          console.log('WhatsApp instance changed:', payload);
+        () => {
+          // Fetch imediato quando banco atualiza
           fetchStatus();
         }
       )
@@ -112,6 +129,10 @@ export const useWhatsAppStatus = (pollInterval = 30000) => {
     isConnected: (instanceId: string) => {
       const inst = instances.find(i => i.id === instanceId);
       return inst?.effective_status === 'connected';
+    },
+    getHeartbeatAge: (instanceId: string) => {
+      const inst = instances.find(i => i.id === instanceId);
+      return inst?.heartbeat_age_seconds || Infinity;
     },
   };
 };
