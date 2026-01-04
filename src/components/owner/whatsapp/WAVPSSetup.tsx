@@ -259,22 +259,6 @@ const logs = [];
 const MAX_LOGS = 100;
 
 // ╔═══════════════════════════════════════════════════════════════════════════════════╗
-// ║                              SISTEMA DE LOGS                                       ║
-// ╚═══════════════════════════════════════════════════════════════════════════════════╝
-const addLog = (type, message, details = null) => {
-  const timestamp = new Date().toLocaleTimeString('pt-BR');
-  const log = { timestamp, type, message, details };
-  logs.unshift(log);
-  if (logs.length > MAX_LOGS) logs.pop();
-  
-  if (logsEnabled) {
-    const colors = { info: c.cyan, success: c.green, error: c.red, warn: c.yellow, msg: c.magenta };
-    const color = colors[type] || c.white;
-    console.log(color + '[' + timestamp + '] [' + type.toUpperCase() + '] ' + c.reset + message);
-  }
-};
-
-// ╔═══════════════════════════════════════════════════════════════════════════════════╗
 // ║                            CORES DO TERMINAL                                       ║
 // ╚═══════════════════════════════════════════════════════════════════════════════════╝
 const c = {
@@ -292,6 +276,22 @@ const c = {
   bgBlue: '\\x1b[44m',
   bgCyan: '\\x1b[46m',
   bgMagenta: '\\x1b[45m'
+};
+
+// ╔═══════════════════════════════════════════════════════════════════════════════════╗
+// ║                              SISTEMA DE LOGS                                       ║
+// ╚═══════════════════════════════════════════════════════════════════════════════════╝
+const addLog = (type, message, details = null) => {
+  const timestamp = new Date().toLocaleTimeString('pt-BR');
+  const log = { timestamp, type, message, details };
+  logs.unshift(log);
+  if (logs.length > MAX_LOGS) logs.pop();
+  
+  if (logsEnabled) {
+    const colors = { info: c.cyan, success: c.green, error: c.red, warn: c.yellow, msg: c.magenta };
+    const color = colors[type] || c.white;
+    console.log(color + '[' + timestamp + '] [' + type.toUpperCase() + '] ' + c.reset + message);
+  }
 };
 
 // Detecta IP público da VPS
@@ -407,7 +407,7 @@ const connectWhatsApp = async () => {
   
   sock = makeWASocket({
     auth: state,
-    logger,
+    logger: pinoLogger,
     browser: ['Genesis VPS', 'Chrome', '120.0.0'],
     syncFullHistory: false,
     generateHighQualityLinkPreview: true,
