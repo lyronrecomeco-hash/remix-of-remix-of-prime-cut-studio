@@ -482,7 +482,7 @@ Sua instância está conectada e funcionando perfeitamente!
                   {connectionState.error}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2 ml-6">
-                  Verifique se o script local está rodando em http://localhost:3001
+                  Verifique a configuração do WhatsApp Automação ou contate o suporte.
                 </p>
               </motion.div>
             )}
