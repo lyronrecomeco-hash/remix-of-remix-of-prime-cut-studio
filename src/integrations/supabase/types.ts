@@ -4581,6 +4581,8 @@ export type Database = {
           backend_token: string | null
           backend_url: string | null
           created_at: string
+          effective_status: string | null
+          heartbeat_age_seconds: number | null
           heartbeat_interval_ms: number | null
           id: string
           instance_token: string
@@ -4607,6 +4609,8 @@ export type Database = {
           backend_token?: string | null
           backend_url?: string | null
           created_at?: string
+          effective_status?: string | null
+          heartbeat_age_seconds?: number | null
           heartbeat_interval_ms?: number | null
           id?: string
           instance_token?: string
@@ -4633,6 +4637,8 @@ export type Database = {
           backend_token?: string | null
           backend_url?: string | null
           created_at?: string
+          effective_status?: string | null
+          heartbeat_age_seconds?: number | null
           heartbeat_interval_ms?: number | null
           id?: string
           instance_token?: string

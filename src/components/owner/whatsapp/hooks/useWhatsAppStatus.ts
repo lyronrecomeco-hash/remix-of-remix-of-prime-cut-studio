@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface InstanceStatusResult {
+interface InstanceStatus {
   id: string;
   status: string;
   effective_status: string;
@@ -11,74 +11,77 @@ interface InstanceStatusResult {
   is_stale: boolean;
 }
 
-// Increased threshold to 180 seconds (3 minutes) for maximum stability
+// Threshold: 180 seconds (3 minutes) for maximum stability
 const STALE_THRESHOLD_MS = 180000;
 
-export function useWhatsAppStatus(instanceIds: string[], pollingIntervalMs = 3000) {
-  const [statuses, setStatuses] = useState<Record<string, InstanceStatusResult>>({});
+export function useWhatsAppStatus(pollingIntervalMs = 3000) {
+  const [instances, setInstances] = useState<InstanceStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
 
-  const fetchStatuses = useCallback(async () => {
-    if (!instanceIds.length || !mountedRef.current) return;
+  const fetchStatus = useCallback(async () => {
+    if (!mountedRef.current) return;
 
     try {
       const { data, error } = await supabase
         .from('whatsapp_instances')
-        .select('id, status, effective_status, last_heartbeat, phone_number')
-        .in('id', instanceIds);
+        .select('id, name, status, last_heartbeat, phone_number, backend_url, backend_token')
+        .order('created_at', { ascending: false });
 
       if (error || !data || !mountedRef.current) return;
 
       const now = Date.now();
-      const newStatuses: Record<string, InstanceStatusResult> = {};
-
-      for (const instance of data) {
+      const processed: InstanceStatus[] = data.map((instance: any) => {
         const lastHeartbeat = instance.last_heartbeat 
           ? new Date(instance.last_heartbeat).getTime() 
           : 0;
         const heartbeatAge = lastHeartbeat ? now - lastHeartbeat : Infinity;
         const isStale = heartbeatAge > STALE_THRESHOLD_MS;
 
-        // Determine effective status based on heartbeat
-        let finalStatus = instance.effective_status || instance.status;
+        // Determine effective status based on heartbeat freshness
+        let effectiveStatus = instance.status;
         
-        // If marked as connected but heartbeat is stale, show as disconnected
-        if (finalStatus === 'connected' && isStale && lastHeartbeat > 0) {
-          finalStatus = 'disconnected';
+        // Only mark as disconnected if:
+        // 1. There was a heartbeat before (not a new instance)
+        // 2. The heartbeat is stale
+        // 3. The status was connected
+        if (effectiveStatus === 'connected' && isStale && lastHeartbeat > 0) {
+          effectiveStatus = 'disconnected';
         }
 
-        newStatuses[instance.id] = {
+        return {
           id: instance.id,
           status: instance.status,
-          effective_status: finalStatus,
+          effective_status: effectiveStatus,
           last_heartbeat: instance.last_heartbeat,
           phone_number: instance.phone_number,
           heartbeat_age_seconds: Math.floor(heartbeatAge / 1000),
           is_stale: isStale,
         };
-      }
+      });
 
-      setStatuses(newStatuses);
+      setInstances(processed);
+      setLastUpdate(new Date());
       setIsLoading(false);
     } catch (error) {
       console.error('Error fetching WhatsApp statuses:', error);
     }
-  }, [instanceIds]);
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
     
     // Initial fetch
-    fetchStatuses();
+    fetchStatus();
 
-    // Start polling at specified interval
-    pollingRef.current = setInterval(fetchStatuses, pollingIntervalMs);
+    // Start polling
+    pollingRef.current = setInterval(fetchStatus, pollingIntervalMs);
 
     // Subscribe to realtime changes for instant updates
     const channel = supabase
-      .channel('whatsapp_instances_status')
+      .channel('whatsapp_instances_status_v2')
       .on(
         'postgres_changes',
         {
@@ -87,7 +90,7 @@ export function useWhatsAppStatus(instanceIds: string[], pollingIntervalMs = 300
           table: 'whatsapp_instances',
         },
         () => {
-          fetchStatuses();
+          fetchStatus();
         }
       )
       .subscribe();
@@ -100,28 +103,30 @@ export function useWhatsAppStatus(instanceIds: string[], pollingIntervalMs = 300
       }
       supabase.removeChannel(channel);
     };
-  }, [fetchStatuses, pollingIntervalMs]);
+  }, [fetchStatus, pollingIntervalMs]);
 
-  const getStatus = useCallback((instanceId: string) => {
-    return statuses[instanceId] || null;
-  }, [statuses]);
+  const getEffectiveStatus = useCallback((instanceId: string) => {
+    const inst = instances.find(i => i.id === instanceId);
+    return inst?.effective_status || 'disconnected';
+  }, [instances]);
 
   const isConnected = useCallback((instanceId: string) => {
-    const status = statuses[instanceId];
-    return status?.effective_status === 'connected' && !status.is_stale;
-  }, [statuses]);
+    const inst = instances.find(i => i.id === instanceId);
+    return inst?.effective_status === 'connected' && !inst.is_stale;
+  }, [instances]);
 
   const getHeartbeatAge = useCallback((instanceId: string) => {
-    const status = statuses[instanceId];
-    return status?.heartbeat_age_seconds ?? Infinity;
-  }, [statuses]);
+    const inst = instances.find(i => i.id === instanceId);
+    return inst?.heartbeat_age_seconds ?? Infinity;
+  }, [instances]);
 
   return {
-    statuses,
+    instances,
     isLoading,
-    getStatus,
+    lastUpdate,
+    refresh: fetchStatus,
+    getEffectiveStatus,
     isConnected,
     getHeartbeatAge,
-    refetch: fetchStatuses,
   };
 }

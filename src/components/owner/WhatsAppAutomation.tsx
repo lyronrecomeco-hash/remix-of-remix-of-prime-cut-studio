@@ -283,9 +283,6 @@ const WhatsAppAutomation = () => {
       ...inst,
       status: (hb.effective_status as WhatsAppInstance['status']) || inst.status,
       phone_number: hb.phone_number ?? inst.phone_number,
-      last_seen: hb.last_seen ?? inst.last_seen,
-      last_heartbeat_at: hb.last_heartbeat_at ?? inst.last_heartbeat_at,
-      uptime_seconds: hb.uptime_seconds ?? inst.uptime_seconds,
     };
   });
 
