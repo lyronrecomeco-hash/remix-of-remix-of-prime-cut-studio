@@ -19,6 +19,7 @@ const isAllowedPath = (path: string) => {
   if (path.startsWith("/api/instance/")) return true;
   if (path.startsWith("/api/instances")) return true;
   if (path.startsWith("/api/qrcode")) return true;
+  if (path === "/send") return true;
   return false;
 };
 

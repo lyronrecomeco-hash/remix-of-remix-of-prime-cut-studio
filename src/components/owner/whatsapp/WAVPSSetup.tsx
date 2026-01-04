@@ -581,6 +581,20 @@ app.post('/api/instance/:id/disconnect', authMiddleware, async (req, res) => {
 // ║                         ROTAS DE ENVIO                                         ║
 // ╚═══════════════════════════════════════════════════════════════════════════════╝
 
+// Rota de envio de texto - compatível com /api/instance/:id/send
+app.post('/api/instance/:id/send', authMiddleware, async (req, res) => {
+  const { phone, message } = req.body;
+  if (!phone || !message) return res.status(400).json({ error: 'phone e message obrigatórios' });
+  if (connectionStatus !== 'connected' || !sock) return res.status(503).json({ error: 'WhatsApp não conectado' });
+  try {
+    const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
+    await sock.sendMessage(jid, { text: message });
+    console.log(c.green + '  [Envio]' + c.reset + ' Mensagem enviada para ' + phone);
+    res.json({ success: true, to: phone });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Alias para compatibilidade
 app.post('/send', authMiddleware, async (req, res) => {
   const { phone, message } = req.body;
   if (!phone || !message) return res.status(400).json({ error: 'phone e message obrigatórios' });
@@ -588,11 +602,12 @@ app.post('/send', authMiddleware, async (req, res) => {
   try {
     const jid = phone.includes('@') ? phone : phone + '@s.whatsapp.net';
     await sock.sendMessage(jid, { text: message });
+    console.log(c.green + '  [Envio]' + c.reset + ' Mensagem enviada para ' + phone);
     res.json({ success: true, to: phone });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/send-buttons', authMiddleware, async (req, res) => {
+app.post('/api/instance/:id/send-buttons', authMiddleware, async (req, res) => {
   const { phone, text, buttons, footer } = req.body;
   if (!phone || !text || !buttons) return res.status(400).json({ error: 'Campos obrigatórios faltando' });
   if (connectionStatus !== 'connected' || !sock) return res.status(503).json({ error: 'WhatsApp não conectado' });
@@ -604,7 +619,7 @@ app.post('/send-buttons', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/send-list', authMiddleware, async (req, res) => {
+app.post('/api/instance/:id/send-list', authMiddleware, async (req, res) => {
   const { phone, text, buttonText, sections, footer, title } = req.body;
   if (!phone || !text || !buttonText || !sections) return res.status(400).json({ error: 'Campos obrigatórios' });
   if (connectionStatus !== 'connected' || !sock) return res.status(503).json({ error: 'WhatsApp não conectado' });

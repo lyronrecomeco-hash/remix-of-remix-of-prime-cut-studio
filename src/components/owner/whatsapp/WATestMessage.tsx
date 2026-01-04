@@ -104,27 +104,43 @@ export const WATestMessage = ({
         formattedPhone = '55' + formattedPhone;
       }
 
-      const endpoint = backendMode === 'local'
-        ? `${localEndpoint}:${localPort}/api/instance`
-        : backendUrl;
-      
-      const token = backendMode === 'local' ? localToken : masterToken;
+      let result: { success?: boolean; error?: string };
 
-      const response = await fetch(`${endpoint}/${connectedInstance.id}/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          phone: formattedPhone,
-          message: testMessage,
-        }),
-      });
+      if (backendMode === 'local') {
+        // Chamada direta para backend local
+        const endpoint = `${localEndpoint}:${localPort}/api/instance`;
+        const response = await fetch(`${endpoint}/${connectedInstance.id}/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localToken}`,
+          },
+          body: JSON.stringify({
+            phone: formattedPhone,
+            message: testMessage,
+          }),
+        });
+        result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Erro ao enviar');
+      } else {
+        // VPS - usar proxy para evitar Mixed Content
+        const { data, error } = await supabase.functions.invoke('whatsapp-backend-proxy', {
+          body: {
+            path: `/api/instance/${connectedInstance.id}/send`,
+            method: 'POST',
+            body: {
+              phone: formattedPhone,
+              message: testMessage,
+            },
+          },
+        });
 
-      const result = await response.json();
+        if (error) throw new Error(error.message);
+        if (!data?.ok) throw new Error(data?.data?.error || 'Erro ao enviar via proxy');
+        result = data.data;
+      }
 
-      if (response.ok && result.success !== false) {
+      if (result.success !== false) {
         toast.success('Mensagem de teste enviada com sucesso!');
 
         await supabase.from('whatsapp_message_logs').insert({
