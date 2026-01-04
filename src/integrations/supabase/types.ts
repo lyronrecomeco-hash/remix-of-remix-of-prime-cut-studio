@@ -2053,6 +2053,54 @@ export type Database = {
           },
         ]
       }
+      genesis_credit_usage: {
+        Row: {
+          created_at: string | null
+          credits_used: number
+          description: string | null
+          id: string
+          instance_id: string | null
+          usage_date: string | null
+          usage_type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          credits_used?: number
+          description?: string | null
+          id?: string
+          instance_id?: string | null
+          usage_date?: string | null
+          usage_type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          credits_used?: number
+          description?: string | null
+          id?: string
+          instance_id?: string | null
+          usage_date?: string | null
+          usage_type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "genesis_credit_usage_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "genesis_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "genesis_credit_usage_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "genesis_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       genesis_credits: {
         Row: {
           available_credits: number
@@ -2089,6 +2137,54 @@ export type Database = {
             foreignKeyName: "genesis_credits_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "genesis_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      genesis_event_logs: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          event_type: string
+          id: string
+          instance_id: string | null
+          message: string
+          severity: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          event_type: string
+          id?: string
+          instance_id?: string | null
+          message: string
+          severity?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          event_type?: string
+          id?: string
+          instance_id?: string | null
+          message?: string
+          severity?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "genesis_event_logs_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "genesis_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "genesis_event_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "genesis_users"
             referencedColumns: ["id"]
           },
@@ -2276,6 +2372,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      genesis_webhooks: {
+        Row: {
+          created_at: string | null
+          events: string[] | null
+          failure_count: number | null
+          id: string
+          is_active: boolean | null
+          last_triggered_at: string | null
+          name: string
+          secret_key: string | null
+          updated_at: string | null
+          url: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          events?: string[] | null
+          failure_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          name: string
+          secret_key?: string | null
+          updated_at?: string | null
+          url: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          events?: string[] | null
+          failure_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          name?: string
+          secret_key?: string | null
+          updated_at?: string | null
+          url?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "genesis_webhooks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "genesis_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       login_attempts: {
         Row: {
