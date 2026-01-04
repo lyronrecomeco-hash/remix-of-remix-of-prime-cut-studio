@@ -109,13 +109,13 @@ Sua instância está conectada e funcionando perfeitamente!
 ✅ Status: Ativo
 📱 Sistema: Genesis Auto`;
 
-      // Use proxy for sending test messages (via VPS config)
-      const { data, error } = await supabase.functions.invoke('whatsapp-backend-proxy', {
+      // Use Genesis proxy for sending test messages
+      const { data, error } = await supabase.functions.invoke('genesis-backend-proxy', {
         body: {
-          path: `/api/send`,
+          instanceId: instance.id,
+          path: `/api/instance/${instance.id}/send`,
           method: 'POST',
           body: {
-            instanceId: instance.id,
             to: phone,
             message,
           },

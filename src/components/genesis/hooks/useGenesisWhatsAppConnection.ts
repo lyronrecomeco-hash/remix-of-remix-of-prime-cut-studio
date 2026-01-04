@@ -19,12 +19,6 @@ interface InstanceStatus {
   isStale: boolean;
 }
 
-interface BackendConfig {
-  backend_url: string;
-  master_token: string;
-  is_connected: boolean;
-}
-
 const STALE_THRESHOLD_MS = 180000; // 3 minutes
 
 export function useGenesisWhatsAppConnection() {
@@ -97,52 +91,28 @@ export function useGenesisWhatsAppConnection() {
     }
   };
 
-  // Fetch VPS backend config from Owner
-  const getOwnerBackendConfig = async (): Promise<BackendConfig | null> => {
-    try {
-      const { data, error } = await supabase
-        .from('whatsapp_backend_config')
-        .select('backend_url, master_token, is_connected')
-        .single();
-
-      if (error || !data) {
-        console.error('Error fetching backend config:', error);
-        return null;
-      }
-
-      return {
-        backend_url: data.backend_url,
-        master_token: data.master_token,
-        is_connected: data.is_connected || false,
-      };
-    } catch (error) {
-      console.error('Error fetching backend config:', error);
-      return null;
-    }
-  };
-
-  const shouldUseProxy = (backendUrl: string) => {
-    try {
-      const u = new URL(backendUrl);
-      const isHttp = u.protocol === 'http:';
-      const isLocalhost = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
-      return typeof window !== 'undefined' && window.location.protocol === 'https:' && isHttp && !isLocalhost;
-    } catch {
-      return false;
-    }
-  };
-
+  // Make proxy request through genesis-backend-proxy
   const proxyRequest = async (
+    instanceId: string,
     path: string,
     method: 'GET' | 'POST',
     body?: unknown
-  ): Promise<{ ok: boolean; status: number; data: any }> => {
-    const { data, error } = await supabase.functions.invoke('whatsapp-backend-proxy', {
-      body: { path, method, body },
-    });
+  ): Promise<{ ok: boolean; status: number; data: any; error?: string; needsConfig?: boolean }> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('genesis-backend-proxy', {
+        body: { instanceId, path, method, body },
+      });
 
-    if (error) throw new Error(error.message);
-    return (data || { ok: false, status: 0, data: null }) as any;
+      if (error) {
+        console.error('Proxy request error:', error);
+        return { ok: false, status: 0, data: null, error: error.message };
+      }
+      
+      return (data || { ok: false, status: 0, data: null }) as any;
+    } catch (err) {
+      console.error('Proxy request exception:', err);
+      return { ok: false, status: 0, data: null, error: 'Erro de conexão' };
+    }
   };
 
   const normalizeQrToDataUrl = useCallback(async (rawQr: string): Promise<string> => {
@@ -157,113 +127,49 @@ export function useGenesisWhatsAppConnection() {
     }
   }, []);
 
-  const validateBackendHealth = async (backendUrl: string, token: string): Promise<boolean> => {
-    if (shouldUseProxy(backendUrl)) {
-      try {
-        const res = await proxyRequest('/health', 'GET');
-        return res.ok;
-      } catch {
-        return false;
-      }
+  const validateBackendHealth = async (instanceId: string): Promise<{ healthy: boolean; error?: string }> => {
+    const res = await proxyRequest(instanceId, '/health', 'GET');
+    
+    if (res.needsConfig) {
+      return { healthy: false, error: res.error || 'Backend não configurado' };
     }
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
-      const response = await fetch(`${backendUrl}/health`, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${token}` },
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      return response.ok;
-    } catch {
-      return false;
+    
+    if (res.error) {
+      return { healthy: false, error: res.error };
     }
+    
+    return { healthy: res.ok };
   };
 
-  const checkStatus = async (
-    instanceId: string,
-    backendUrl: string,
-    token: string
-  ): Promise<{ connected: boolean; phoneNumber?: string }> => {
-    if (shouldUseProxy(backendUrl)) {
-      try {
-        const res = await proxyRequest(`/api/instance/${instanceId}/status`, 'GET');
-        if (!res.ok) return { connected: false };
-        const result = res.data || {};
-        return {
-          connected: result.connected === true || result.status === 'connected' || result.state === 'open',
-          phoneNumber: result.phone || result.phoneNumber || result.jid?.split('@')[0],
-        };
-      } catch {
-        return { connected: false };
-      }
-    }
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
-      const response = await fetch(`${backendUrl}/api/instance/${instanceId}/status`, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${token}` },
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      if (!response.ok) return { connected: false };
-
-      const result = await response.json();
-      return {
-        connected: result.connected === true || result.status === 'connected' || result.state === 'open',
-        phoneNumber: result.phone || result.phoneNumber || result.jid?.split('@')[0],
-      };
-    } catch {
-      return { connected: false };
-    }
-  };
-
-  const generateQRCode = async (
-    instanceId: string,
-    backendUrl: string,
-    token: string
-  ): Promise<string | null> => {
-    const useProxy = shouldUseProxy(backendUrl);
-
-    const doRequest = async () => {
-      if (useProxy) {
-        const res = await proxyRequest(`/api/instance/${instanceId}/qrcode`, 'GET');
-        if (!res.ok) throw new Error('Erro ao gerar QR Code');
-        if (res.data?.connected || res.data?.status === 'connected') return 'CONNECTED';
-        const rawQr = res.data?.qrcode || res.data?.qr || res.data?.base64;
-        if (typeof rawQr === 'string') return await normalizeQrToDataUrl(rawQr);
-        throw new Error('QR Code não disponível');
-      }
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-      const response = await fetch(`${backendUrl}/api/instance/${instanceId}/qrcode`, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${token}` },
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      if (!response.ok) throw new Error('Erro ao gerar QR Code');
-
-      const result = await response.json();
-      if (result.connected || result.status === 'connected') return 'CONNECTED';
-
-      const rawQr = result.qrcode || result.qr || result.base64;
-      if (typeof rawQr === 'string') return await normalizeQrToDataUrl(rawQr);
-      throw new Error('QR Code não disponível');
+  const checkStatus = async (instanceId: string): Promise<{ connected: boolean; phoneNumber?: string }> => {
+    const res = await proxyRequest(instanceId, `/api/instance/${instanceId}/status`, 'GET');
+    
+    if (!res.ok) return { connected: false };
+    
+    const result = res.data || {};
+    return {
+      connected: result.connected === true || result.status === 'connected' || result.state === 'open',
+      phoneNumber: result.phone || result.phoneNumber || result.jid?.split('@')[0],
     };
+  };
 
-    return await doRequest();
+  const generateQRCode = async (instanceId: string): Promise<string | null> => {
+    const res = await proxyRequest(instanceId, `/api/instance/${instanceId}/qrcode`, 'GET');
+    
+    if (!res.ok) {
+      throw new Error(res.error || 'Erro ao gerar QR Code');
+    }
+    
+    if (res.data?.connected || res.data?.status === 'connected') {
+      return 'CONNECTED';
+    }
+    
+    const rawQr = res.data?.qrcode || res.data?.qr || res.data?.base64;
+    if (typeof rawQr === 'string') {
+      return await normalizeQrToDataUrl(rawQr);
+    }
+    
+    throw new Error('QR Code não disponível');
   };
 
   const startConnection = useCallback(async (
@@ -284,36 +190,17 @@ export function useGenesisWhatsAppConnection() {
     }));
 
     try {
-      // Always fetch VPS config from Owner's whatsapp_backend_config
-      const ownerConfig = await getOwnerBackendConfig();
+      // Validate backend health through proxy
+      const healthCheck = await validateBackendHealth(instanceId);
       
-      if (!ownerConfig || !ownerConfig.backend_url || !ownerConfig.master_token) {
-        throw new Error('Backend VPS não configurado. O administrador precisa configurar a VPS no painel Owner.');
-      }
-
-      if (!ownerConfig.is_connected) {
-        throw new Error('Backend VPS não está conectado. Verifique com o administrador.');
-      }
-
-      const backendUrl = ownerConfig.backend_url;
-      const token = ownerConfig.master_token;
-
-      // Save backend config to instance
-      await updateInstanceInDB(instanceId, {
-        backend_url: backendUrl,
-        backend_token: token,
-      });
-
-      // Validate backend health
-      const isHealthy = await validateBackendHealth(backendUrl, token);
-      if (!isHealthy) {
-        throw new Error('Backend VPS não está respondendo. Verifique se o servidor está online.');
+      if (!healthCheck.healthy) {
+        throw new Error(healthCheck.error || 'Backend não está respondendo');
       }
 
       safeSetState(prev => ({ ...prev, phase: 'generating' }));
 
       // Check if already connected
-      const initialStatus = await checkStatus(instanceId, backendUrl, token);
+      const initialStatus = await checkStatus(instanceId);
       if (initialStatus.connected) {
         await updateInstanceInDB(instanceId, {
           status: 'connected',
@@ -338,7 +225,7 @@ export function useGenesisWhatsAppConnection() {
       await updateInstanceInDB(instanceId, { status: 'qr_pending' });
 
       // Generate QR Code
-      const qrResult = await generateQRCode(instanceId, backendUrl, token);
+      const qrResult = await generateQRCode(instanceId);
       
       if (qrResult === 'CONNECTED') {
         await updateInstanceInDB(instanceId, {
@@ -398,7 +285,7 @@ export function useGenesisWhatsAppConnection() {
         // Auto-refresh QR every 45 seconds
         if (Date.now() - lastQrRefreshAtRef.current > qrAutoRefreshMs) {
           try {
-            const nextQr = await generateQRCode(instanceId, backendUrl, token);
+            const nextQr = await generateQRCode(instanceId);
             if (nextQr && nextQr !== 'CONNECTED') {
               lastQrRefreshAtRef.current = Date.now();
               safeSetState(prev => ({ ...prev, qrCode: nextQr }));
@@ -407,7 +294,7 @@ export function useGenesisWhatsAppConnection() {
         }
 
         // Check connection status
-        const statusResult = await checkStatus(instanceId, backendUrl, token);
+        const statusResult = await checkStatus(instanceId);
         if (statusResult.connected) {
           stopPolling();
           await updateInstanceInDB(instanceId, {
@@ -446,23 +333,14 @@ export function useGenesisWhatsAppConnection() {
 
   const disconnect = useCallback(async (
     instanceId: string,
-    backendUrl?: string,
-    token?: string
+    _backendUrl?: string,
+    _token?: string
   ) => {
     stopPolling();
     
-    if (backendUrl && token) {
-      try {
-        if (shouldUseProxy(backendUrl)) {
-          await proxyRequest(`/api/instance/${instanceId}/disconnect`, 'POST', {});
-        } else {
-          await fetch(`${backendUrl}/api/instance/${instanceId}/disconnect`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-          });
-        }
-      } catch {}
-    }
+    try {
+      await proxyRequest(instanceId, `/api/instance/${instanceId}/disconnect`, 'POST', {});
+    } catch {}
 
     await updateInstanceInDB(instanceId, {
       status: 'disconnected',
@@ -504,20 +382,19 @@ export function useGenesisWhatsAppConnection() {
     };
   }, []);
 
-  const startStatusPolling = useCallback((instanceId: string, onStatusChange: (status: InstanceStatus) => void) => {
+  const startStatusPolling = useCallback((
+    instanceId: string,
+    onStatusChange: (status: InstanceStatus) => void
+  ) => {
     stopStatusPolling();
-    
+
     const poll = async () => {
-      if (!mountedRef.current) {
-        stopStatusPolling();
-        return;
-      }
       const status = await getInstanceStatus(instanceId);
       onStatusChange(status);
     };
 
-    poll(); // Initial check
-    statusPollingRef.current = setInterval(poll, 3000); // Every 3 seconds
+    poll();
+    statusPollingRef.current = setInterval(poll, 3000);
   }, [getInstanceStatus, stopStatusPolling]);
 
   const resetState = useCallback(() => {

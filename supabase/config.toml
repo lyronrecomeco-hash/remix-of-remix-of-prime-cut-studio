@@ -1,5 +1,8 @@
 project_id = "wvnszzrvrrueuycrpgyc"
 
+[functions.genesis-backend-proxy]
+verify_jwt = false
+
 [functions.generate-proposal]
 
 [functions.send-proposal-email]
