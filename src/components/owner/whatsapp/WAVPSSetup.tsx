@@ -436,18 +436,25 @@ const connectWhatsApp = async () => {
 // ║                              ROTAS API                                         ║
 // ╚═══════════════════════════════════════════════════════════════════════════════╝
 
-app.get('/health', authMiddleware, (req, res) => {
-  res.json({ status: 'ok', whatsapp: connectionStatus, phone: phoneNumber, uptime: Math.floor((Date.now() - startTime) / 1000), version: '4.2' });
+// Health check (sem auth para checagem básica, com auth para completo)
+app.get('/health', (req, res) => {
+  const token = req.headers.authorization?.replace('Bearer ', '') || req.headers['x-instance-token'];
+  if (token && token === MASTER_TOKEN) {
+    res.json({ status: 'ok', whatsapp: connectionStatus, phone: phoneNumber, uptime: Math.floor((Date.now() - startTime) / 1000), version: '4.3' });
+  } else {
+    res.json({ status: 'ok', version: '4.3' });
+  }
 });
 
+// Rotas legacy (sem prefixo)
 app.get('/status', authMiddleware, (req, res) => {
   res.json({ connected: connectionStatus === 'connected', status: connectionStatus, phone: phoneNumber, qr: qrCode ? true : false });
 });
 
 app.get('/qrcode', authMiddleware, (req, res) => {
-  if (connectionStatus === 'connected') return res.json({ connected: true, phone: phoneNumber });
+  if (connectionStatus === 'connected') return res.json({ connected: true, status: 'connected', phone: phoneNumber });
   if (!qrCode) return res.json({ connected: false, qr: null, message: 'Aguardando QR...' });
-  res.json({ connected: false, qr: qrCode });
+  res.json({ connected: false, qr: qrCode, qrcode: qrCode });
 });
 
 app.post('/connect', authMiddleware, async (req, res) => {
@@ -464,6 +471,63 @@ app.post('/disconnect', authMiddleware, async (req, res) => {
     res.json({ success: true, message: 'Desconectado' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║                    ROTAS COM PREFIXO /api/instance/:id                         ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
+
+// QR Code - rota que o painel usa
+app.get('/api/instance/:id/qrcode', authMiddleware, (req, res) => {
+  if (connectionStatus === 'connected') return res.json({ connected: true, status: 'connected', phone: phoneNumber });
+  if (!qrCode) return res.json({ connected: false, qr: null, message: 'Aguardando QR...' });
+  res.json({ connected: false, qr: qrCode, qrcode: qrCode });
+});
+
+app.post('/api/instance/:id/qrcode', authMiddleware, (req, res) => {
+  if (connectionStatus === 'connected') return res.json({ connected: true, status: 'connected', phone: phoneNumber });
+  if (!qrCode) {
+    // Força reconexão pra gerar QR se necessário
+    if (connectionStatus === 'disconnected' && !sock) {
+      connectWhatsApp();
+      return res.json({ connected: false, qr: null, message: 'Iniciando conexão...' });
+    }
+    return res.json({ connected: false, qr: null, message: 'Aguardando QR...' });
+  }
+  res.json({ connected: false, qr: qrCode, qrcode: qrCode });
+});
+
+// Status
+app.get('/api/instance/:id/status', authMiddleware, (req, res) => {
+  res.json({ 
+    connected: connectionStatus === 'connected', 
+    status: connectionStatus, 
+    state: connectionStatus === 'connected' ? 'open' : 'close',
+    phone: phoneNumber, 
+    phoneNumber: phoneNumber,
+    jid: phoneNumber ? phoneNumber + '@s.whatsapp.net' : null
+  });
+});
+
+// Connect
+app.post('/api/instance/:id/connect', authMiddleware, async (req, res) => {
+  if (connectionStatus === 'connected') return res.json({ success: true, message: 'Já conectado', phone: phoneNumber });
+  try { connectWhatsApp(); res.json({ success: true, message: 'Iniciando conexão...' }); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Disconnect
+app.post('/api/instance/:id/disconnect', authMiddleware, async (req, res) => {
+  try {
+    if (sock) await sock.logout();
+    if (fs.existsSync(AUTH_FOLDER)) fs.rmSync(AUTH_FOLDER, { recursive: true });
+    connectionStatus = 'disconnected'; qrCode = null; phoneNumber = null;
+    res.json({ success: true, message: 'Desconectado' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ╔═══════════════════════════════════════════════════════════════════════════════╗
+// ║                         ROTAS DE ENVIO                                         ║
+// ╚═══════════════════════════════════════════════════════════════════════════════╝
 
 app.post('/send', authMiddleware, async (req, res) => {
   const { phone, message } = req.body;

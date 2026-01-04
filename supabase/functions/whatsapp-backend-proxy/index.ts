@@ -15,8 +15,10 @@ type ProxyRequestBody = {
 
 const isAllowedPath = (path: string) => {
   if (!path.startsWith("/")) return false;
-  if (path.startsWith("/health")) return true;
+  if (path === "/health") return true;
   if (path.startsWith("/api/instance/")) return true;
+  if (path.startsWith("/api/instances")) return true;
+  if (path.startsWith("/api/qrcode")) return true;
   return false;
 };
 
