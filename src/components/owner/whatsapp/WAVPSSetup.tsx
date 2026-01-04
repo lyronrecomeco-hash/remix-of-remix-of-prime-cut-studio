@@ -98,56 +98,93 @@ export const WAVPSSetup = ({
     }
   };
 
+  const shouldUseProxy = (url: string) => {
+    try {
+      const u = new URL(url);
+      const isHttp = u.protocol === 'http:';
+      const isLocalhost = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+      return window.location.protocol === 'https:' && isHttp && !isLocalhost;
+    } catch {
+      return false;
+    }
+  };
+
   const testConnection = async () => {
-    if (!backendUrl || !masterToken) {
+    const normalizedUrl = backendUrl.replace(/\/$/, '');
+
+    if (!normalizedUrl || !masterToken) {
       toast.error('Preencha URL e Token primeiro');
       return;
     }
 
     setIsTesting(true);
     try {
-      const response = await fetch(`${backendUrl.replace(/\/$/, '')}/health`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${masterToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Update DB with connected status
-        await supabase
-          .from('whatsapp_backend_config')
-          .upsert({
-            id: backendConfig?.id || crypto.randomUUID(),
-            backend_url: backendUrl.replace(/\/$/, ''),
-            master_token: masterToken,
-            is_connected: true,
-            last_health_check: new Date().toISOString()
-          });
-
-        setIsConnected(true);
-        setLastCheck(new Date().toISOString());
-        toast.success('VPS conectada com sucesso!');
-        onRefresh();
-      } else {
-        throw new Error(`Status ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Connection test failed:', error);
-      setIsConnected(false);
-      toast.error('Falha na conexão. Verifique URL e Token.');
-      
+      // Sempre salva primeiro para o proxy conseguir ler a configuração atual no backend
       await supabase
         .from('whatsapp_backend_config')
         .upsert({
           id: backendConfig?.id || crypto.randomUUID(),
-          backend_url: backendUrl.replace(/\/$/, ''),
+          backend_url: normalizedUrl,
           master_token: masterToken,
           is_connected: false,
-          last_health_check: new Date().toISOString()
+        });
+
+      if (shouldUseProxy(normalizedUrl)) {
+        // Em páginas HTTPS, o navegador bloqueia chamadas HTTP diretas (Mixed Content).
+        // Usamos um proxy seguro no backend para testar e operar com a VPS.
+        const { data, error } = await supabase.functions.invoke('whatsapp-backend-proxy', {
+          body: { path: '/health', method: 'GET' },
+        });
+
+        if (error) throw new Error(error.message);
+
+        const ok = Boolean((data as any)?.ok);
+        const status = Number((data as any)?.status || 0);
+
+        if (!ok) {
+          throw new Error(`Status ${status || 'erro'}`);
+        }
+      } else {
+        const response = await fetch(`${normalizedUrl}/health`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${masterToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Status ${response.status}`);
+        }
+      }
+
+      await supabase
+        .from('whatsapp_backend_config')
+        .upsert({
+          id: backendConfig?.id || crypto.randomUUID(),
+          backend_url: normalizedUrl,
+          master_token: masterToken,
+          is_connected: true,
+          last_health_check: new Date().toISOString(),
+        });
+
+      setIsConnected(true);
+      setLastCheck(new Date().toISOString());
+      toast.success('VPS conectada com sucesso!');
+      onRefresh();
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      setIsConnected(false);
+      toast.error('Falha na conexão. Verifique URL, Token e se a porta 3001 está liberada.');
+
+      await supabase
+        .from('whatsapp_backend_config')
+        .upsert({
+          id: backendConfig?.id || crypto.randomUUID(),
+          backend_url: normalizedUrl,
+          master_token: masterToken,
+          is_connected: false,
+          last_health_check: new Date().toISOString(),
         });
     } finally {
       setIsTesting(false);

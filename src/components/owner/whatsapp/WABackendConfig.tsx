@@ -169,36 +169,72 @@ export const WABackendConfig = ({
     }
   };
 
+  const shouldUseProxy = (url: string) => {
+    try {
+      const u = new URL(url);
+      const isHttp = u.protocol === 'http:';
+      const isLocalhost = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+      return window.location.protocol === 'https:' && isHttp && !isLocalhost;
+    } catch {
+      return false;
+    }
+  };
+
   const testVPSConnection = async () => {
-    if (!backendUrl) {
+    const normalizedUrl = backendUrl?.replace(/\/$/, '');
+
+    if (!normalizedUrl) {
       toast.error('Configure a URL do backend');
       return;
     }
 
     setIsTestingVPS(true);
-    addLog('info', `Testando conexão com ${backendUrl}...`);
+    addLog('info', `Testando conexão com ${normalizedUrl}...`);
 
     try {
-      const response = await fetch(`${backendUrl}/health`, {
-        headers: { 'Authorization': `Bearer ${masterToken}` },
-      });
-
-      if (response.ok) {
-        await supabase
-          .from('whatsapp_backend_config')
-          .update({ 
-            is_connected: true,
-            last_health_check: new Date().toISOString(),
-          })
-          .eq('id', backendConfig?.id);
-
-        addLog('success', '✓ Backend VPS conectado!');
-        toast.success('Conexão estabelecida!');
-        onRefresh();
-      } else {
-        addLog('error', `✗ Falha na conexão (status ${response.status})`);
-        toast.error('Falha na conexão');
+      // garante que o backend consiga ler a config atual no proxy
+      if (!backendConfig?.id) {
+        addLog('warning', 'Salve a configuração antes de testar.');
       }
+
+      if (shouldUseProxy(normalizedUrl)) {
+        const { data, error } = await supabase.functions.invoke('whatsapp-backend-proxy', {
+          body: { path: '/health', method: 'GET' },
+        });
+
+        if (error) throw new Error(error.message);
+
+        const ok = Boolean((data as any)?.ok);
+        const status = Number((data as any)?.status || 0);
+
+        if (!ok) {
+          addLog('error', `✗ Falha na conexão (status ${status || 'erro'})`);
+          toast.error('Falha na conexão');
+          return;
+        }
+      } else {
+        const response = await fetch(`${normalizedUrl}/health`, {
+          headers: { Authorization: `Bearer ${masterToken}` },
+        });
+
+        if (!response.ok) {
+          addLog('error', `✗ Falha na conexão (status ${response.status})`);
+          toast.error('Falha na conexão');
+          return;
+        }
+      }
+
+      await supabase
+        .from('whatsapp_backend_config')
+        .update({
+          is_connected: true,
+          last_health_check: new Date().toISOString(),
+        })
+        .eq('id', backendConfig?.id);
+
+      addLog('success', '✓ Backend VPS conectado!');
+      toast.success('Conexão estabelecida!');
+      onRefresh();
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Backend não acessível';
       addLog('error', `✗ Erro: ${errorMessage}`);

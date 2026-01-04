@@ -55,11 +55,57 @@ export function useWhatsAppConnection() {
     }
   };
 
+  const shouldUseProxy = (backendUrl: string) => {
+    try {
+      const u = new URL(backendUrl);
+      const isHttp = u.protocol === 'http:';
+      const isLocalhost = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+      return typeof window !== 'undefined' && window.location.protocol === 'https:' && isHttp && !isLocalhost;
+    } catch {
+      return false;
+    }
+  };
+
+  const proxyRequest = async (
+    path: string,
+    method: 'GET' | 'POST',
+    body?: unknown
+  ): Promise<{ ok: boolean; status: number; data: any }> => {
+    const { data, error } = await supabase.functions.invoke('whatsapp-backend-proxy', {
+      body: { path, method, body },
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data || { ok: false, status: 0, data: null }) as any;
+  };
+
   const checkStatus = async (
     instanceId: string,
     backendUrl: string,
     token: string
   ): Promise<{ connected: boolean; phoneNumber?: string }> => {
+    // VPS HTTP em página HTTPS -> usa proxy (evita Mixed Content/CORS)
+    if (shouldUseProxy(backendUrl)) {
+      try {
+        const res = await proxyRequest(`/api/instance/${instanceId}/status`, 'GET');
+        if (!res.ok) return { connected: false };
+
+        const result = res.data || {};
+        const isConnected =
+          result.connected === true || result.status === 'connected' || result.state === 'open';
+
+        return {
+          connected: isConnected,
+          phoneNumber: result.phone || result.phoneNumber || result.jid?.split('@')[0],
+        };
+      } catch {
+        return { connected: false };
+      }
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -104,6 +150,45 @@ export function useWhatsAppConnection() {
     token: string,
     phoneHint?: string
   ): Promise<string | null> => {
+    const useProxy = shouldUseProxy(backendUrl);
+
+    const doProxy = async (method: 'GET' | 'POST') => {
+      const path = `/api/instance/${instanceId}/qrcode`;
+      const res = await proxyRequest(path, method, method === 'POST' ? { phone: phoneHint } : undefined);
+
+      const result = res.data || {};
+
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error(
+            'Backend desatualizado: baixe o script novamente e reinicie o serviço.'
+          );
+        }
+
+        const msg =
+          result?.error ||
+          result?.message ||
+          `Erro ao gerar QR Code (HTTP ${res.status || 'erro'})`;
+
+        throw new Error(msg);
+      }
+
+      if (result.connected || result.status === 'connected') {
+        return 'CONNECTED';
+      }
+
+      const rawQr = result.qrcode || result.qr || result.base64;
+      if (typeof rawQr === 'string' && rawQr.length > 0) {
+        if (rawQr.startsWith('data:')) return rawQr;
+        if (/^[A-Za-z0-9+/=]+$/.test(rawQr.slice(0, 50))) {
+          return `data:image/png;base64,${rawQr}`;
+        }
+        return rawQr;
+      }
+
+      throw new Error(result.error || result.message || 'QR Code não disponível');
+    };
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
@@ -166,10 +251,10 @@ export function useWhatsAppConnection() {
     try {
       // Prefer GET (evita alguns NetworkError de CORS/preflight em certos browsers)
       try {
-        return await doRequest('GET');
+        return useProxy ? await doProxy('GET') : await doRequest('GET');
       } catch (e) {
         // fallback para compatibilidade com scripts antigos
-        return await doRequest('POST');
+        return useProxy ? await doProxy('POST') : await doRequest('POST');
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido';
@@ -185,6 +270,19 @@ export function useWhatsAppConnection() {
 
   // Pre-connection health check to prevent ghost connections
   const validateBackendHealth = async (backendUrl: string, token: string): Promise<BackendHealthResult> => {
+    if (shouldUseProxy(backendUrl)) {
+      try {
+        const res = await proxyRequest('/health', 'GET');
+        if (res.ok) return { ok: true };
+        if (res.status === 401 || res.status === 403) {
+          return { ok: false, reason: 'unauthorized', status: res.status };
+        }
+        return { ok: false, reason: 'error', status: res.status };
+      } catch {
+        return { ok: false, reason: 'unreachable' };
+      }
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -324,13 +422,18 @@ export function useWhatsAppConnection() {
           // Se ficar preso em QR_PENDING por muito tempo, faz um reset limpo (resolve travas comuns)
           if (attempts === 35) {
             try {
-              await fetch(`${backendUrl}/api/instance/${instanceId}/disconnect`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-              });
+              if (shouldUseProxy(backendUrl)) {
+                await proxyRequest(`/api/instance/${instanceId}/disconnect`, 'POST', {});
+              } else {
+                await fetch(`${backendUrl}/api/instance/${instanceId}/disconnect`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                  },
+                });
+              }
+
               await updateInstanceStatus(instanceId, 'qr_pending');
               const freshQr = await generateQRCode(instanceId, backendUrl, token, phoneHint);
               if (freshQr && freshQr !== 'CONNECTED') {
@@ -431,13 +534,18 @@ export function useWhatsAppConnection() {
     token: string
   ) => {
     try {
-      await fetch(`${backendUrl}/api/instance/${instanceId}/disconnect`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      if (shouldUseProxy(backendUrl)) {
+        const res = await proxyRequest(`/api/instance/${instanceId}/disconnect`, 'POST', {});
+        if (!res.ok) throw new Error(`HTTP ${res.status || 'erro'}`);
+      } else {
+        await fetch(`${backendUrl}/api/instance/${instanceId}/disconnect`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      }
 
       await updateInstanceStatus(instanceId, 'disconnected');
       toast.success('Desconectado');
