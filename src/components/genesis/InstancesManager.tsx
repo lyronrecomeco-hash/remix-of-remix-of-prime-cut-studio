@@ -14,7 +14,8 @@ import {
   AlertCircle,
   CreditCard,
   Eye,
-  ExternalLink
+  ExternalLink,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,6 +29,7 @@ import { useGenesisAuth } from '@/contexts/GenesisAuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { InstancePanel } from './InstancePanel';
+import { ConfigureNumberModal } from './ConfigureNumberModal';
 
 interface Instance {
   id: string;
@@ -44,15 +46,23 @@ interface Instance {
   effective_status?: string;
 }
 
-export function InstancesManager() {
+interface InstancesManagerProps {
+  onNavigateToAccount?: () => void;
+}
+
+export function InstancesManager({ onNavigateToAccount }: InstancesManagerProps = {}) {
   const { genesisUser, subscription } = useGenesisAuth();
   const [instances, setInstances] = useState<Instance[]>([]);
   const [loading, setLoading] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [configureModalOpen, setConfigureModalOpen] = useState(false);
   const [newInstanceName, setNewInstanceName] = useState('');
   const [creating, setCreating] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'connected' | 'disconnected'>('all');
   const [selectedInstance, setSelectedInstance] = useState<Instance | null>(null);
+
+  // Check if user has configured commercial number
+  const hasCommercialNumber = !!(genesisUser as any)?.whatsapp_commercial;
 
   const maxInstances = subscription?.max_instances || 1;
 
@@ -129,6 +139,24 @@ export function InstancesManager() {
       fetchInstances();
       toast.success('Instância excluída!');
     }
+  };
+
+  // Handle instance selection - check if user has configured number for connecting
+  const handleSelectInstance = (instance: Instance, isConnected: boolean) => {
+    // If instance is already connected, allow managing without check
+    if (isConnected) {
+      setSelectedInstance(instance);
+      return;
+    }
+
+    // For disconnected instances, check if user has commercial number configured
+    if (!hasCommercialNumber) {
+      setConfigureModalOpen(true);
+      return;
+    }
+
+    // All good, proceed to instance
+    setSelectedInstance(instance);
   };
 
   // Determinar status real baseado em effective_status e heartbeat
@@ -424,7 +452,7 @@ export function InstancesManager() {
                       <Button 
                         className="w-full gap-2"
                         variant={isConnected ? "default" : "secondary"}
-                        onClick={() => setSelectedInstance(instance)}
+                        onClick={() => handleSelectInstance(instance, isConnected)}
                       >
                         <ExternalLink className="w-4 h-4" />
                         {isConnected ? "Gerenciar" : "Conectar"}
@@ -563,6 +591,18 @@ export function InstancesManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Configure Number Modal */}
+      <ConfigureNumberModal 
+        isOpen={configureModalOpen}
+        onClose={() => setConfigureModalOpen(false)}
+        onGoToSettings={() => {
+          setConfigureModalOpen(false);
+          if (onNavigateToAccount) {
+            onNavigateToAccount();
+          }
+        }}
+      />
     </div>
   );
 }
