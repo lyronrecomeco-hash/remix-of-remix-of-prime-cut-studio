@@ -130,12 +130,32 @@ serve(async (req) => {
       });
     }
 
-    // Get backend config - first try from instance, then fallback to global whatsapp_backend_config
+    // Get backend config - prefer per-instance unless it's a local placeholder
     let backendUrl = instance.backend_url;
     let backendToken = instance.backend_token;
 
+    const isLocalBackendUrl = (url?: string | null) => {
+      const raw = String(url ?? '').trim();
+      if (!raw) return false;
+      try {
+        const parsed = new URL(raw);
+        return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '0.0.0.0';
+      } catch {
+        return raw.includes('localhost') || raw.includes('127.0.0.1') || raw.includes('0.0.0.0');
+      }
+    };
+
+    const isPlaceholderToken = (token?: string | null) => {
+      const t = String(token ?? '').trim();
+      return t === 'genesis-auto-token';
+    };
+
+    // Never allow local backends for Genesis users
+    if (isLocalBackendUrl(backendUrl)) backendUrl = null;
+    if (isPlaceholderToken(backendToken)) backendToken = null;
+
     if (!backendUrl || !backendToken) {
-      // Fallback to global config (Owner's VPS)
+      // Fallback to global config (WhatsApp Automação)
       const { data: globalConfig } = await supabaseAdmin
         .from("whatsapp_backend_config")
         .select("backend_url, master_token, is_connected")
@@ -147,13 +167,13 @@ serve(async (req) => {
         backendUrl = globalConfig.backend_url;
         backendToken = globalConfig.master_token;
 
-        // Save to instance for future use
+        // Save to instance for future use (overwrite old placeholders)
         await supabaseAdmin
           .from("genesis_instances")
-          .update({ 
-            backend_url: backendUrl, 
+          .update({
+            backend_url: backendUrl,
             backend_token: backendToken,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
           })
           .eq("id", instanceId);
       }
@@ -162,7 +182,7 @@ serve(async (req) => {
     if (!backendUrl || !backendToken) {
       return new Response(
         JSON.stringify({
-          error: "Backend VPS não configurado. Entre em contato com o suporte.",
+          error: "Backend do WhatsApp Automação não configurado. Entre em contato com o suporte.",
           needsConfig: true,
         }),
         {

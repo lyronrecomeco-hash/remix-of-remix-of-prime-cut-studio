@@ -294,11 +294,11 @@ Sua instância está conectada e funcionando perfeitamente!
                       )}
                     </motion.div>
                     <p className="mt-4 text-sm font-medium">
-                      {phase === 'validating' ? 'Verificando servidor local...' : 'Gerando QR Code...'}
+                      {phase === 'validating' ? 'Verificando infraestrutura...' : 'Gerando QR Code...'}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {phase === 'validating' 
-                        ? 'Conectando ao backend' 
+                      {phase === 'validating'
+                        ? 'Conectando ao WhatsApp Automação' 
                         : 'Aguarde um momento'}
                     </p>
                   </motion.div>
