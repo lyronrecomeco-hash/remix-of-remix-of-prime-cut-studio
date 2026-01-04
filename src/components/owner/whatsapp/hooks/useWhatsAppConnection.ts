@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import * as QRCode from 'qrcode';
 
 interface ConnectionState {
   isConnecting: boolean;
@@ -144,6 +145,23 @@ export function useWhatsAppConnection() {
     }
   };
 
+  const normalizeQrToDataUrl = useCallback(async (rawQr: string): Promise<string> => {
+    if (rawQr.startsWith('data:')) return rawQr;
+
+    // If backend already returns base64 PNG without prefix
+    if (/^[A-Za-z0-9+/=]+$/.test(rawQr.slice(0, 50))) {
+      return `data:image/png;base64,${rawQr}`;
+    }
+
+    // Baileys QR payload string (ex: "2@...") -> render it as an image in the browser
+    try {
+      return await QRCode.toDataURL(rawQr, { width: 256, margin: 1 });
+    } catch (err) {
+      console.error('Failed to render QR payload as image:', err);
+      throw new Error('QR Code inválido/inesperado. Clique em “Atualizar QR Code”.');
+    }
+  }, []);
+
   const generateQRCode = async (
     instanceId: string,
     backendUrl: string,
@@ -179,11 +197,7 @@ export function useWhatsAppConnection() {
 
       const rawQr = result.qrcode || result.qr || result.base64;
       if (typeof rawQr === 'string' && rawQr.length > 0) {
-        if (rawQr.startsWith('data:')) return rawQr;
-        if (/^[A-Za-z0-9+/=]+$/.test(rawQr.slice(0, 50))) {
-          return `data:image/png;base64,${rawQr}`;
-        }
-        return rawQr;
+        return await normalizeQrToDataUrl(rawQr);
       }
 
       throw new Error(result.error || result.message || 'QR Code não disponível');
@@ -237,12 +251,7 @@ export function useWhatsAppConnection() {
       // Return QR code data
       const rawQr = result.qrcode || result.qr || result.base64;
       if (typeof rawQr === 'string' && rawQr.length > 0) {
-        // Ensure data URL for base64 payloads
-        if (rawQr.startsWith('data:')) return rawQr;
-        if (/^[A-Za-z0-9+/=]+$/.test(rawQr.slice(0, 50))) {
-          return `data:image/png;base64,${rawQr}`;
-        }
-        return rawQr;
+        return await normalizeQrToDataUrl(rawQr);
       }
 
       throw new Error(result.error || result.message || 'QR Code não disponível');
