@@ -9,6 +9,7 @@ interface ConnectionState {
   qrCode: string | null;
   error: string | null;
   attempts: number;
+  phase: 'idle' | 'validating' | 'generating' | 'waiting' | 'connected' | 'error';
 }
 
 interface InstanceStatus {
@@ -27,23 +28,39 @@ export function useGenesisWhatsAppConnection() {
     qrCode: null,
     error: null,
     attempts: 0,
+    phase: 'idle',
   });
   
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const statusPollingRef = useRef<NodeJS.Timeout | null>(null);
   const lastQrRefreshAtRef = useRef<number>(0);
+  const mountedRef = useRef(true);
 
   const maxPollingAttempts = 180; // 3 minutes
   const pollingInterval = 1000;
   const qrAutoRefreshMs = 45000;
+
+  // Track mounted state
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const safeSetState = useCallback((updater: (prev: ConnectionState) => ConnectionState) => {
+    if (mountedRef.current) {
+      setConnectionState(updater);
+    }
+  }, []);
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
       pollingRef.current = null;
     }
-    setConnectionState(prev => ({ ...prev, isPolling: false }));
-  }, []);
+    safeSetState(prev => ({ ...prev, isPolling: false }));
+  }, [safeSetState]);
 
   const stopStatusPolling = useCallback(() => {
     if (statusPollingRef.current) {
@@ -61,10 +78,14 @@ export function useGenesisWhatsAppConnection() {
 
   const updateInstanceInDB = async (instanceId: string, updates: Record<string, unknown>) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('genesis_instances')
-        .update(updates)
+        .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', instanceId);
+      
+      if (error) {
+        console.error('Error updating genesis instance:', error);
+      }
     } catch (error) {
       console.error('Error updating genesis instance:', error);
     }
@@ -223,13 +244,14 @@ export function useGenesisWhatsAppConnection() {
   ) => {
     stopPolling();
     
-    setConnectionState({
+    safeSetState(() => ({
       isConnecting: true,
       isPolling: false,
       qrCode: null,
       error: null,
       attempts: 0,
-    });
+      phase: 'validating',
+    }));
 
     try {
       // Save backend config to instance
@@ -241,8 +263,10 @@ export function useGenesisWhatsAppConnection() {
       // Validate backend health
       const isHealthy = await validateBackendHealth(backendUrl, token);
       if (!isHealthy) {
-        throw new Error('Backend não está respondendo. Verifique se o script está rodando.');
+        throw new Error('Backend não disponível. Verifique se o script local está rodando.');
       }
+
+      safeSetState(prev => ({ ...prev, phase: 'generating' }));
 
       // Check if already connected
       const initialStatus = await checkStatus(instanceId, backendUrl, token);
@@ -254,7 +278,14 @@ export function useGenesisWhatsAppConnection() {
           effective_status: 'connected',
         });
         toast.success('WhatsApp já está conectado!');
-        setConnectionState(prev => ({ ...prev, isConnecting: false }));
+        safeSetState(() => ({
+          isConnecting: false,
+          isPolling: false,
+          qrCode: null,
+          error: null,
+          attempts: 0,
+          phase: 'connected',
+        }));
         onConnected?.();
         return;
       }
@@ -272,7 +303,14 @@ export function useGenesisWhatsAppConnection() {
           effective_status: 'connected',
         });
         toast.success('WhatsApp conectado!');
-        setConnectionState(prev => ({ ...prev, isConnecting: false }));
+        safeSetState(() => ({
+          isConnecting: false,
+          isPolling: false,
+          qrCode: null,
+          error: null,
+          attempts: 0,
+          phase: 'connected',
+        }));
         onConnected?.();
         return;
       }
@@ -281,42 +319,50 @@ export function useGenesisWhatsAppConnection() {
 
       // Show QR and start polling
       lastQrRefreshAtRef.current = Date.now();
-      setConnectionState({
+      safeSetState(() => ({
         isConnecting: false,
         isPolling: true,
         qrCode: qrResult,
         error: null,
         attempts: 0,
-      });
+        phase: 'waiting',
+      }));
 
       let attempts = 0;
       pollingRef.current = setInterval(async () => {
+        if (!mountedRef.current) {
+          stopPolling();
+          return;
+        }
+
         attempts++;
-        setConnectionState(prev => ({ ...prev, attempts }));
+        safeSetState(prev => ({ ...prev, attempts }));
 
         if (attempts >= maxPollingAttempts) {
           stopPolling();
-          setConnectionState(prev => ({
+          safeSetState(prev => ({
             ...prev,
             error: 'Tempo limite excedido. Tente novamente.',
             isPolling: false,
+            phase: 'error',
           }));
           await updateInstanceInDB(instanceId, { status: 'disconnected' });
           toast.error('Tempo limite para conexão excedido');
           return;
         }
 
-        // Auto-refresh QR
+        // Auto-refresh QR every 45 seconds
         if (Date.now() - lastQrRefreshAtRef.current > qrAutoRefreshMs) {
           try {
             const nextQr = await generateQRCode(instanceId, backendUrl, token);
             if (nextQr && nextQr !== 'CONNECTED') {
               lastQrRefreshAtRef.current = Date.now();
-              setConnectionState(prev => ({ ...prev, qrCode: nextQr }));
+              safeSetState(prev => ({ ...prev, qrCode: nextQr }));
             }
           } catch {}
         }
 
+        // Check connection status
         const statusResult = await checkStatus(instanceId, backendUrl, token);
         if (statusResult.connected) {
           stopPolling();
@@ -326,13 +372,14 @@ export function useGenesisWhatsAppConnection() {
             last_heartbeat: new Date().toISOString(),
             effective_status: 'connected',
           });
-          setConnectionState({
+          safeSetState(() => ({
             isConnecting: false,
             isPolling: false,
             qrCode: null,
             error: null,
             attempts: 0,
-          });
+            phase: 'connected',
+          }));
           toast.success('WhatsApp conectado com sucesso!');
           onConnected?.();
         }
@@ -340,17 +387,18 @@ export function useGenesisWhatsAppConnection() {
 
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao conectar';
-      setConnectionState({
+      safeSetState(() => ({
         isConnecting: false,
         isPolling: false,
         qrCode: null,
         error: message,
         attempts: 0,
-      });
+        phase: 'error',
+      }));
       await updateInstanceInDB(instanceId, { status: 'disconnected' });
       toast.error(message);
     }
-  }, [stopPolling, normalizeQrToDataUrl]);
+  }, [stopPolling, normalizeQrToDataUrl, safeSetState]);
 
   const disconnect = useCallback(async (
     instanceId: string,
@@ -378,16 +426,17 @@ export function useGenesisWhatsAppConnection() {
       qr_code: null,
     });
 
-    setConnectionState({
+    safeSetState(() => ({
       isConnecting: false,
       isPolling: false,
       qrCode: null,
       error: null,
       attempts: 0,
-    });
+      phase: 'idle',
+    }));
 
-    toast.success('Desconectado com sucesso');
-  }, [stopPolling]);
+    toast.success('Desconectado');
+  }, [stopPolling, safeSetState]);
 
   const getInstanceStatus = useCallback(async (instanceId: string): Promise<InstanceStatus> => {
     const { data, error } = await supabase
@@ -415,6 +464,10 @@ export function useGenesisWhatsAppConnection() {
     stopStatusPolling();
     
     const poll = async () => {
+      if (!mountedRef.current) {
+        stopStatusPolling();
+        return;
+      }
       const status = await getInstanceStatus(instanceId);
       onStatusChange(status);
     };
@@ -422,6 +475,18 @@ export function useGenesisWhatsAppConnection() {
     poll(); // Initial check
     statusPollingRef.current = setInterval(poll, 3000); // Every 3 seconds
   }, [getInstanceStatus, stopStatusPolling]);
+
+  const resetState = useCallback(() => {
+    stopPolling();
+    safeSetState(() => ({
+      isConnecting: false,
+      isPolling: false,
+      qrCode: null,
+      error: null,
+      attempts: 0,
+      phase: 'idle',
+    }));
+  }, [stopPolling, safeSetState]);
 
   return {
     connectionState,
@@ -431,5 +496,6 @@ export function useGenesisWhatsAppConnection() {
     getInstanceStatus,
     startStatusPolling,
     stopStatusPolling,
+    resetState,
   };
 }
