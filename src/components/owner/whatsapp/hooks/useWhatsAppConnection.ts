@@ -38,13 +38,30 @@ export function useWhatsAppConnection() {
 
   const updateInstanceStatus = async (instanceId: string, status: string, phoneNumber?: string) => {
     try {
+      const nowIso = new Date().toISOString();
+
       const updateData: Record<string, unknown> = {
         status,
-        last_seen: new Date().toISOString(),
+        last_seen: nowIso,
+        updated_at: nowIso,
       };
-      
+
       if (phoneNumber) {
         updateData.phone_number = phoneNumber;
+      }
+
+      // Baseline de heartbeat ao detectar conexão pelo painel.
+      // A instância deve permanecer viva pelo backend (heartbeat), mas isso evita
+      // o efeito colateral de "stale imediato" logo após conectar.
+      if (status === 'connected') {
+        updateData.last_heartbeat = nowIso;
+        updateData.last_heartbeat_at = nowIso;
+        updateData.effective_status = 'connected';
+        updateData.heartbeat_age_seconds = 0;
+      }
+
+      if (status === 'disconnected') {
+        updateData.effective_status = 'disconnected';
       }
 
       await supabase
@@ -428,22 +445,11 @@ export function useWhatsAppConnection() {
             }
           }
 
-          // Se ficar preso em QR_PENDING por muito tempo, faz um reset limpo (resolve travas comuns)
+          // Se ficar preso em QR_PENDING por muito tempo, NÃO faz reset via /disconnect.
+          // O /disconnect pode apagar a sessão no backend e forçar novo QR, causando "perda de sessão".
+          // Aqui a correção é apenas renovar o QR (sem destruir sessão).
           if (attempts === 35) {
             try {
-              if (shouldUseProxy(backendUrl)) {
-                await proxyRequest(`/api/instance/${instanceId}/disconnect`, 'POST', {});
-              } else {
-                await fetch(`${backendUrl}/api/instance/${instanceId}/disconnect`, {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                  },
-                });
-              }
-
-              await updateInstanceStatus(instanceId, 'qr_pending');
               const freshQr = await generateQRCode(instanceId, backendUrl, token, phoneHint);
               if (freshQr && freshQr !== 'CONNECTED') {
                 lastQrRefreshAtRef.current = Date.now();

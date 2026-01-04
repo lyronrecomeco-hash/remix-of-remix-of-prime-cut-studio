@@ -6,8 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-instance-token",
 };
 
-// Threshold para considerar instância stale (120 segundos)
-const STALE_THRESHOLD_SECONDS = 120;
+// Threshold para considerar instância stale (180 segundos)
+const STALE_THRESHOLD_SECONDS = 180;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {

@@ -293,7 +293,7 @@ export function useGenesisWhatsAppConnection() {
             isPolling: false,
             phase: 'error',
           }));
-          await updateInstanceInDB(instanceId, { status: 'disconnected' });
+          // NÃO altera status no banco aqui: o lifecycle da instância não pode depender do frontend.
           toast.error('Tempo limite para conexão excedido');
           return;
         }
@@ -342,7 +342,7 @@ export function useGenesisWhatsAppConnection() {
         attempts: 0,
         phase: 'error',
       }));
-      await updateInstanceInDB(instanceId, { status: 'disconnected' });
+      // NÃO altera status no banco aqui: evita "desconectar" por erro de tela/reload.
       toast.error(message);
     }
   }, [stopPolling, normalizeQrToDataUrl, safeSetState]);
@@ -387,11 +387,11 @@ export function useGenesisWhatsAppConnection() {
       return { status: 'disconnected', isStale: true };
     }
 
-    const lastHeartbeat = data.last_heartbeat ? new Date(data.last_heartbeat) : null;
-    const isStale = !lastHeartbeat || (Date.now() - lastHeartbeat.getTime() > STALE_THRESHOLD_MS);
+    const lastHeartbeatMs = data.last_heartbeat ? new Date(data.last_heartbeat).getTime() : 0;
+    const isStale = lastHeartbeatMs > 0 && (Date.now() - lastHeartbeatMs > STALE_THRESHOLD_MS);
 
     return {
-      status: isStale ? 'disconnected' : (data.effective_status || data.status),
+      status: (data.effective_status || data.status) as string,
       phoneNumber: data.phone_number || undefined,
       lastHeartbeat: data.last_heartbeat || undefined,
       isStale,
