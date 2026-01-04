@@ -20,10 +20,11 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useGenesisAuth } from '@/contexts/GenesisAuthContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 
 export function GenesisMyAccount() {
-  const { genesisUser, subscription, credits } = useGenesisAuth();
+  const { genesisUser, subscription, credits, refreshUser } = useGenesisAuth();
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -52,26 +53,45 @@ export function GenesisMyAccount() {
   };
 
   const handleSave = async () => {
-    if (!genesisUser) return;
+    if (!genesisUser) {
+      toast.error('Usuário não encontrado');
+      return;
+    }
+    
+    // Validação básica
+    if (!formData.name.trim()) {
+      toast.error('Nome é obrigatório');
+      return;
+    }
     
     setSaving(true);
     try {
+      const updateData = {
+        name: formData.name.trim(),
+        whatsapp_commercial: formData.whatsapp_commercial?.replace(/\D/g, '') || null,
+        whatsapp_test: formData.whatsapp_test?.replace(/\D/g, '') || null,
+        company_name: formData.company_name?.trim() || null,
+        updated_at: new Date().toISOString(),
+      };
+
       const { error } = await supabase
         .from('genesis_users')
-        .update({
-          name: formData.name,
-          whatsapp_commercial: formData.whatsapp_commercial?.replace(/\D/g, '') || null,
-          whatsapp_test: formData.whatsapp_test?.replace(/\D/g, '') || null,
-          company_name: formData.company_name || null,
-        })
+        .update(updateData)
         .eq('id', genesisUser.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao atualizar:', error);
+        throw error;
+      }
 
+      // Atualizar contexto após salvar
+      await refreshUser();
+      
       toast.success('Dados atualizados com sucesso!');
       setHasChanges(false);
-    } catch (error) {
-      toast.error('Erro ao salvar alterações');
+    } catch (error: any) {
+      console.error('Erro completo:', error);
+      toast.error(error?.message || 'Erro ao salvar alterações');
     } finally {
       setSaving(false);
     }
