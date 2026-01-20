@@ -12,6 +12,7 @@ import {
   TrendingUp, Clock, CheckCircle, Heart,
   Infinity, Send, Phone, Mail
 } from 'lucide-react';
+import VendaFAQ from '@/components/venda/VendaFAQ';
 
 // Animated typing effect
 const TypewriterText = ({ text, className = '' }: { text: string; className?: string }) => {
@@ -820,6 +821,7 @@ const GenesisCommercial = () => {
       <FeaturesSection />
       <PartnersSection />
       <PricingSection />
+      <VendaFAQ />
       <FooterSection />
     </div>
   );
