@@ -2313,7 +2313,7 @@ export type Database = {
           acknowledged_at: string | null
           acknowledged_by: string | null
           alert_type: string
-          auto_resolve_after: unknown
+          auto_resolve_after: string | null
           auto_resolved: boolean | null
           created_at: string | null
           id: string
@@ -2334,7 +2334,7 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
           alert_type: string
-          auto_resolve_after?: unknown
+          auto_resolve_after?: string | null
           auto_resolved?: boolean | null
           created_at?: string | null
           id?: string
@@ -2355,7 +2355,7 @@ export type Database = {
           acknowledged_at?: string | null
           acknowledged_by?: string | null
           alert_type?: string
-          auto_resolve_after?: unknown
+          auto_resolve_after?: string | null
           auto_resolved?: boolean | null
           created_at?: string | null
           id?: string
